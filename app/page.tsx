@@ -107,7 +107,7 @@ export default function HomePage() {
             <FeatureCard
               icon={<CheckCircleIcon />}
               title="학교별 맞춤 제작"
-              description="담당 학교의 최신 기출 경향을 완벽하게 분석하여 맞춤형 컨텐츠를 제공합니다."
+              description="담당 학교의 최신 기출 경향 및 교과서를 완벽하게 분석하여 맞춤형 컨텐츠를 제공합니다."
               delay={0.1}
             />
             <FeatureCard
@@ -119,7 +119,7 @@ export default function HomePage() {
             <FeatureCard
               icon={<CheckCircleIcon />}
               title="전문가 검수"
-              description="서울대 사범대 출신 전문 컨텐츠 연구진 및 현직 강사의 다단계 검수를 거쳐 문항의 퀄리티를 보장합니다."
+              description="서울대 사범대 출신 전문 컨텐츠 연구진 및 현직 강사의 세밀한 검수를 거쳐 문항의 퀄리티를 보장합니다."
               delay={0.3}
             />
           </div>
@@ -157,7 +157,7 @@ export default function HomePage() {
               icon={<CpuChipIcon />}
               step="Step 2"
               title="컨텐츠 제작 및 검수"
-              description="요청에 맞춰 컨텐츠를 제작하고, 정확한 검수까지 3일 내로 진행합니다."
+              description="요청에 맞춰 컨텐츠를 제작하고, 세밀한 검수까지 3일 내로 진행합니다."
               delay={0.2}
             />
             <ProcessStep
@@ -206,19 +206,19 @@ export default function HomePage() {
           <div className="mt-16 grid gap-8 md:grid-cols-3">
             {/* [수정] imgSrc 경로를 public 폴더 기준으로 변경 */}
             <ContentSampleCard
-              imgSrc="/images/mock-exam.jpg"
+              imgSrc="/images/mock-exam.png"
               title="실전 모의고사"
               description="최신 출제 경향과 학교별 데이터를 완벽 분석하여, 실전과 가장 유사한 난이도 및 문항 구성으로 제작됩니다. 학생들의 최종 실력 점검에 최적화된 컨텐츠입니다."
               delay={0.1}
             />
             <ContentSampleCard
-              imgSrc="/images/n-set.jpg"
+              imgSrc="/images/n-set.png"
               title="학교별 N제"
               description="담당 학교의 교과서, 부교재, 프린트 등을 세밀하게 분석하여 내신 대비를 완성하는 학교별 맞춤형 N제입니다. 적중률 높은 문항으로 효율적인 학습을 돕습니다."
               delay={0.2}
             />
             <ContentSampleCard
-              imgSrc="/images/high-difficulty.jpg"
+              imgSrc="/images/high-difficulty.png"
               title="고난도 문항모음"
               description="상위권 변별을 위한 고난도 킬러 문항, 신유형 문항만을 선별하여 제공합니다. 깊이 있는 사고력과 문제 해결 능력을 배양하는 데 초점을 맞춥니다."
               delay={0.3}
@@ -396,6 +396,8 @@ function ContentSampleCard({
           fill={true} // 부모 요소(div)를 꽉 채움
           sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw" // 반응형 최적화
           className="object-cover" // 이미지가 잘리지 않고 채워지도록
+          //텍스트가 뭉개지지 않도록 품질을 100%로 올립니다.
+          quality={100}
         />
       </div>
 

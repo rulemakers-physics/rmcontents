@@ -73,6 +73,12 @@
       "namedRegex": "^/login(?:/)?$"
     },
     {
+      "page": "/privacy",
+      "regex": "^/privacy(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/privacy(?:/)?$"
+    },
+    {
       "page": "/profile/setup",
       "regex": "^/profile/setup(?:/)?$",
       "routeKeys": {},
@@ -89,6 +95,12 @@
       "regex": "^/showcase(?:/)?$",
       "routeKeys": {},
       "namedRegex": "^/showcase(?:/)?$"
+    },
+    {
+      "page": "/terms",
+      "regex": "^/terms(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/terms(?:/)?$"
     }
   ],
   "dataRoutes": [],

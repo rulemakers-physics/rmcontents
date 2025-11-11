@@ -7,7 +7,9 @@
   "/favicon.ico/route": "app/favicon.ico/route.js",
   "/login/page": "app/login/page.js",
   "/page": "app/page.js",
+  "/privacy/page": "app/privacy/page.js",
   "/profile/setup/page": "app/profile/setup/page.js",
   "/request/page": "app/request/page.js",
-  "/showcase/page": "app/showcase/page.js"
+  "/showcase/page": "app/showcase/page.js",
+  "/terms/page": "app/terms/page.js"
 }

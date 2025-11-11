@@ -36,7 +36,7 @@ const samples = [
             "정확한 해설지 제공",
             "모의고사 유사 문항 추가 제공(요청시)"
         ],
-        mockImageUrl: "/mockup-exam.png"
+        mockImageUrl: "/images/mockup-exam.jpg"
     },
     {
         title: "내신 대비 N제",
@@ -47,7 +47,7 @@ const samples = [
             "다양한 난이도 배분",
             "자료 및 유형 다각화로 내신 완벽 대비"
         ],
-        mockImageUrl: "/mockup-nje.png"
+        mockImageUrl: "/images/n-set.jpg"
     }
 ];
 function ShowcasePage() {

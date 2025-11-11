@@ -36,7 +36,7 @@ const samples = [
       "정확한 해설지 제공",
       "모의고사 유사 문항 추가 제공(요청시)",
     ],
-    mockImageUrl: "/images/mock-exam.jpg", // 메인 페이지와 동일한 경로
+    mockImageUrl: "/images/mock-exam.png", // 메인 페이지와 동일한 경로
   },
   {
     title: "내신 대비 N제",
@@ -48,7 +48,7 @@ const samples = [
       "다양한 난이도 배분",
       "자료 및 유형 다각화로 내신 완벽 대비",
     ],
-    mockImageUrl: "/images/n-set.jpg", // 메인 페이지와 동일한 경로
+    mockImageUrl: "/images/n-set.png", // 메인 페이지와 동일한 경로
   },
   {
     title: "고난도 문항모음", // [추가] 세 번째 항목
@@ -60,7 +60,7 @@ const samples = [
       "최신 수능/모의고사 신유형 완벽 대비",
       "상세한 풀이 과정 및 해설 제공",
     ],
-    mockImageUrl: "/images/high-difficulty.jpg", // 메인 페이지와 동일한 경로
+    mockImageUrl: "/images/high-difficulty.png", // 메인 페이지와 동일한 경로
   },
 ];
 
@@ -143,6 +143,13 @@ export default function ShowcasePage() {
                     fill={true} // 'position: absolute'를 자동으로 적용
                     sizes="(max-width: 768px) 100vw, 50vw"
                     className="object-cover"
+
+                    // ▼▼▼ [수정] ▼▼▼
+                    // 1. 텍스트가 뭉개지지 않도록 품질을 90%로 올립니다.
+                    quality={90}
+                    // 첫 번째와 두 번째 이미지(index 0, 1)에 priority={true}를 전달합니다.
+                    priority={index < 2}
+                    // ▲▲▲ [수정] ▲▲▲
                   />
                 </div>
               </div>
