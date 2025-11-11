@@ -46,3 +46,6 @@ next-env.d.ts
 
 # Firebase functions node_modules
 /.firebase/rmcontents1/functions/node_modules
+
+# Firebase
+.firebase/

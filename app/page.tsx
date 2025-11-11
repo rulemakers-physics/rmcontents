@@ -207,13 +207,13 @@ export default function HomePage() {
             {/* [수정] imgSrc 경로를 public 폴더 기준으로 변경 */}
             <ContentSampleCard
               imgSrc="/images/mock-exam.png"
-              title="실전 모의고사"
+              title="학교별 실전 모의고사"
               description="최신 출제 경향과 학교별 데이터를 완벽 분석하여, 실전과 가장 유사한 난이도 및 문항 구성으로 제작됩니다. 학생들의 최종 실력 점검에 최적화된 컨텐츠입니다."
               delay={0.1}
             />
             <ContentSampleCard
               imgSrc="/images/n-set.png"
-              title="학교별 N제"
+              title="학교별 내신 대비 N제"
               description="담당 학교의 교과서, 부교재, 프린트 등을 세밀하게 분석하여 내신 대비를 완성하는 학교별 맞춤형 N제입니다. 적중률 높은 문항으로 효율적인 학습을 돕습니다."
               delay={0.2}
             />

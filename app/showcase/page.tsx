@@ -27,7 +27,7 @@ const fadeInUp: Variants = {
 // [수정] 3개 항목으로 업데이트
 const samples = [
   {
-    title: "학교별 내신 대비 모의고사",
+    title: "학교별 실전 모의고사",
     description:
       "학교별 최신 기출을 완벽 분석하여 제작된 고품질 내신 저격 모의고사입니다.",
     features: [
@@ -39,7 +39,7 @@ const samples = [
     mockImageUrl: "/images/mock-exam.png", // 메인 페이지와 동일한 경로
   },
   {
-    title: "내신 대비 N제",
+    title: "학교별 내신 대비 N제",
     description:
       "특정 주제나 유형을 집중 공략할 수 있도록 설계된 문항 N제입니다.",
     features: [
