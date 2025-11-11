@@ -3,6 +3,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image"; // [수정] Image 컴포넌트 import
 import { useAuth } from "@/context/AuthContext";
 import { useRouter } from "next/navigation";
 import { auth } from "@/lib/firebase";
@@ -24,10 +25,24 @@ export default function Header() {
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-white/90 backdrop-blur-sm">
       <div className="container mx-auto flex h-16 max-w-5xl items-center justify-between px-6">
-        {/* 로고 */}
-        <Link href="/" className="text-2xl font-bold text-gray-900">
-          RuleMakers
+        {/* ▼▼▼ [수정] 로고 ▼▼▼
+          Link 태그에 flex와 items-center를 추가하고,
+          Image 컴포넌트와 텍스트를 <span>으로 묶습니다.
+        */}
+        <Link
+          href="/"
+          className="flex items-center text-2xl font-bold text-gray-900"
+        >
+          <Image
+            src="/favicon.ico" // public 폴더에 있는 favicon.ico 경로
+            alt="RuleMakers 로고"
+            width={28} // 로고 너비 (조절 가능)
+            height={28} // 로고 높이 (조절 가능)
+            className="mr-2" // 텍스트와의 오른쪽 간격
+          />
+          <span>RuleMakers</span>
         </Link>
+        {/* ▲▲▲ [수정] 여기까지 ▲▲▲ */}
 
         {/* 네비게이션 메뉴 */}
         <nav className="flex items-center space-x-6">

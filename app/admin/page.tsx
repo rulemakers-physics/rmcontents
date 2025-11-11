@@ -41,12 +41,14 @@ export default function AdminDashboard() {
     // 1. 로딩이 끝났는지 확인
     if (loading) return;
 
-    // 2. 관리자가 아니면 강사 대시보드로 리디렉션
+    // --- [수정된 부분 2] ---
+    // isAdmin 변수를 올바르게 참조
     if (!user || !isAdmin) {
       alert("접근 권한이 없습니다.");
       router.push("/dashboard");
       return;
     }
+    // --- [수정 끝] ---
 
     // 3. 관리자일 경우, 요청 목록 불러오기
     const fetchRequests = async () => {
