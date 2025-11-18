@@ -1,117 +1,166 @@
 // app/premium-service/page.tsx
 
+"use client";
+
 import React from "react";
 import Link from "next/link";
+import { motion } from "framer-motion";
 import {
-  CheckCircleIcon,
   SparklesIcon,
   PencilSquareIcon,
-} from "@heroicons/react/24/solid";
+  ClipboardDocumentCheckIcon,
+  CpuChipIcon,
+  BookOpenIcon,
+  ClockIcon,
+  ArrowRightIcon,
+} from "@heroicons/react/24/outline";
+
+const fadeInUp = {
+  initial: { opacity: 0, y: 30 },
+  animate: { opacity: 1, y: 0, transition: { duration: 0.5 } },
+};
+
+const premiumFeatures = [
+  {
+    icon: SparklesIcon,
+    title: "프리미엄 문제은행",
+    desc: "RuleMakers 자체 개발 고난도 문항을 포함한 모든 문항 풀을 사용하여 맞춤형 문항을 제작합니다.",
+  },
+  {
+    icon: PencilSquareIcon,
+    title: "커스텀 N제 & 모의고사",
+    desc: "강사님의 요청서에 따라 기출 분석, 내신 N제, 실전 모의고사를 100% 맞춤 제작합니다.",
+  },
+  {
+    icon: ClipboardDocumentCheckIcon,
+    title: "교육청 Full Package",
+    desc: "교육청 모의고사 분석 및 변형 문항은 물론, 실전 대비 모의고사까지 완벽하게 제공합니다.",
+  },
+  {
+    icon: BookOpenIcon,
+    title: "주요 교재 완벽 분석",
+    desc: "사용하시는 주요 개념서 및 부교재를 정밀 분석하여 수업과 연계된 고퀄리티 유사 문항을 제공합니다.",
+  },
+  {
+    icon: CpuChipIcon,
+    title: "컨셉별/킬러 N제",
+    desc: "특정 킬러 유형, 취약 단원, 신유형 등 원하시는 컨셉에 맞춘 특화 자료를 제작해드립니다.",
+  },
+  {
+    icon: ClockIcon,
+    title: "신속한 제작 및 검수",
+    desc: "요청 후 3일 이내 완성되며, 전문 연구진의 교차 검수까지 완료된 최종본을 전달합니다.",
+  },
+];
 
 export default function PremiumServicePage() {
   return (
-    <div className="relative isolate overflow-hidden bg-white py-24 sm:py-32">
-      <div className="container mx-auto max-w-5xl px-6 lg:px-8">
-        <div className="mx-auto max-w-3xl">
-          {/* 헤더 */}
-          <div className="text-center">
-            <p className="text-base font-semibold leading-7 text-blue-600">
-              프리미엄 서비스
-            </p>
-            <h1 className="mt-2 text-4xl font-bold tracking-tight text-gray-900 sm:text-5xl leading-snug">
-              오직 강사님만을 위한
+    <div className="min-h-screen bg-gray-50">
+      {/* 1. Hero Section */}
+      <section className="relative bg-gray-900 py-24 text-white sm:py-32">
+        <div className="container mx-auto max-w-5xl px-6 text-center">
+          <motion.div
+            variants={fadeInUp}
+            initial="initial"
+            whileInView="animate"
+            viewport={{ once: true }}
+          >
+            <span className="inline-flex items-center rounded-full bg-blue-500/10 px-3 py-1 text-sm font-medium text-blue-400 ring-1 ring-inset ring-blue-500/20">
+              Premium Plan
+            </span>
+            <h1 className="mt-6 text-4xl font-extrabold leading-tight sm:text-5xl lg:text-6xl">
+              오직 고객님만을 위한
               <br />
-              1:1 맞춤형 컨텐츠 제작
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-teal-400">1:1 맞춤형 컨텐츠</span>
             </h1>
-            <p className="mt-6 text-lg leading-8 text-gray-600">
-              RuleMakers 연구소의 High Quality 자체 제작 문항을 활용한,
-              <br />
-              요청서에 따라 100% 커스터마이징 된 고난도 프리미엄 컨텐츠를 경험하세요.
+            <p className="mx-auto mt-6 max-w-2xl text-lg text-gray-300">
+              RuleMakers 연구소의 High Quality 자체 제작 문항을 활용하여,
+              <br className="hidden sm:block" />
+              요청서에 따라 100% 커스터마이징 된 압도적인 퀄리티를 경험하세요.
             </p>
-          </div>
+          </motion.div>
 
-          {/* 핵심 기능 목록 */}
-          <div className="mt-20">
-            <h2 className="text-center text-2xl font-bold text-gray-900">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ delay: 0.3 }}
+            className="mt-10 flex justify-center gap-4"
+          >
+            <Link
+              href="/contact"
+              className="rounded-lg bg-blue-600 px-8 py-3.5 text-base font-semibold text-white shadow-lg transition-colors hover:bg-blue-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
+            >
+              도입 문의하기
+            </Link>
+            <Link
+              href="/showcase"
+              className="group flex items-center gap-2 rounded-lg border border-gray-600 px-8 py-3.5 text-base font-semibold text-gray-300 transition-colors hover:border-gray-500 hover:text-white"
+            >
+              샘플 확인하기
+              <ArrowRightIcon className="h-4 w-4 transition-transform group-hover:translate-x-1" />
+            </Link>
+          </motion.div>
+        </div>
+      </section>
+
+      {/* 2. Benefits Grid */}
+      <section className="py-24">
+        <div className="container mx-auto max-w-6xl px-6">
+          <div className="mb-16 md:text-center">
+            <h2 className="text-3xl font-bold tracking-tight text-gray-900 sm:text-4xl">
               프리미엄 플랜 혜택
             </h2>
-            <div className="mt-10 flow-root">
-              <div className="-m-2 rounded-xl bg-gray-50 p-2 ring-1 ring-inset ring-gray-900/10 lg:-m-4 lg:rounded-2xl lg:p-4">
-                <dl className="grid grid-cols-1 gap-x-6 gap-y-8 text-base leading-7 sm:grid-cols-2 lg:grid-cols-3">
-                  <FeatureItem
-                    icon={SparklesIcon}
-                    title="프리미엄 문제은행"
-                    description="RuleMakers 자체 개발 고난도 문항을 포함한 모든 문항 풀 사용 및 맞춤형 문항 제작"
-                  />
-                  <FeatureItem
-                    icon={PencilSquareIcon}
-                    title="커스텀 N제 & 모의고사"
-                    description="요청서에 따라 기출 분석, 내신 N제, 모의고사를 맞춤 제작"
-                  />
-                  <FeatureItem
-                    icon={CheckCircleIcon}
-                    title="교육청 Full Package"
-                    description="교육청 모의고사 분석, 변형 문항은 물론, 교육청 대비 모의고사 + 변형 모의고사까지"
-                  />
-                  <FeatureItem
-                    icon={CheckCircleIcon}
-                    title="주요 교재 완벽 분석"
-                    description="주요 개념서 및 부교재를 분석하여 고퀄리티 유사 문항 제공"
-                  />
-                  <FeatureItem
-                    icon={CheckCircleIcon}
-                    title="컨셉별/유사문항 N제"
-                    description="특정 문항의 유사문항 모음집, 킬러 컨셉별 N제 등 특화된 자료 제작"
-                  />
-                  <FeatureItem
-                    icon={CheckCircleIcon}
-                    title="신속한 제작 및 검수"
-                    description="요청 후 3일 이내 완성되는, 전문가 검수까지 완료된 최종본"
-                  />
-                </dl>
-              </div>
-            </div>
-          </div>
-
-          {/* CTA */}
-          <div className="mt-24 text-center">
-            <Link
-              href="/request"
-              className="rounded-md bg-blue-600 px-10 py-4 text-lg font-medium text-white shadow-lg transition-colors hover:bg-blue-700"
-            >
-              지금 바로 프리미엄 컨텐츠 요청하기
-            </Link>
-            <p className="mt-6">
-              <Link
-                href="/showcase"
-                className="text-base font-medium text-gray-600 hover:text-blue-600"
-              >
-                컨텐츠 샘플 먼저 확인하기 &rarr;
-              </Link>
+            <p className="mt-4 text-lg text-gray-600">
+              단순한 문제 제공을 넘어, 강사님의 수업 퀄리티를 높여드리는 파트너가 됩니다.
             </p>
           </div>
-        </div>
-      </div>
-    </div>
-  );
-}
 
-function FeatureItem({
-  icon: Icon,
-  title,
-  description,
-}: {
-  icon: React.ElementType;
-  title: string;
-  description: string;
-}) {
-  return (
-    <div className="flex flex-col gap-y-2 border-l border-gray-900/10 p-6">
-      <dt className="flex items-center gap-x-3 text-base font-semibold">
-        <Icon className="h-5 w-5 flex-none text-blue-600" aria-hidden="true" />
-        {title}
-      </dt>
-      <dd className="text-gray-600">{description}</dd>
+          <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-3">
+            {premiumFeatures.map((feature, idx) => (
+              <motion.div
+                key={feature.title}
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ delay: idx * 0.1 }}
+                className="group relative overflow-hidden rounded-2xl bg-white p-8 shadow-sm ring-1 ring-gray-200 transition-all hover:shadow-xl hover:-translate-y-1"
+              >
+                <div className="mb-6 inline-flex h-14 w-14 items-center justify-center rounded-xl bg-blue-50 text-blue-600 group-hover:bg-blue-600 group-hover:text-white transition-colors">
+                  <feature.icon className="h-7 w-7" />
+                </div>
+                <h3 className="text-xl font-bold text-gray-900">
+                  {feature.title}
+                </h3>
+                <p className="mt-4 text-gray-600 leading-relaxed">
+                  {feature.desc}
+                </p>
+              </motion.div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* 3. Bottom CTA */}
+      <section className="bg-gray-900 py-20 text-center">
+        <div className="container mx-auto max-w-4xl px-6">
+          <h2 className="text-3xl font-bold tracking-tight text-white sm:text-4xl">
+            지금 바로 시작하세요
+          </h2>
+          <p className="mt-4 text-lg text-gray-400">
+            복잡한 자료 준비는 RuleMakers에게 맡기고, 강사님은 수업에만 집중하세요.
+          </p>
+          <div className="mt-10">
+            {/* [수정] 하단 버튼: 문의 페이지(/contact)로 연결 */}
+            <Link
+              href="/contact"
+              className="inline-block rounded-full bg-white px-10 py-4 text-lg font-bold text-gray-900 transition-transform hover:scale-105 hover:bg-gray-100"
+            >
+              도입 문의하기
+            </Link>
+          </div>
+        </div>
+      </section>
     </div>
   );
 }
