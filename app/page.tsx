@@ -10,6 +10,7 @@ import {
   PencilSquareIcon,
   CpuChipIcon,
   ArrowDownTrayIcon,
+  XCircleIcon,
 } from "@heroicons/react/24/solid";
 import { motion, Variants } from "framer-motion";
 
@@ -227,6 +228,68 @@ export default function HomePage() {
         </div>
       </motion.section>
 
+      {/* --- [신규] 서비스 플랜 섹션 --- */}
+      <motion.section
+        variants={fadeInUp}
+        initial="initial"
+        whileInView="animate"
+        viewport={{ once: true }}
+        className="bg-white py-24"
+      >
+        <div className="container mx-auto max-w-5xl px-6">
+          <div className="text-center">
+            <h2 className="text-3xl font-bold text-gray-900">
+              서비스 플랜
+            </h2>
+            <p className="mt-4 text-lg text-gray-600">
+              고객님의 필요에 맞춘 두 가지 플랜을 제공합니다.
+            </p>
+          </div>
+          <div className="mt-16 grid gap-8 md:grid-cols-2">
+            
+            {/* 베이직 플랜 */}
+            <ServicePlanCard
+              title="베이직"
+              description="기본 문제은행과 내신 대비 자료 (구독형)"
+              price="월 구독"
+              link="/basic-service"
+              features={[
+                { text: "기본 문제은행 서비스", included: true },
+                { text: "기출 분석 및 내신대비 N제 & 모의고사", included: true },
+                { text: "교육청 모의고사 분석 및 변형 문항", included: true },
+                { text: "주요 개념서 및 부교재 유사 문항", included: true },
+                { text: "자체 개발 고난도 문항 풀", included: false },
+                { text: "요청서 기반 커스텀 제작", included: false },
+                { text: "교육청 대비 모의고사 + 변형 모의고사", included: false },
+                { text: "컨셉별 N제 / 특정 문항 유사 문항", included: false },
+              ]}
+              isPrimary={false}
+              delay={0.1}
+            />
+
+            {/* 프리미엄 플랜 */}
+            <ServicePlanCard
+              title="프리미엄"
+              description="모든 문항 풀 + 커스텀 제작 요청 (건별)"
+              price="건별 요청"
+              link="/request"
+              features={[
+                { text: "프리미엄 문제은행 (자체 고난도 문항 포함)", included: true },
+                { text: "기출 분석 및 내신대비 N제 & 모의고사", included: true },
+                { text: "교육청 모의고사 분석 및 변형 문항", included: true },
+                { text: "주요 개념서 및 부교재 유사 문항", included: true },
+                { text: "요청서 기반 커스텀 제작", included: true },
+                { text: "교육청 대비 모의고사 + 변형 모의고사", included: true },
+                { text: "컨셉별 N제 / 특정 문항 유사 문항", included: true },
+              ]}
+              isPrimary={true}
+              delay={0.2}
+            />
+          </div>
+        </div>
+      </motion.section>
+      {/* --- [신규] 섹션 끝 --- */}
+
       {/* 최종 CTA 섹션 */}
       <motion.section
         variants={fadeInUp}
@@ -406,6 +469,79 @@ function ContentSampleCard({
         <h3 className="text-xl font-bold text-gray-900">{title}</h3>
         <p className="mt-3 text-base text-gray-600">{description}</p>
       </div>
+    </motion.div>
+  );
+}
+
+/**
+ * [신규] ServicePlanCard 컴포넌트
+ */
+function ServicePlanCard({
+  title,
+  description,
+  price,
+  link,
+  features,
+  isPrimary,
+  delay,
+}: {
+  title: string;
+  description: string;
+  price: string;
+  link: string;
+  features: { text: string; included: boolean }[];
+  isPrimary: boolean;
+  delay: number;
+}) {
+  return (
+    <motion.div
+      variants={cardVariants}
+      initial="offscreen"
+      whileInView="onscreen"
+      custom={delay}
+      viewport={{ once: true }}
+      className={`relative flex flex-col rounded-2xl border p-8 shadow-sm ${
+        isPrimary
+          ? "border-blue-600 border-2"
+          : "border-gray-200 bg-gray-50"
+      }`}
+    >
+      {isPrimary && (
+        <div className="absolute top-0 -translate-y-1/2 rounded-full bg-blue-600 px-4 py-1 text-sm font-medium text-white">
+          추천 플랜
+        </div>
+      )}
+      <h3 className="text-2xl font-bold text-gray-900">{title}</h3>
+      <p className="mt-2 text-gray-600">{description}</p>
+      <p className="mt-4 text-3xl font-extrabold text-gray-900">{price}</p>
+      <Link
+        href={link}
+        className={`mt-6 block rounded-md px-6 py-3 text-center text-base font-medium transition-colors ${
+          isPrimary
+            ? "bg-blue-600 text-white shadow-lg hover:bg-blue-700"
+            : "bg-white text-blue-600 ring-1 ring-blue-600 hover:bg-blue-50"
+        }`}
+      >
+        {isPrimary ? "지금 작업 요청하기" : "자세히 보기"}
+      </Link>
+      <ul className="mt-8 space-y-4">
+        {features.map((feature) => (
+          <li key={feature.text} className="flex items-center gap-3">
+            {feature.included ? (
+              <CheckCircleIcon className="h-5 w-5 flex-shrink-0 text-blue-600" />
+            ) : (
+              <XCircleIcon className="h-5 w-5 flex-shrink-0 text-gray-400" />
+            )}
+            <span
+              className={
+                feature.included ? "text-gray-800" : "text-gray-500 line-through"
+              }
+            >
+              {feature.text}
+            </span>
+          </li>
+        ))}
+      </ul>
     </motion.div>
   );
 }

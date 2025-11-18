@@ -46,6 +46,21 @@ export default function Header() {
 
         {/* 네비게이션 메뉴 */}
         <nav className="flex items-center space-x-6">
+          {/* [신규] 서비스 소개 링크 추가 */}
+          <Link
+            href="/basic-service"
+            className="text-sm font-medium text-gray-600 transition-colors hover:text-blue-600"
+          >
+            베이직 서비스
+          </Link>
+          <Link
+            href="/premium-service"
+            className="text-sm font-medium text-gray-600 transition-colors hover:text-blue-600"
+          >
+            프리미엄 서비스
+          </Link>
+          {/* [신규] 여기까지 */}
+
           <Link
             href="/showcase"
             className="text-sm font-medium text-gray-600 transition-colors hover:text-blue-600"
