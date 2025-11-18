@@ -13,9 +13,10 @@ import {
   where,
   Timestamp,
   orderBy,
-  onSnapshot // [수정] 실시간
+  onSnapshot // [수정] 실시간 업데이트를 위해 추가
 } from "firebase/firestore";
 
+// Firestore에서 가져올 요청 데이터의 타입 정의
 interface RequestData {
   id: string;
   title: string;
@@ -23,7 +24,7 @@ interface RequestData {
   academy: string;
   status: "requested" | "in_progress" | "completed" | "rejected";
   requestedAt: Timestamp;
-  // [신규] 관리자용 안 읽은 메시지 수
+  // [신규] 관리자용 안 읽은 메시지 수 (DB 필드: unreadCountAdmin)
   unreadCountAdmin?: number;
 }
 
@@ -44,26 +45,33 @@ export default function AdminDashboard() {
       return;
     }
 
-    // 실시간 리스너 사용
+    // [수정] getDocs 대신 onSnapshot을 사용하여 실시간으로 목록 업데이트
+    // 관리자용 안 읽은 메시지 카운트(unreadCountAdmin)가 변경되면 즉시 반영됩니다.
     const q = query(
       collection(db, "requests"),
-      where("status", "in", ["requested", "in_progress"]),
-      orderBy("status", "desc"),
+      where("status", "in", ["requested", "in_progress"]), // 접수된 작업 + 작업 중
+      orderBy("status", "desc"), // 'requested'가 먼저 오도록 정렬
       orderBy("requestedAt", "desc")
     );
     
     const unsubscribe = onSnapshot(q, (querySnapshot) => {
-      const requestList = querySnapshot.docs.map((doc) => ({
-        id: doc.id,
-        ...doc.data(),
-      } as RequestData));
+      const requestList = querySnapshot.docs.map((doc) => {
+        const data = doc.data();
+        // ID와 데이터를 합칠 때 타입 안전성을 위해 전개 연산자 사용
+        return {
+          id: doc.id,
+          ...data,
+        } as RequestData;
+      });
+      
       setRequests(requestList);
       setIsLoading(false);
     }, (error) => {
-      console.error("관리자 목록 로딩 에러:", error);
+      console.error("요청 목록 로딩 에러:", error);
       setIsLoading(false);
     });
 
+    // 컴포넌트 언마운트 시 리스너 해제
     return () => unsubscribe();
   }, [user, loading, isAdmin, router]);
 
@@ -81,7 +89,7 @@ export default function AdminDashboard() {
         <div className="container mx-auto max-w-5xl px-6">
           <div className="flex justify-between items-center mb-8">
             <h1 className="text-3xl font-bold text-gray-900">
-              관리자 대시보드 (접수된 요청)
+              관리자 대시보드 (접수된 작업)
             </h1>
             <Link
               href="/admin/completed"
@@ -116,14 +124,16 @@ export default function AdminDashboard() {
                         {req.status === 'requested' && <span className="rounded-full bg-red-100 px-2 py-1 text-xs font-semibold text-red-700">요청됨</span>}
                         {req.status === 'in_progress' && <span className="rounded-full bg-yellow-100 px-2 py-1 text-xs font-semibold text-yellow-700">작업중</span>}
                       </td>
-                      <td className="px-6 py-4 font-medium text-gray-900 flex items-center gap-2">
-                        {req.title}
-                        {/* [신규] 알림 배지 */}
-                        {req.unreadCountAdmin && req.unreadCountAdmin > 0 ? (
-                           <span className="inline-flex items-center rounded-md bg-red-50 px-2 py-1 text-xs font-medium text-red-700 ring-1 ring-inset ring-red-600/10">
-                             New
-                           </span>
-                        ) : null}
+                      <td className="px-6 py-4 font-medium text-gray-900">
+                        <div className="flex items-center gap-2">
+                          {req.title}
+                          {/* [신규] 관리자용 새 메시지 알림 배지 */}
+                          {req.unreadCountAdmin && req.unreadCountAdmin > 0 ? (
+                             <span className="inline-flex items-center rounded-md bg-red-100 px-2 py-0.5 text-xs font-medium text-red-700 ring-1 ring-inset ring-red-600/10 animate-pulse">
+                               New
+                             </span>
+                          ) : null}
+                        </div>
                       </td>
                       <td className="px-6 py-4 text-gray-700">{req.instructorName} ({req.academy})</td>
                       <td className="px-6 py-4 text-gray-500">{req.requestedAt.toDate().toLocaleDateString('ko-KR')}</td>

@@ -11,9 +11,9 @@ import {
   collection,
   query,
   where,
-  getDocs,
   Timestamp,
   orderBy,
+  onSnapshot // [수정] 실시간 업데이트를 위해 추가
 } from "firebase/firestore";
 
 // Firestore에서 가져올 요청 데이터의 타입 정의
@@ -24,8 +24,10 @@ interface RequestData {
   academy: string;
   status: "requested" | "in_progress" | "completed" | "rejected";
   requestedAt: Timestamp;
-  completedAt?: Timestamp; // 완료된 작업이므로 추가
-  rejectReason?: string; // 반려된 작업이므로 추가
+  completedAt?: Timestamp;
+  rejectReason?: string;
+  // [신규] 관리자용 안 읽은 메시지 수
+  unreadCountAdmin?: number;
 }
 
 export default function AdminCompletedDashboard() {
@@ -45,34 +47,33 @@ export default function AdminCompletedDashboard() {
       return;
     }
 
-    // 관리자일 경우, 완료/반려된 요청 목록 불러오기
-    const fetchRequests = async () => {
-      setIsLoading(true);
-      try {
-        // [수정] 'completed' 또는 'rejected' 상태인 요청만 가져옴
-        const q = query(
-          collection(db, "requests"),
-          where("status", "in", ["completed", "rejected"]),
-          orderBy("requestedAt", "desc") // 최근 요청 순
-        );
-        
-        const querySnapshot = await getDocs(q);
-        const requestList = querySnapshot.docs.map((doc) => ({
+    // [수정] 실시간 리스너(onSnapshot)로 변경
+    // 완료되거나 반려된 작업 중, 메시지가 오면 즉시 반응
+    const q = query(
+      collection(db, "requests"),
+      where("status", "in", ["completed", "rejected"]),
+      orderBy("requestedAt", "desc") 
+    );
+    
+    const unsubscribe = onSnapshot(q, (querySnapshot) => {
+      const requestList = querySnapshot.docs.map((doc) => {
+        const data = doc.data();
+        return {
           id: doc.id,
-          ...doc.data(),
-        } as RequestData));
-        
-        setRequests(requestList);
-      } catch (error) {
-        console.error("완료/반려 목록을 불러오는 중 에러:", error);
-      }
+          ...data,
+        } as RequestData;
+      });
+      
+      setRequests(requestList);
       setIsLoading(false);
-    };
+    }, (error) => {
+      console.error("완료/반려 목록 로딩 에러:", error);
+      setIsLoading(false);
+    });
 
-    fetchRequests();
+    return () => unsubscribe();
   }, [user, loading, isAdmin, router]);
 
-  // 로딩 중 또는 권한 확인 중일 때
   if (loading || isLoading || !isAdmin) {
     return (
       <div className="flex min-h-screen items-center justify-center">
@@ -81,7 +82,6 @@ export default function AdminCompletedDashboard() {
     );
   }
 
-  // --- 관리자 전용 UI ---
   return (
     <div className="flex min-h-screen flex-col">
       <main className="flex-grow bg-gray-50 py-12">
@@ -123,13 +123,22 @@ export default function AdminCompletedDashboard() {
                         {req.status === 'completed' && <span className="rounded-full bg-green-100 px-2 py-1 text-xs font-semibold text-green-700">완료됨</span>}
                         {req.status === 'rejected' && <span className="rounded-full bg-gray-100 px-2 py-1 text-xs font-semibold text-gray-700">반려됨</span>}
                       </td>
-                      <td className="px-6 py-4 font-medium text-gray-900">{req.title}</td>
+                      <td className="px-6 py-4 font-medium text-gray-900">
+                        <div className="flex items-center gap-2">
+                          {req.title}
+                          {/* [신규] 관리자용 알림 배지 (완료된 작업에서도 표시) */}
+                          {req.unreadCountAdmin && req.unreadCountAdmin > 0 ? (
+                             <span className="inline-flex items-center rounded-md bg-red-100 px-2 py-0.5 text-xs font-medium text-red-700 ring-1 ring-inset ring-red-600/10 animate-pulse">
+                               New
+                             </span>
+                          ) : null}
+                        </div>
+                      </td>
                       <td className="px-6 py-4 text-gray-700">{req.instructorName} ({req.academy})</td>
                       <td className="px-6 py-4 text-gray-500">
                         {req.status === 'completed' && req.completedAt 
                           ? req.completedAt.toDate().toLocaleDateString('ko-KR') 
                           : req.requestedAt.toDate().toLocaleDateString('ko-KR')}
-                        {/* 참고: 반려된 작업은 별도 'rejectedAt' 타임스탬프를 저장하면 더 좋습니다. */}
                       </td>
                       <td className="px-6 py-4">
                         <Link 

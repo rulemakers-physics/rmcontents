@@ -136,3 +136,98 @@ export const sendSlackNotificationOnNewRequest = functions.firestore
     }
   });
 // --- [신규] 여기까지 ---
+/**
+ * [수정된 트리거] 피드백 메시지 알림 (별도 채널 지원)
+ */
+export const sendSlackNotificationOnNewFeedback = functions.firestore
+  .document("requests/{requestId}/feedback/{messageId}")
+  .onCreate(async (snap, context) => {
+    const feedbackData = snap.data();
+    const requestId = context.params.requestId;
+
+    // 1. 관리자가 보낸 메시지는 알림 스킵
+    if (feedbackData.authorType === "admin") {
+      return null;
+    }
+
+    // 2. 부모 요청 문서 데이터 가져오기
+    const requestDoc = await admin.firestore().collection("requests").doc(requestId).get();
+    const requestData = requestDoc.data();
+
+    if (!requestData) {
+       functions.logger.warn(`[Slack] 요청 데이터 없음: ${requestId}`);
+       return null;
+    }
+
+    // 3. [핵심] 피드백 전용 Webhook URL을 우선적으로 확인
+    // 환경 변수(SLACK_FEEDBACK_WEBHOOK_URL) 또는 Firebase Config(slack.feedback_webhook_url) 확인
+    // 없으면 기본 URL(SLACK_WEBHOOK_URL)로 폴백(Fallback)
+    const webhookUrl = 
+      process.env.SLACK_FEEDBACK_WEBHOOK_URL || 
+      functions.config().slack.feedback_webhook_url || 
+      process.env.SLACK_WEBHOOK_URL || 
+      functions.config().slack.webhook_url;
+
+    if (!webhookUrl) {
+      functions.logger.error("[Slack] Webhook URL이 설정되지 않았습니다.");
+      return null;
+    }
+
+    // 4. 슬랙 메시지 구성
+    const slackMessage = {
+      blocks: [
+        {
+          type: "section",
+          text: {
+            type: "mrkdwn",
+            text: "💬 *새로운 메시지가 도착했습니다!*"
+          }
+        },
+        {
+          type: "section",
+          fields: [
+            {
+              type: "mrkdwn",
+              text: `*요청 제목:*\n${requestData.title}`
+            },
+            {
+              type: "mrkdwn",
+              text: `*작성자:*\n${feedbackData.authorName}`
+            }
+          ]
+        },
+        {
+          type: "section",
+          text: {
+            type: "mrkdwn",
+            text: `*내용:*\n${feedbackData.text}`
+          }
+        },
+        {
+          type: "actions",
+          elements: [
+            {
+              type: "button",
+              text: {
+                type: "plain_text",
+                text: "답장하러 가기",
+                emoji: true
+              },
+              url: `https://rmcontents1.web.app/admin/request/${requestId}`,
+              style: "primary"
+            }
+          ]
+        }
+      ]
+    };
+
+    // 5. 전송
+    try {
+      await axios.post(webhookUrl, slackMessage);
+      functions.logger.info(`[Slack] 피드백 알림 전송 성공: ${requestId}`);
+    } catch (error) {
+      functions.logger.error(`[Slack] 피드백 알림 전송 실패`, error);
+    }
+    
+    return null;
+  });
