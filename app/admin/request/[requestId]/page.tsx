@@ -15,13 +15,20 @@ import { v4 as uuidv4 } from "uuid";
 interface RequestDetails {
   id: string;
   title: string;
-  details: string;
   instructorName: string;
   academy: string;
   status: "requested" | "in_progress" | "completed";
   requestedAt: Timestamp;
   referenceFileUrl?: string; // 강사가 올린 참고 파일
   completedFileUrl?: string; // 관리자가 올린 완료 파일
+
+  // --- [수정] 폼 필드에 맞게 추가 ---
+  contentKind: string;        // 컨텐츠 종류
+  quantity: number;           // 수량
+  questionCount: string;      // 문항 수
+  deadline: string;           // 마감일 (string으로 저장됨)
+  scope: Record<string, Record<string, string[]>>; // 단원 범위
+  details?: string;           // (선택) 상세 요청 내용
 }
 
 export default function RequestDetailPage() {
@@ -170,12 +177,69 @@ export default function RequestDetailPage() {
                 요청일: {request.requestedAt.toDate().toLocaleString('ko-KR')}
               </p>
               
-              <div className="mt-6 space-y-2">
-                <h3 className="text-lg font-semibold text-gray-800">상세 요청 내용</h3>
-                <p className="whitespace-pre-wrap rounded-md bg-gray-50 p-4 text-gray-700">
-                  {request.details}
-                </p>
+              {/* --- [수정] 상세 요청 내용을 구조화하여 표시 --- */}
+
+              {/* 1. 요청 기본 정보 */}
+              <div className="mt-6">
+                <h3 className="text-lg font-semibold text-gray-800">요청 기본 정보</h3>
+                <dl className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4 rounded-md border border-gray-200 p-4">
+                  <div>
+                    <dt className="text-sm font-medium text-gray-500">요청 컨텐츠 종류</dt>
+                    <dd className="mt-1 text-gray-900">{request.contentKind}</dd>
+                  </div>
+                  <div>
+                    <dt className="text-sm font-medium text-gray-500">필요한 수량</dt>
+                    <dd className="mt-1 text-gray-900">{request.quantity} Set</dd>
+                  </div>
+                  <div>
+                    <dt className="text-sm font-medium text-gray-500">마감일</dt>
+                    <dd className="mt-1 text-gray-900">{request.deadline}</dd>
+                  </div>
+                  <div>
+                    <dt className="text-sm font-medium text-gray-500">필요한 문항 수</dt>
+                    <dd className="mt-1 text-gray-900">{request.questionCount}</dd>
+                  </div>
+                </dl>
               </div>
+
+              {/* 2. 컨텐츠 범위 */}
+              <div className="mt-6">
+                <h3 className="text-lg font-semibold text-gray-800">컨텐츠 범위</h3>
+                <div className="mt-4 space-y-3 rounded-md border border-gray-200 p-4">
+                  {request.scope && Object.keys(request.scope).length > 0 ? (
+                    Object.keys(request.scope).map((subjectName) => (
+                      <div key={subjectName}>
+                        <h4 className="font-medium text-gray-900">{subjectName}</h4>
+                        <ul className="mt-2 list-outside list-disc space-y-1 pl-6">
+                          {Object.keys(request.scope[subjectName]).map((majorTopicName) => (
+                            <li key={majorTopicName} className="text-sm">
+                              <span className="font-medium">{majorTopicName}</span>
+                              <ul className="mt-1 list-inside list-disc pl-4 text-gray-600">
+                                {request.scope[subjectName][majorTopicName].map((minorTopicName) => (
+                                  <li key={minorTopicName}>{minorTopicName}</li>
+                                ))}
+                              </ul>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    ))
+                  ) : (
+                    <p className="text-gray-500">선택된 범위가 없습니다.</p>
+                  )}
+                </div>
+              </div>
+
+              {/* 3. (선택) 상세 요청 내용 */}
+              {request.details && (
+                <div className="mt-6 space-y-2">
+                  <h3 className="text-lg font-semibold text-gray-800">(선택) 상세 요청 내용</h3>
+                  <p className="whitespace-pre-wrap rounded-md bg-gray-50 p-4 text-gray-700">
+                    {request.details}
+                  </p>
+                </div>
+              )}
+              {/* --- [여기까지] --- */}
 
               {request.referenceFileUrl && (
                 <div className="mt-6">

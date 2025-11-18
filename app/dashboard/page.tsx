@@ -5,7 +5,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { useAuth } from "@/context/AuthContext";
+import { useAuth } from "@/context/AuthContext"; // [수정] useAuth 임포트
 import { db } from "@/lib/firebase";
 import {
   collection,
@@ -14,64 +14,143 @@ import {
   getDocs,
   Timestamp,
   orderBy,
+  doc, // [신규]
+  updateDoc, // [신규]
+  serverTimestamp // [신규]
 } from "firebase/firestore";
+import RequestDetailModal from "@/components/RequestDetailModal"; // [신규] 모달 컴포넌트
 
-// 강사 대시보드에서 사용할 요청 데이터 타입
-interface MyRequestData {
+// [신규] 모달에서 사용할 전체 요청 데이터 타입 (기존 MyRequestData 확장)
+export interface RequestData {
   id: string;
   title: string;
   status: "requested" | "in_progress" | "completed";
   requestedAt: Timestamp;
-  completedAt?: Timestamp; // 완료된 작업에만 존재
-  completedFileUrl?: string; // 완료된 작업에만 존재
+  completedAt?: Timestamp;
+  completedFileUrl?: string;
+  
+  // --- request 폼에서 추가된 필드 ---
+  contentKind: string;
+  quantity: number;
+  questionCount: string;
+  deadline: string;
+  scope: Record<string, Record<string, string[]>>; // 단원 범위
+  details?: string; // (선택) 상세 요청
+  referenceFileUrl?: string; // (선택) 참고 파일
+  instructorId: string; // (필수)
 }
 
+
 export default function DashboardPage() {
-  const { user, loading } = useAuth();
+  const { user, loading, isFirstLogin } = useAuth(); // [수정] isFirstLogin 추가
   const router = useRouter();
   
-  const [requests, setRequests] = useState<MyRequestData[]>([]);
+  const [requests, setRequests] = useState<RequestData[]>([]); // [수정] 타입을 RequestData로 변경
   const [isLoading, setIsLoading] = useState(true);
 
-  // 1. 로그인한 사용자의 요청 목록만 불러오기
+  // --- [신규] 모달 상태 관리 ---
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [selectedRequest, setSelectedRequest] = useState<RequestData | null>(null);
+  // --- [신규] ---
+
+  // [수정] 로그인 / 첫 로그인 / 데이터 fetching 로직 통합
   useEffect(() => {
-    // AuthContext가 유저 정보를 로드할 때까지 대기
-    if (loading) return;
+    // 1. AuthContext 로딩 중이면 대기
+    if (loading) {
+      setIsLoading(true);
+      return;
+    }
     
-    // 로그아웃 상태면 로그인 페이지로
+    // 2. 로그아웃 상태면 로그인 페이지로
     if (!user) {
       router.push("/login");
       return;
     }
 
-    const fetchMyRequests = async () => {
-      setIsLoading(true);
-      try {
-        // 'requests' 컬렉션에서 'instructorId'가 현재 유저의 uid와 같은 것만 쿼리
-        const q = query(
-          collection(db, "requests"),
-          where("instructorId", "==", user.uid),
-          orderBy("requestedAt", "desc") // 최신순으로 정렬
-        );
-        
-        const querySnapshot = await getDocs(q);
-        const requestList = querySnapshot.docs.map((doc) => ({
-          id: doc.id,
-          ...doc.data(),
-        } as MyRequestData));
-        
-        setRequests(requestList);
-      } catch (error) {
-        console.error("내 요청 목록을 불러오는 중 에러:", error);
-      }
-      setIsLoading(false);
-    };
+    // 3. [핵심] 로그인했지만 첫 로그인(프로필 미설정)이면 설정 페이지로
+    if (isFirstLogin === true) {
+      alert("서비스 이용을 위해 프로필을 먼저 설정해주세요.");
+      router.push("/profile/setup");
+      return;
+    }
+    
+    // 4. 모든 조건을 통과 (로그인O, 프로필설정O) 한 경우에만 요청 목록을 불러옴
+    if (user && isFirstLogin === false) {
+      const fetchMyRequests = async () => {
+        setIsLoading(true);
+        try {
+          const q = query(
+            collection(db, "requests"),
+            where("instructorId", "==", user.uid),
+            orderBy("requestedAt", "desc")
+          );
+          
+          const querySnapshot = await getDocs(q);
+          const requestList = querySnapshot.docs.map((doc) => ({
+            id: doc.id,
+            ...doc.data(),
+          } as RequestData)); // [수정] 타입을 RequestData로 변경
+          
+          setRequests(requestList);
+        } catch (error) {
+          console.error("내 요청 목록을 불러오는 중 에러:", error);
+        }
+        setIsLoading(false);
+      };
 
-    fetchMyRequests();
-  }, [user, loading, router]);
+      fetchMyRequests();
+    }
+  }, [user, loading, isFirstLogin, router]); // [수정] isFirstLogin 의존성 추가
 
-  // 로딩 화면
-  if (loading || isLoading) {
+  
+  // --- [신규] 모달 핸들러 ---
+  
+  // 리스트 항목 클릭 시 모달 열기
+  const handleRequestClick = (request: RequestData) => {
+    setSelectedRequest(request);
+    setIsModalOpen(true);
+  };
+
+  // 모달 닫기
+  const handleCloseModal = () => {
+    setIsModalOpen(false);
+    setSelectedRequest(null);
+  };
+
+  // 모달에서 '저장' 버튼 클릭 시 (Modal 컴포넌트가 호출)
+  const handleSaveChanges = async (updatedData: Partial<RequestData>) => {
+    if (!selectedRequest) return;
+
+    setIsLoading(true); // 전체 페이지 로딩으로 표시 (간단하게)
+
+    try {
+      const docRef = doc(db, "requests", selectedRequest.id);
+      await updateDoc(docRef, {
+        ...updatedData,
+        updatedAt: serverTimestamp(), // 수정 시간 기록
+      });
+      
+      // 로컬 상태 즉시 업데이트
+      setRequests(prev => 
+        prev.map(req => 
+          req.id === selectedRequest.id ? { ...req, ...updatedData } : req
+        )
+      );
+      
+      alert("요청이 성공적으로 수정되었습니다.");
+      handleCloseModal();
+
+    } catch (error) {
+      console.error("Error updating request: ", error);
+      alert("수정 중 오류가 발생했습니다.");
+    }
+    setIsLoading(false);
+  };
+  // --- [신규] ---
+
+
+  // [수정] 로딩 조건에 isFirstLogin === null 추가
+  if (loading || isLoading || isFirstLogin === null) {
     return (
       <div className="flex min-h-screen items-center justify-center">
         요청 목록을 불러오는 중...
@@ -79,7 +158,7 @@ export default function DashboardPage() {
     );
   }
   
-  // 로그인 안 된 상태 (위 useEffect에서 리디렉션되지만, 방어 코드)
+  // (isFirstLogin === true 는 useEffect에서 리디렉션 처리됨)
   if (!user) {
     return null; 
   }
@@ -96,7 +175,8 @@ export default function DashboardPage() {
             </h1>
             <Link 
               href="/request"
-              className="rounded-md bg-blue-600 px-5 py-2.5 text-sm font-medium text-white shadow-sm transition-colors hover:bg-blue-700"
+              // [수정] 버튼 색상 통일 (indigo)
+              className="rounded-md bg-indigo-600 px-5 py-2.5 text-sm font-medium text-white shadow-sm transition-colors hover:bg-indigo-700"
             >
               + 새 작업 요청하기
             </Link>
@@ -121,12 +201,18 @@ export default function DashboardPage() {
                   </tr>
                 ) : (
                   requests.map((req) => (
-                    <tr key={req.id} className="hover:bg-gray-50">
+                    // [수정] 행 클릭 시 모달 열기
+                    <tr 
+                      key={req.id} 
+                      onClick={() => handleRequestClick(req)}
+                      className="hover:bg-gray-50 cursor-pointer" // [수정]
+                    >
                       {/* 상태 */}
                       <td className="px-6 py-4">
-                        {req.status === 'requested' && <span className="rounded-full bg-red-100 px-2 py-1 text-xs font-semibold text-red-700">요청됨</span>}
-                        {req.status === 'in_progress' && <span className="rounded-full bg-yellow-100 px-2 py-1 text-xs font-semibold text-yellow-700">작업중</span>}
-                        {req.status === 'completed' && <span className="rounded-full bg-green-100 px-2 py-1 text-xs font-semibold text-green-700">완료됨</span>}
+                        {/* [수정] 색상 통일 */}
+                        {req.status === 'requested' && <span className="rounded-full bg-yellow-100 px-2 py-1 text-xs font-semibold text-yellow-800">요청됨</span>}
+                        {req.status === 'in_progress' && <span className="rounded-full bg-blue-100 px-2 py-1 text-xs font-semibold text-blue-800">작업중</span>}
+                        {req.status === 'completed' && <span className="rounded-full bg-green-100 px-2 py-1 text-xs font-semibold text-green-800">완료됨</span>}
                       </td>
                       {/* 제목 */}
                       <td className="px-6 py-4 font-medium text-gray-900">{req.title}</td>
@@ -139,13 +225,14 @@ export default function DashboardPage() {
                             href={req.completedFileUrl}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="rounded-md bg-blue-100 px-3 py-2 text-sm font-medium text-blue-700 hover:bg-blue-200"
+                            onClick={(e) => e.stopPropagation()} // [신규] 행 클릭 이벤트 전파 방지
+                            className="rounded-md bg-indigo-100 px-3 py-2 text-sm font-medium text-indigo-700 hover:bg-indigo-200"
                           >
                             다운로드
                           </a>
                         ) : (
                           <span className="text-sm text-gray-400">
-                            {req.status === 'in_progress' ? '작업 진행 중' : '대기 중'}
+                            {req.status === 'in_progress' ? '작업 진행 중' : '—'}
                           </span>
                         )}
                       </td>
@@ -157,6 +244,17 @@ export default function DashboardPage() {
           </div>
         </div>
       </main>
+
+      {/* --- [신규] 모달 렌더링 --- */}
+      {isModalOpen && selectedRequest && (
+        <RequestDetailModal
+          request={selectedRequest}
+          onClose={handleCloseModal}
+          onSave={handleSaveChanges}
+        />
+      )}
+      {/* --- [신규] --- */}
+
     </div>
   );
 }

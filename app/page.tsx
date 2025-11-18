@@ -39,7 +39,7 @@ export default function HomePage() {
   };
 
   return (
-    <main className="w-full overflow-x-hidden">
+    <main className="w-full">
       {/* Hero 섹션 */}
       <section className="bg-gray-900 text-white">
         <div className="container mx-auto flex max-w-5xl flex-col items-center px-6 py-24 text-center">

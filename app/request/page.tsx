@@ -401,7 +401,27 @@ export default function RequestPage() {
                   ))}
                 </div>
               </div>
-              
+              {Object.keys(selectedScope).length > 0 && (
+                <div className="mt-6 border-t border-gray-200 pt-4">
+                  <h4 className="text-sm font-medium text-gray-900">선택된 범위 요약:</h4>
+                  <div className="mt-2 space-y-2">
+                    {/* selectedScope의 subject 키('통합과학 1' 등)들을 순회 */}
+                    {Object.keys(selectedScope).map((subjectName) => {
+                      // 해당 subject의 모든 major topic에 속한 minor topic들을 하나의 배열로 합침
+                      const allMinorTopics = Object.values(selectedScope[subjectName]).flat();
+                      
+                      return (
+                        <div key={subjectName}>
+                          <p className="text-sm font-semibold text-indigo-700">{subjectName}</p>
+                          <p className="text-sm text-gray-600">
+                            {allMinorTopics.join(', ')}
+                          </p>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
               {/* --- 섹션 2 (구): 상세 요건 (변경 없음) --- */}
               <div className="rounded-lg bg-white p-6 shadow-lg sm:p-8">
                 <h2 className="flex items-center text-xl font-semibold text-gray-800">
