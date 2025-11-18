@@ -21,7 +21,8 @@ import {
   ClockIcon,
   AcademicCapIcon,
   LockClosedIcon,
-  BookOpenIcon // [신규] 단원 섹션 아이콘
+  BookOpenIcon,
+  XMarkIcon // [신규] 파일 삭제용
 } from "@heroicons/react/24/outline";
 
 // --- [신규] 단원 데이터 구조 정의 ---
@@ -63,28 +64,21 @@ export default function RequestPage() {
   const { user, loading } = useAuth();
   const router = useRouter();
 
-  // --- 기존 폼 상태 ---
+  // --- 폼 상태 ---
   const [title, setTitle] = useState("");
   const [contentKind, setContentKind] = useState("");
   const [quantity, setQuantity] = useState("1");
   const [questionCount, setQuestionCount] = useState("");
   const [deadline, setDeadline] = useState("");
   const [optionalDetails, setOptionalDetails] = useState("");
-  const [file, setFile] = useState<File | null>(null);
-  const [fileName, setFileName] = useState("");
   
-  // --- [교체] 단원 선택 폼 상태 ---
-  // (기존 selectedSubject, selectedMajorTopic, selectedMinorTopics 등을 모두 삭제하고 아래로 대체)
-
-  // 1. UI용: 어떤 대주제 아코디언이 열려있는지 추적
+  // --- [수정] 파일 상태 (단일 -> 배열) ---
+  const [files, setFiles] = useState<File[]>([]); 
+  
+  // --- 단원 선택 폼 상태 ---
   const [openMajorTopics, setOpenMajorTopics] = useState<string[]>([]);
-  
-  // 2. 데이터용: 선택된 단원들을 구조화하여 저장
-  // { "통합과학 1": { "1. 과학의 기초": ["시간과 공간", "기본량과 단위"] } }
   type SelectedScope = Record<string, Record<string, string[]>>;
   const [selectedScope, setSelectedScope] = useState<SelectedScope>({});
-  
-  // (기존 availableMajorTopics, availableMinorTopics State는 삭제)
   
   // --- 기존 상태 ---
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -99,7 +93,7 @@ export default function RequestPage() {
     }
   }, [user, loading, router]);
 
-  // --- [교체] 단원 선택 핸들러 ---
+  // --- 단원 선택 핸들러 ---
 
   // 1. 대주제 아코디언을 열고 닫는 토글 핸들러
   const toggleMajorTopic = (majorTopicName: string) => {
@@ -163,17 +157,23 @@ export default function RequestPage() {
     );
   };
 
-  // 파일 선택 핸들러 (변경 없음)
+  // --- [수정] 파일 핸들러 (여러 파일 처리) ---
   const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      const selectedFile = e.target.files[0];
-      setFile(selectedFile);
-      setFileName(selectedFile.name);
-    } else {
-      setFile(null);
-      setFileName("");
+    const filesFromInput = e.target.files; // Type is FileList | null
+          
+    // [수정] null 체크 및 length > 0 체크를 명시적으로 수행
+    if (filesFromInput && filesFromInput.length > 0) {
+      // Inside this block, filesFromInput is guaranteed to be FileList
+      const newFileArray = Array.from(filesFromInput);
+      setFiles(prevFiles => [...prevFiles, ...newFileArray]);
     }
   };
+
+  // [신규] 특정 파일 제거 핸들러
+  const handleRemoveFile = (indexToRemove: number) => {
+    setFiles(prevFiles => prevFiles.filter((_, index) => index !== indexToRemove));
+  };
+  // --- [수정] ---
 
   // --- [수정됨] 폼 제출 핸들러 ---
   const handleSubmit = async (e: FormEvent) => {
@@ -195,21 +195,27 @@ export default function RequestPage() {
     setError("");
 
     try {
-      let fileUrl = "";
-      let storagePath = "";
-
-      if (file) {
+      // --- [수정] 여러 파일 업로드 로직 ---
+      const uploadPromises = files.map(async (file) => {
         const uniqueFileName = `${uuidv4()}-${file.name}`;
-        storagePath = `uploads/requests/${user.uid}/${uniqueFileName}`;
+        const storagePath = `uploads/requests/${user.uid}/${uniqueFileName}`;
         const fileRef = ref(storage, storagePath);
         await uploadBytes(fileRef, file);
-        fileUrl = await getDownloadURL(fileRef);
-      }
+        const fileUrl = await getDownloadURL(fileRef);
+        return {
+          url: fileUrl,
+          path: storagePath,
+          name: file.name, // [신규] 원본 파일명도 저장
+        };
+      });
+
+      const uploadedFiles = await Promise.all(uploadPromises);
+      // --- [수정] ---
 
       const userDoc = await getDoc(doc(db, "users", user.uid));
       const userData = userDoc.data();
 
-      // [수정] Firestore에 새 단원 범위 구조로 저장
+      // [수정] Firestore에 여러 파일 정보(객체 배열) 저장
       await addDoc(collection(db, "requests"), {
         instructorId: user.uid,
         instructorName: userData?.name || "이름없음",
@@ -229,8 +235,7 @@ export default function RequestPage() {
         
         // 4. 추가 사항
         details: optionalDetails,
-        referenceFileUrl: fileUrl,
-        referenceStoragePath: storagePath,
+        referenceFiles: uploadedFiles, // [{ url, path, name }, ...]
 
         // 5. 메타데이터
         status: "requested",
@@ -479,7 +484,7 @@ export default function RequestPage() {
                 </div>
               </div>
 
-              {/* --- 섹션 3 (구): 추가 사항 (변경 없음) --- */}
+              {/* --- [수정] 섹션 3: 추가 사항 (파일 업로드 UI 변경) --- */}
               <div className="rounded-lg bg-white p-6 shadow-lg sm:p-8">
                 <h2 className="flex items-center text-xl font-semibold text-gray-800">
                   <PaperClipIcon className="h-6 w-6 mr-2 text-indigo-600" />
@@ -500,38 +505,60 @@ export default function RequestPage() {
                       placeholder="특정 유형, 스타일, 반드시 포함해야 할 개념 등 원하시는 내용을 기입해주세요."
                     />
                   </div>
-                  {/* 파일 업로드 */}
+                  
+                  {/* [수정] 파일 업로드 */}
                   <div>
                     <label className="block text-sm font-medium text-gray-700">
                       참고 파일 (선택)
                     </label>
                     <p className="text-xs text-gray-500 mb-2">
-                      학교 기출 문제, 참고 자료 등 PDF 파일을 업로드할 수 있습니다.
+                      학교 기출 문제, 참고 자료 등 (PDF, PNG, JPG, JPEG)
                     </p>
-                    <div className="mt-2 flex items-center gap-4">
+                    
+                    {/* 파일 목록 */}
+                    {files.length > 0 && (
+                      <div className="mt-4 space-y-2">
+                        {files.map((file, index) => (
+                          <div key={index} className="flex items-center justify-between rounded-md bg-gray-100 p-2">
+                            <span className="text-sm text-gray-700 truncate pr-2">
+                              {file.name}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveFile(index)}
+                              className="text-gray-400 hover:text-red-600"
+                            >
+                              <XMarkIcon className="h-4 w-4" />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* 파일 선택 버튼 */}
+                    <div className="mt-4">
                       <label 
                         htmlFor="file" 
                         className="cursor-pointer rounded-md bg-white px-4 py-2 text-sm font-medium text-indigo-700 border border-indigo-600 shadow-sm hover:bg-indigo-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
                       >
                         <DocumentArrowUpIcon className="inline-block h-5 w-5 mr-2 -ml-1" />
-                        파일 선택
+                        파일 추가하기
                       </label>
                       <input
                         id="file"
                         type="file"
-                        accept=".pdf"
+                        // [수정] multiple, accept 속성 변경
+                        multiple 
+                        accept=".pdf,.png,.jpg,.jpeg" 
                         onChange={handleFileChange}
                         className="sr-only"
                       />
-                      {fileName && (
-                        <span className="text-sm text-gray-600">
-                          {fileName}
-                        </span>
-                      )}
                     </div>
                   </div>
                 </div>
               </div>
+              {/* --- [수정] --- */}
+
 
               {/* 에러 메시지 및 제출 버튼 (변경 없음) */}
               <div className="mt-8">

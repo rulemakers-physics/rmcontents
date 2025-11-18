@@ -5,7 +5,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { useAuth } from "@/context/AuthContext"; // [수정] useAuth 임포트
+import { useAuth } from "@/context/AuthContext"; 
 import { db } from "@/lib/firebase";
 import {
   collection,
@@ -14,17 +14,24 @@ import {
   getDocs,
   Timestamp,
   orderBy,
-  doc, // [신규]
-  updateDoc, // [신규]
-  serverTimestamp // [신규]
+  doc, 
+  updateDoc, 
+  serverTimestamp 
 } from "firebase/firestore";
-import RequestDetailModal from "@/components/RequestDetailModal"; // [신규] 모달 컴포넌트
+import RequestDetailModal from "@/components/RequestDetailModal"; 
 
-// [신규] 모달에서 사용할 전체 요청 데이터 타입 (기존 MyRequestData 확장)
+// [신규] 참고 파일 데이터 타입
+interface ReferenceFile {
+  name: string;
+  url: string;
+  path: string;
+}
+
+// [수정] 모달에서 사용할 전체 요청 데이터 타입
 export interface RequestData {
   id: string;
   title: string;
-  status: "requested" | "in_progress" | "completed";
+  status: "requested" | "in_progress" | "completed" | "rejected"; // [수정]
   requestedAt: Timestamp;
   completedAt?: Timestamp;
   completedFileUrl?: string;
@@ -36,24 +43,25 @@ export interface RequestData {
   deadline: string;
   scope: Record<string, Record<string, string[]>>; // 단원 범위
   details?: string; // (선택) 상세 요청
-  referenceFileUrl?: string; // (선택) 참고 파일
+  referenceFiles?: ReferenceFile[]; // [수정] referenceFileUrl -> referenceFiles
   instructorId: string; // (필수)
+  rejectReason?: string; // [신규] 반려 사유
 }
 
 
 export default function DashboardPage() {
-  const { user, loading, isFirstLogin } = useAuth(); // [수정] isFirstLogin 추가
+  const { user, loading, isFirstLogin } = useAuth(); 
   const router = useRouter();
   
-  const [requests, setRequests] = useState<RequestData[]>([]); // [수정] 타입을 RequestData로 변경
+  const [requests, setRequests] = useState<RequestData[]>([]); 
   const [isLoading, setIsLoading] = useState(true);
 
-  // --- [신규] 모달 상태 관리 ---
+  // --- 모달 상태 관리 ---
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedRequest, setSelectedRequest] = useState<RequestData | null>(null);
-  // --- [신규] ---
+  // --- ---
 
-  // [수정] 로그인 / 첫 로그인 / 데이터 fetching 로직 통합
+  // 로그인 / 첫 로그인 / 데이터 fetching 로직 (변경 없음)
   useEffect(() => {
     // 1. AuthContext 로딩 중이면 대기
     if (loading) {
@@ -89,7 +97,7 @@ export default function DashboardPage() {
           const requestList = querySnapshot.docs.map((doc) => ({
             id: doc.id,
             ...doc.data(),
-          } as RequestData)); // [수정] 타입을 RequestData로 변경
+          } as RequestData)); 
           
           setRequests(requestList);
         } catch (error) {
@@ -100,10 +108,10 @@ export default function DashboardPage() {
 
       fetchMyRequests();
     }
-  }, [user, loading, isFirstLogin, router]); // [수정] isFirstLogin 의존성 추가
+  }, [user, loading, isFirstLogin, router]); 
 
   
-  // --- [신규] 모달 핸들러 ---
+  // --- 모달 핸들러 (변경 없음) ---
   
   // 리스트 항목 클릭 시 모달 열기
   const handleRequestClick = (request: RequestData) => {
@@ -146,10 +154,10 @@ export default function DashboardPage() {
     }
     setIsLoading(false);
   };
-  // --- [신규] ---
+  // --- ---
 
 
-  // [수정] 로딩 조건에 isFirstLogin === null 추가
+  // 로딩 UI (변경 없음)
   if (loading || isLoading || isFirstLogin === null) {
     return (
       <div className="flex min-h-screen items-center justify-center">
@@ -158,7 +166,6 @@ export default function DashboardPage() {
     );
   }
   
-  // (isFirstLogin === true 는 useEffect에서 리디렉션 처리됨)
   if (!user) {
     return null; 
   }
@@ -175,7 +182,6 @@ export default function DashboardPage() {
             </h1>
             <Link 
               href="/request"
-              // [수정] 버튼 색상 통일 (indigo)
               className="rounded-md bg-indigo-600 px-5 py-2.5 text-sm font-medium text-white shadow-sm transition-colors hover:bg-indigo-700"
             >
               + 새 작업 요청하기
@@ -201,18 +207,18 @@ export default function DashboardPage() {
                   </tr>
                 ) : (
                   requests.map((req) => (
-                    // [수정] 행 클릭 시 모달 열기
                     <tr 
                       key={req.id} 
                       onClick={() => handleRequestClick(req)}
-                      className="hover:bg-gray-50 cursor-pointer" // [수정]
+                      className="hover:bg-gray-50 cursor-pointer"
                     >
                       {/* 상태 */}
                       <td className="px-6 py-4">
-                        {/* [수정] 색상 통일 */}
+                        {/* [수정] 'rejected' 상태 추가 */}
                         {req.status === 'requested' && <span className="rounded-full bg-yellow-100 px-2 py-1 text-xs font-semibold text-yellow-800">요청됨</span>}
                         {req.status === 'in_progress' && <span className="rounded-full bg-blue-100 px-2 py-1 text-xs font-semibold text-blue-800">작업중</span>}
                         {req.status === 'completed' && <span className="rounded-full bg-green-100 px-2 py-1 text-xs font-semibold text-green-800">완료됨</span>}
+                        {req.status === 'rejected' && <span className="rounded-full bg-gray-100 px-2 py-1 text-xs font-semibold text-gray-700">반려됨</span>}
                       </td>
                       {/* 제목 */}
                       <td className="px-6 py-4 font-medium text-gray-900">{req.title}</td>
@@ -225,14 +231,15 @@ export default function DashboardPage() {
                             href={req.completedFileUrl}
                             target="_blank"
                             rel="noopener noreferrer"
-                            onClick={(e) => e.stopPropagation()} // [신규] 행 클릭 이벤트 전파 방지
+                            onClick={(e) => e.stopPropagation()} 
                             className="rounded-md bg-indigo-100 px-3 py-2 text-sm font-medium text-indigo-700 hover:bg-indigo-200"
                           >
                             다운로드
                           </a>
                         ) : (
                           <span className="text-sm text-gray-400">
-                            {req.status === 'in_progress' ? '작업 진행 중' : '—'}
+                            {req.status === 'in_progress' ? '작업 진행 중' :
+                             req.status === 'rejected' ? '반려됨' : '—'}
                           </span>
                         )}
                       </td>
@@ -245,7 +252,7 @@ export default function DashboardPage() {
         </div>
       </main>
 
-      {/* --- [신규] 모달 렌더링 --- */}
+      {/* 모달 렌더링 */}
       {isModalOpen && selectedRequest && (
         <RequestDetailModal
           request={selectedRequest}
@@ -253,8 +260,6 @@ export default function DashboardPage() {
           onSave={handleSaveChanges}
         />
       )}
-      {/* --- [신규] --- */}
-
     </div>
   );
 }

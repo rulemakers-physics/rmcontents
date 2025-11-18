@@ -272,7 +272,7 @@ export default function HomePage() {
               title="프리미엄"
               description="모든 문항 풀 + 커스텀 제작 요청 (건별)"
               price="건별 요청"
-              link="/request"
+              link="/premium-service"
               features={[
                 { text: "프리미엄 문제은행 (자체 고난도 문항 포함)", included: true },
                 { text: "기출 분석 및 내신대비 N제 & 모의고사", included: true },

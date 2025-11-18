@@ -1,7 +1,7 @@
 // components/RequestDetailModal.tsx
 
 import { useState, FormEvent, ChangeEvent, useEffect } from "react";
-import { RequestData } from "@/app/dashboard/page"; // 대시보드에서 정의한 타입 재사용
+import { RequestData } from "@/app/dashboard/page"; 
 import {
   BookOpenIcon,
   ChevronDownIcon,
@@ -10,9 +10,11 @@ import {
   InformationCircleIcon,
   PaperClipIcon,
   XMarkIcon,
+  ExclamationTriangleIcon,
 } from "@heroicons/react/24/outline";
+import FeedbackThread from "./FeedbackThread"; // [신규] 피드백 컴포넌트
 
-// --- request/page.tsx에서 단원 데이터 구조 복사 ---
+// --- 단원 데이터 (변경 없음) ---
 interface MajorTopic {
   name: string;
   minorTopics: string[];
@@ -22,7 +24,6 @@ interface Subject {
   majorTopics: MajorTopic[];
 }
 const scienceUnits: Subject[] = [
-  // ... (통합과학 1, 2 데이터 전체 복사) ...
   {
     name: "통합과학 1",
     majorTopics: [
@@ -45,7 +46,7 @@ const scienceUnits: Subject[] = [
     ]
   }
 ];
-// --- 데이터 복사 끝 ---
+// --- ---
 
 interface RequestDetailModalProps {
   request: RequestData;
@@ -55,10 +56,9 @@ interface RequestDetailModalProps {
 
 export default function RequestDetailModal({ request, onClose, onSave }: RequestDetailModalProps) {
   
-  // --- [핵심] 수정 가능 여부 ---
   const isReadOnly = request.status !== 'requested';
 
-  // --- request/page.tsx에서 폼 State 전체 복사 ---
+  // --- 폼 State (변경 없음) ---
   const [title, setTitle] = useState("");
   const [contentKind, setContentKind] = useState("");
   const [openMajorTopics, setOpenMajorTopics] = useState<string[]>([]);
@@ -68,12 +68,10 @@ export default function RequestDetailModal({ request, onClose, onSave }: Request
   const [questionCount, setQuestionCount] = useState("");
   const [deadline, setDeadline] = useState("");
   const [optionalDetails, setOptionalDetails] = useState("");
-  // (파일 관련은 복잡하므로 일단 기존 파일명만 보여주고 수정은 제외합니다)
-  const [fileName, setFileName] = useState(request.referenceFileUrl || "");
   const [isSaving, setIsSaving] = useState(false);
-  // --- State 복사 끝 ---
+  // --- ---
 
-  // --- [신규] useEffect: props로 받은 request 데이터로 폼 상태 채우기 ---
+  // --- useEffect (변경 없음) ---
   useEffect(() => {
     setTitle(request.title);
     setContentKind(request.contentKind);
@@ -82,24 +80,12 @@ export default function RequestDetailModal({ request, onClose, onSave }: Request
     setQuestionCount(request.questionCount);
     setDeadline(request.deadline);
     setOptionalDetails(request.details || "");
-    // (참고: 파일명은 URL에서 파싱해야 할 수도 있습니다)
-    if (request.referenceFileUrl) {
-        try {
-            const url = new URL(request.referenceFileUrl);
-            // Firebase Storage URL에서 파일명 디코딩 (예: '.../uploads%2F...%2Ffilename.pdf?alt=media')
-            const pathSegments = decodeURIComponent(url.pathname).split('/');
-            setFileName(pathSegments[pathSegments.length - 1].split('-').slice(1).join('-') || "첨부된 파일");
-        } catch (e) {
-            setFileName("첨부된 파일"); // URL 파싱 실패 시
-        }
-    } else {
-        setFileName("");
-    }
+    
   }, [request]);
   
-  // --- request/page.tsx에서 단원 핸들러 전체 복사 ---
+  // --- 단원 핸들러 (변경 없음) ---
   const toggleMajorTopic = (majorTopicName: string) => {
-    if (isReadOnly) return; // [수정] 읽기 전용 시 중단
+    if (isReadOnly) return; 
     setOpenMajorTopics(prev =>
       prev.includes(majorTopicName)
         ? prev.filter(name => name !== majorTopicName)
@@ -113,7 +99,7 @@ export default function RequestDetailModal({ request, onClose, onSave }: Request
     minorTopicName: string,
     isChecked: boolean
   ) => {
-    if (isReadOnly) return; // [수정] 읽기 전용 시 중단
+    if (isReadOnly) return; 
     setSelectedScope(prevScope => {
       const newScope = JSON.parse(JSON.stringify(prevScope));
       if (!newScope[subjectName]) newScope[subjectName] = {};
@@ -145,14 +131,13 @@ export default function RequestDetailModal({ request, onClose, onSave }: Request
       selectedScope[subjectName][majorTopicName].includes(minorTopicName)
     );
   };
-  // --- 핸들러 복사 끝 ---
+  // --- ---
 
-  // --- [신규] 저장 핸들러 ---
+  // --- 저장 핸들러 (변경 없음) ---
   const handleSaveSubmit = async (e: FormEvent) => {
     e.preventDefault();
     if (isReadOnly) return;
     
-    // 유효성 검사 (request/page.tsx와 동일)
     if (!title || !contentKind || !quantity || !questionCount || !deadline || 
         Object.keys(selectedScope).length === 0) 
     {
@@ -177,11 +162,9 @@ export default function RequestDetailModal({ request, onClose, onSave }: Request
 
 
   return (
-    // --- [신규] 모달 배경 (Backdrop) ---
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4">
-      {/* --- [신규] 모달 컨텐츠 --- */}
       <div className="relative w-full max-w-4xl max-h-[90vh] rounded-lg bg-gray-100 shadow-xl">
-        {/* 모달 헤더 */}
+        {/* 모달 헤더 (변경 없음) */}
         <div className="flex items-center justify-between p-4 border-b border-gray-300 bg-white rounded-t-lg">
           <h2 className="text-2xl font-bold text-gray-900">
             {isReadOnly ? "요청 내역 확인" : "요청 내역 수정"}
@@ -191,36 +174,45 @@ export default function RequestDetailModal({ request, onClose, onSave }: Request
           </button>
         </div>
 
-        {/* 모달 바디 (스크롤) */}
-        <div className="overflow-y-auto max-h-[calc(90vh-140px)] p-6">
+        {/* 모달 바디 (변경 없음) */}
+        <div className="overflow-y-auto max-h-[calc(90vh-140px)] p-6 space-y-8">
           
-          {/* --- request/page.tsx에서 폼 JSX 복사 (사이드바 제외) --- */}
+          {request.status === 'rejected' && (
+            <div className="rounded-md border border-red-200 bg-red-50 p-4">
+              <div className="flex items-center">
+                <ExclamationTriangleIcon className="h-6 w-6 text-red-600" />
+                <h3 className="ml-2 text-lg font-semibold text-red-800">요청 반려됨</h3>
+              </div>
+              <p className="mt-2 text-sm text-red-700">
+                <strong>반려 사유:</strong> {request.rejectReason || "사유 미기재"}
+              </p>
+            </div>
+          )}
+
+          {/* --- 폼 (변경 없음) --- */}
           <form onSubmit={handleSaveSubmit} className="space-y-8">
             
-            {/* --- 섹션 1: 기본 정보 --- */}
             <div className="rounded-lg bg-white p-6 shadow-lg sm:p-8">
               <h2 className="flex items-center text-xl font-semibold text-gray-800">
                 <InformationCircleIcon className="h-6 w-6 mr-2 text-indigo-600" />
                 기본 정보
               </h2>
               <div className="mt-6 grid grid-cols-1 gap-6">
-                {/* 요청 제목 */}
                 <div>
                   <label htmlFor="title" className="block text-sm font-medium text-gray-700">요청 제목*</label>
                   <input
                     id="title" type="text" value={title}
                     onChange={(e) => setTitle(e.target.value)}
-                    required disabled={isReadOnly} // [수정]
+                    required disabled={isReadOnly} 
                     className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
                   />
                 </div>
-                {/* 컨텐츠 종류 */}
                 <div className="relative">
                   <label htmlFor="contentKind" className="block text-sm font-medium text-gray-700">요청 컨텐츠 종류*</label>
                   <select
                     id="contentKind" value={contentKind}
                     onChange={(e) => setContentKind(e.target.value)}
-                    required disabled={isReadOnly} // [수정]
+                    required disabled={isReadOnly} 
                     className="mt-1 block w-full appearance-none rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 pr-10 disabled:bg-gray-100 disabled:cursor-not-allowed"
                   >
                     <option value="" disabled>종류를 선택하세요</option>
@@ -233,13 +225,11 @@ export default function RequestDetailModal({ request, onClose, onSave }: Request
               </div>
             </div>
 
-            {/* --- 섹션: 컨텐츠 범위 --- */}
             <div className="rounded-lg bg-white p-6 shadow-lg sm:p-8">
               <h2 className="flex items-center text-xl font-semibold text-gray-800">
                 <BookOpenIcon className="h-6 w-6 mr-2 text-indigo-600" />
                 컨텐츠 범위 설정*
               </h2>
-              {/* (request/page.tsx의 아코디언 JSX 전체 복사) */}
               <div className="mt-4 space-y-4">
                 {scienceUnits.map((subject) => (
                   <div key={subject.name} className="rounded-md border border-gray-200">
@@ -252,7 +242,7 @@ export default function RequestDetailModal({ request, onClose, onSave }: Request
                             <button
                               type="button"
                               onClick={() => toggleMajorTopic(majorTopic.name)}
-                              disabled={isReadOnly} // [수정]
+                              disabled={isReadOnly} 
                               className="flex w-full items-center justify-between px-4 py-3 text-left text-sm font-medium text-indigo-700 hover:bg-indigo-50 focus:outline-none disabled:text-gray-500 disabled:hover:bg-transparent disabled:cursor-not-allowed"
                             >
                               <span>{majorTopic.name}</span>
@@ -268,7 +258,7 @@ export default function RequestDetailModal({ request, onClose, onSave }: Request
                                         type="checkbox"
                                         checked={isMinorTopicSelected(subject.name, majorTopic.name, minorTopic)}
                                         onChange={(e) => handleMinorTopicChange(subject.name, majorTopic.name, minorTopic, e.target.checked)}
-                                        disabled={isReadOnly} // [수정]
+                                        disabled={isReadOnly} 
                                         className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 disabled:cursor-not-allowed"
                                       />
                                       <label
@@ -289,14 +279,11 @@ export default function RequestDetailModal({ request, onClose, onSave }: Request
                   </div>
                 ))}
               </div>
-            </div>
                 {Object.keys(selectedScope).length > 0 && (
                 <div className="mt-6 border-t border-gray-200 pt-4">
                   <h4 className="text-sm font-medium text-gray-900">선택된 범위 요약:</h4>
                   <div className="mt-2 space-y-2">
-                    {/* selectedScope의 subject 키('통합과학 1' 등)들을 순회 */}
                     {Object.keys(selectedScope).map((subjectName) => {
-                      // 해당 subject의 모든 major topic에 속한 minor topic들을 하나의 배열로 합침
                       const allMinorTopics = Object.values(selectedScope[subjectName]).flat();
                       
                       return (
@@ -311,13 +298,12 @@ export default function RequestDetailModal({ request, onClose, onSave }: Request
                   </div>
                 </div>
               )}
-            {/* --- 상세 요건과 추가 사항 (2단 그리드) --- */}
+            </div>
+            
             <div className="grid grid-cols-1 gap-8 md:grid-cols-2">
-              {/* 1. 상세 요건 (왼쪽) */}
               <div className="rounded-lg bg-white p-6 shadow-lg sm:p-8">
                 <h2 className="flex items-center text-xl font-semibold text-gray-800"><ClipboardDocumentListIcon className="h-6 w-6 mr-2 text-indigo-600" />상세 요건</h2>
                 <div className="mt-6 space-y-6">
-                  {/* (필드들에 disabled={isReadOnly} 및 disabled: 스타일 추가) */}
                   <div>
                     <label htmlFor="quantity" className="block text-sm font-medium text-gray-700">필요한 수량* (Set)</label>
                     <input id="quantity" type="number" value={quantity} onChange={(e) => setQuantity(e.target.value)} required min="1" disabled={isReadOnly} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 disabled:bg-gray-100 disabled:cursor-not-allowed" />
@@ -332,7 +318,6 @@ export default function RequestDetailModal({ request, onClose, onSave }: Request
                   </div>
                 </div>
               </div>
-              {/* 2. 추가 사항 (오른쪽) */}
               <div className="rounded-lg bg-white p-6 shadow-lg sm:p-8">
                 <h2 className="flex items-center text-xl font-semibold text-gray-800"><PaperClipIcon className="h-6 w-6 mr-2 text-indigo-600" />추가 사항</h2>
                 <div className="mt-6 space-y-6">
@@ -340,25 +325,50 @@ export default function RequestDetailModal({ request, onClose, onSave }: Request
                     <label htmlFor="optionalDetails" className="block text-sm font-medium text-gray-700">상세 요청 내용 (선택)</label>
                     <textarea id="optionalDetails" rows={5} value={optionalDetails} onChange={(e) => setOptionalDetails(e.target.value)} disabled={isReadOnly} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 disabled:bg-gray-100 disabled:cursor-not-allowed" placeholder="특정 유형, 스타일..."/>
                   </div>
-                  {/* 파일은 수정/삭제 로직이 복잡하므로, 여기서는 기존 파일명만 표시 */}
+                  
                   <div>
-                    <label className="block text-sm font-medium text-gray-700">참고 파일 (선택)</label>
-                    <div className="mt-2 flex items-center gap-4 rounded-md bg-gray-100 p-3">
+                    <label className="block text-sm font-medium text-gray-700">첨부된 참고 파일</label>
+                    {request.referenceFiles && request.referenceFiles.length > 0 ? (
+                      <ul className="mt-3 space-y-2 rounded-md border border-gray-200 bg-gray-50 p-3">
+                        {request.referenceFiles.map((file) => (
+                          <li key={file.path}>
+                            <a
+                              href={file.url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="flex items-center gap-2 text-sm font-medium text-blue-600 hover:underline"
+                            >
+                              <PaperClipIcon className="h-4 w-4" />
+                              <span>{file.name}</span>
+                            </a>
+                          </li>
+                        ))}
+                      </ul>
+                    ) : (
+                      <div className="mt-2 flex items-center gap-4 rounded-md bg-gray-100 p-3">
                         <DocumentArrowUpIcon className="h-5 w-5 text-gray-500"/>
                         <span className="text-sm text-gray-600">
-                            {fileName ? fileName : (isReadOnly ? "첨부 파일 없음" : "파일 수정은 지원되지 않습니다.")}
+                          첨부 파일 없음
                         </span>
-                    </div>
+                      </div>
+                    )}
+                    {!isReadOnly && (
+                      <p className="mt-2 text-xs text-gray-500">파일을 수정하려면 요청을 취소하고 다시 생성해야 합니다.</p>
+                    )}
                   </div>
                 </div>
               </div>
             </div>
-            {/* --- 폼 JSX 복사 끝 --- */}
-
           </form>
+
+          {/* --- [수정] 피드백 쓰레드 (prop 전달) --- */}
+          <div className="mt-8">
+            <FeedbackThread requestId={request.id} requestStatus={request.status} />
+          </div>
+
         </div>
 
-        {/* --- [신규] 모달 푸터 (버튼) --- */}
+        {/* --- 모달 푸터 (변경 없음) --- */}
         <div className="flex items-center justify-end space-x-3 p-4 border-t border-gray-300 bg-white rounded-b-lg">
           <button
             type="button"
@@ -367,11 +377,10 @@ export default function RequestDetailModal({ request, onClose, onSave }: Request
           >
             닫기
           </button>
-          {/* 수정 가능할 때만 '저장' 버튼 노출 */}
           {!isReadOnly && (
             <button
               type="button"
-              onClick={handleSaveSubmit} // 폼의 onSubmit을 트리거하는 대신, 핸들러를 직접 연결
+              onClick={handleSaveSubmit} 
               disabled={isSaving}
               className="rounded-md border border-transparent bg-indigo-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-indigo-700 disabled:opacity-50"
             >
