@@ -522,7 +522,7 @@ function ServicePlanCard({
             : "bg-white text-blue-600 ring-1 ring-blue-600 hover:bg-blue-50"
         }`}
       >
-        {isPrimary ? "지금 작업 요청하기" : "자세히 보기"}
+        {isPrimary ? "자세히 보기" : "자세히 보기"}
       </Link>
       <ul className="mt-8 space-y-4">
         {features.map((feature) => (

@@ -15,6 +15,8 @@ import {
   Timestamp,
   doc,
   getDoc,
+  updateDoc,
+  increment // [신규] 카운트 증가용
 } from "firebase/firestore";
 import { PaperAirplaneIcon } from "@heroicons/react/24/solid";
 
@@ -23,18 +25,18 @@ interface FeedbackMessage {
   text: string;
   authorType: "admin" | "instructor";
   authorName: string;
-  authorId: string; // [수정] isCurrentUser 비교를 위해 authorId 추가
+  authorId: string;
   timestamp: Timestamp;
 }
 
 interface FeedbackThreadProps {
   requestId: string;
-  requestStatus: "requested" | "in_progress" | "completed" | "rejected"; // [신규]
+  requestStatus: "requested" | "in_progress" | "completed" | "rejected";
 }
 
 export default function FeedbackThread({ 
   requestId, 
-  requestStatus // [신규]
+  requestStatus 
 }: FeedbackThreadProps) {
   const { user } = useAuth();
   const [messages, setMessages] = useState<FeedbackMessage[]>([]);
@@ -42,8 +44,8 @@ export default function FeedbackThread({
   const [isLoading, setIsLoading] = useState(true);
   const [isSending, setIsSending] = useState(false);
 
-  // [신규] 작업이 완료되었는지 여부
-  const isJobCompleted = requestStatus === "completed" || requestStatus === "rejected";
+  // [수정] 완료됨(completed) 상태에서도 채팅이 가능하도록 'rejected'만 막습니다.
+  const isJobLocked = requestStatus === "rejected";
 
   // 1. 실시간으로 피드백(메모) 목록 불러오기
   useEffect(() => {
@@ -68,19 +70,17 @@ export default function FeedbackThread({
       }
     );
 
-    // 컴포넌트 언마운트 시 리스너 해제
     return () => unsubscribe();
   }, [requestId]);
 
   // 2. 새 메시지(메모) 전송 핸들러
   const handleSubmitMessage = async (e: FormEvent) => {
     e.preventDefault();
-    if (newMessage.trim() === "" || !user || isSending || isJobCompleted) return;
+    if (newMessage.trim() === "" || !user || isSending || isJobLocked) return;
 
     setIsSending(true);
 
     try {
-      // (선택) user.name이 AuthUser에 없을 경우 Firestore 'users' 컬렉션에서 가져옴
       let authorName = user.isAdmin ? "관리자" : user.displayName || "강사";
       if (!user.isAdmin && !user.displayName) {
         const userDoc = await getDoc(doc(db, "users", user.uid));
@@ -89,16 +89,31 @@ export default function FeedbackThread({
         }
       }
 
+      // 2-1. 피드백 컬렉션에 메시지 추가
       const feedbackColRef = collection(db, "requests", requestId, "feedback");
       await addDoc(feedbackColRef, {
         text: newMessage,
         authorType: user.isAdmin ? "admin" : "instructor",
         authorName: authorName,
-        authorId: user.uid, // [수정] authorId 저장
+        authorId: user.uid,
         timestamp: serverTimestamp(),
       });
 
-      setNewMessage(""); // 입력창 비우기
+      // 2-2. [신규] 부모 문서(requests)에 안 읽은 메시지 카운트 증가
+      // 내가 관리자면 -> 강사의 unreadCountInstructor 증가
+      // 내가 강사면 -> 관리자의 unreadCountAdmin 증가
+      const requestDocRef = doc(db, "requests", requestId);
+      if (user.isAdmin) {
+        await updateDoc(requestDocRef, {
+          unreadCountInstructor: increment(1)
+        });
+      } else {
+        await updateDoc(requestDocRef, {
+          unreadCountAdmin: increment(1)
+        });
+      }
+
+      setNewMessage(""); 
     } catch (error) {
       console.error("메시지 전송 실패:", error);
       alert("메시지 전송에 실패했습니다.");
@@ -124,7 +139,6 @@ export default function FeedbackThread({
           </p>
         ) : (
           messages.map((msg) => {
-            // [수정] isCurrentUser 비교
             const isCurrentUser = msg.authorId === user?.uid; 
             
             return (
@@ -167,20 +181,17 @@ export default function FeedbackThread({
             rows={2}
             value={newMessage}
             onChange={(e) => setNewMessage(e.target.value)}
-            // [수정] disabled 로직
-            disabled={isSending || isJobCompleted} 
+            disabled={isSending || isJobLocked} 
             placeholder={
-              // [수정] user.status -> requestStatus
-              isJobCompleted
-                ? (requestStatus === 'completed' ? "완료된 작업입니다." : "반려된 작업입니다.")
-                : "수정 요청이나 메모를 입력하세요..."
+              isJobLocked
+                ? "반려된 작업입니다."
+                : "수정 요청이나 추가 피드백을 입력하세요..."
             }
             className="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 disabled:bg-gray-100"
           />
           <button
             type="submit"
-            // [수정] disabled 로직
-            disabled={isSending || newMessage.trim() === "" || isJobCompleted}
+            disabled={isSending || newMessage.trim() === "" || isJobLocked}
             className="flex-shrink-0 rounded-full p-2.5 text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50"
           >
             <PaperAirplaneIcon className="h-5 w-5" />

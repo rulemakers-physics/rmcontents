@@ -11,16 +11,14 @@ import { doc, getDoc, updateDoc, serverTimestamp, Timestamp } from "firebase/fir
 import { ref, uploadBytes, getDownloadURL, deleteObject } from "firebase/storage"; 
 import { v4 as uuidv4 } from "uuid";
 import { PaperClipIcon, XCircleIcon } from "@heroicons/react/24/solid";
-import FeedbackThread from "@/components/FeedbackThread"; // [신규] 피드백 컴포넌트
+import FeedbackThread from "@/components/FeedbackThread";
 
-// [신규] 참고 파일 데이터 타입
 interface ReferenceFile {
   name: string;
   url: string;
   path: string;
 }
 
-// 요청 상세 데이터 타입
 interface RequestDetails {
   id: string;
   title: string;
@@ -28,21 +26,19 @@ interface RequestDetails {
   academy: string;
   status: "requested" | "in_progress" | "completed" | "rejected";
   requestedAt: Timestamp;
-  
   referenceFiles?: ReferenceFile[]; 
-  
   completedFileUrl?: string; 
   completedStoragePath?: string; 
-
   contentKind: string;        
   quantity: number;           
   questionCount: string;      
   deadline: string;           
   scope: Record<string, Record<string, string[]>>; 
   details?: string;
-  
   rejectReason?: string;
   completedAt?: Timestamp;
+  // [신규] 알림 카운트 (관리자 페이지에서는 unreadCountAdmin을 초기화함)
+  unreadCountAdmin?: number;
 }
 
 export default function RequestDetailPage() {
@@ -59,7 +55,6 @@ export default function RequestDetailPage() {
   const [isUploading, setIsUploading] = useState(false); 
   const [completedFile, setCompletedFile] = useState<File | null>(null);
 
-  // 1. 요청 상세 정보 불러오기 (변경 없음)
   useEffect(() => {
     if (!requestId || loading || !isAdmin) return;
 
@@ -70,7 +65,14 @@ export default function RequestDetailPage() {
         const docSnap = await getDoc(docRef);
 
         if (docSnap.exists()) {
-          setRequest({ id: docSnap.id, ...docSnap.data() } as RequestDetails);
+          const data = docSnap.data() as RequestDetails;
+          setRequest({ id: docSnap.id, ...data });
+
+          // [신규] 상세 페이지 들어오면 관리자 알림 카운트 0으로 리셋
+          if (data.unreadCountAdmin && data.unreadCountAdmin > 0) {
+            await updateDoc(docRef, { unreadCountAdmin: 0 });
+          }
+
         } else {
           setError("해당 요청을 찾을 수 없습니다.");
         }
@@ -83,7 +85,6 @@ export default function RequestDetailPage() {
     fetchRequest();
   }, [requestId, user, loading, isAdmin]);
   
-  // 2. 관리자 권한 확인 (변경 없음)
   useEffect(() => {
     if (loading) return;
     if (!user || !isAdmin) {
@@ -91,7 +92,6 @@ export default function RequestDetailPage() {
     }
   }, [user, loading, isAdmin, router]);
 
-  // 3. '작업 중'으로 상태 변경 핸들러 (변경 없음)
   const handleStatusInProgress = async () => {
     setIsUpdating(true);
     try {
@@ -106,7 +106,6 @@ export default function RequestDetailPage() {
     setIsUpdating(false);
   };
   
-  // 4. '반려하기' 핸들러 (변경 없음)
   const handleReject = async () => {
     const reason = prompt("요청을 반려하는 사유를 입력해주세요.");
     if (!reason || reason.trim() === "") {
@@ -130,14 +129,12 @@ export default function RequestDetailPage() {
   };
 
 
-  // 5. 완료 파일 선택 핸들러 (변경 없음)
   const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       setCompletedFile(e.target.files[0]);
     }
   };
 
-  // 6. [수정] 완료 파일 제출 핸들러 (기존 파일 삭제 로직 추가)
   const handleUploadComplete = async () => {
     if (!completedFile) {
       setError("완료 파일을 선택해주세요.");
@@ -147,10 +144,11 @@ export default function RequestDetailPage() {
     setIsUploading(true);
     setError("");
 
+    // 기존 파일 경로 저장
     const oldStoragePath = request?.completedStoragePath;
 
     try {
-      // 6-1. Storage에 업로드
+      // 1. Storage에 업로드
       const uniqueFileName = `${uuidv4()}-${completedFile.name}`;
       const storagePath = `completed/${requestId}/${uniqueFileName}`;
       const fileRef = ref(storage, storagePath);
@@ -158,7 +156,7 @@ export default function RequestDetailPage() {
       await uploadBytes(fileRef, completedFile);
       const fileUrl = await getDownloadURL(fileRef);
 
-      // 6-2. Firestore 문서 업데이트
+      // 2. Firestore 문서 업데이트
       const docRef = doc(db, "requests", requestId);
       await updateDoc(docRef, {
         status: "completed",
@@ -167,19 +165,20 @@ export default function RequestDetailPage() {
         completedStoragePath: storagePath,
       });
 
-      // 6-3. 기존 파일 삭제
+      // 3. 기존 파일 삭제 (피드백 반영 후 재업로드 시 이전 파일 삭제)
       if (oldStoragePath) {
         try {
           const oldFileRef = ref(storage, oldStoragePath);
           await deleteObject(oldFileRef);
-          console.log("기존 완료 파일이 성공적으로 삭제되었습니다.");
+          console.log("기존 완료 파일 삭제됨:", oldStoragePath);
         } catch (deleteError) {
-          console.warn("기존 파일 삭제 중 오류 발생 (무시함):", deleteError);
+          console.warn("기존 파일 삭제 중 오류 (무시):", deleteError);
         }
       }
 
       alert("작업 완료 처리 및 파일 업로드에 성공했습니다.");
       
+      // 상태 업데이트
       setRequest((prev) => prev ? { 
         ...prev, 
         status: "completed", 
@@ -187,7 +186,8 @@ export default function RequestDetailPage() {
         completedStoragePath: storagePath 
       } : null);
       
-      router.push("/admin"); 
+      // 완료된 목록으로 이동 (선택 사항, 여기선 유지)
+      // router.push("/admin"); 
 
     } catch (err) {
       console.error("완료 처리 중 에러:", err);
@@ -196,8 +196,6 @@ export default function RequestDetailPage() {
     setIsUploading(false);
   };
 
-
-  // --- 렌더링 ---
   if (isLoading || loading || !isAdmin) {
     return <div className="flex min-h-screen items-center justify-center">로딩 중...</div>;
   }
@@ -208,6 +206,8 @@ export default function RequestDetailPage() {
     return <div className="flex min-h-screen items-center justify-center">요청 정보를 찾을 수 없습니다.</div>;
   }
   
+  // [수정] 'completed'는 더 이상 완전 잠금 상태가 아닙니다. 'rejected'만 잠금.
+  const isJobLocked = request.status === 'rejected';
   const isJobFinished = request.status === 'completed' || request.status === 'rejected';
 
   return (
@@ -235,7 +235,7 @@ export default function RequestDetailPage() {
               </div>
             )}
             
-            {/* 1. 요청 상세 정보 (변경 없음) */}
+            {/* 요청 상세 정보 */}
             <div className="border-b pb-6">
               <div className="flex justify-between items-center">
                 <h1 className="text-3xl font-bold text-gray-900">{request.title}</h1>
@@ -334,12 +334,12 @@ export default function RequestDetailPage() {
               )}
             </div>
 
-            {/* --- [수정] 피드백 섹션 (prop 전달) --- */}
+            {/* 피드백 섹션 */}
             <div className="mt-8">
               <FeedbackThread requestId={requestId} requestStatus={request.status} />
             </div>
 
-            {/* 2. 관리자 작업 섹션 (변경 없음) */}
+            {/* 관리자 작업 섹션 */}
             <div className="mt-8">
               {request.status === 'requested' && (
                 <div className="rounded-md bg-yellow-50 p-4 flex items-center justify-between">
@@ -373,14 +373,15 @@ export default function RequestDetailPage() {
                  </div>
               )}
               
-              {!isJobFinished && (
+              {/* [수정] 완료(completed) 상태여도 수정본 업로드를 위해 파일 업로드 창을 보여줍니다. (단, 반려된 경우 제외) */}
+              {request.status !== 'rejected' && (
                 <div className="mt-8 rounded-md border border-gray-200 p-6">
                   <h3 className="text-xl font-semibold text-gray-800">
                     {request.completedFileUrl ? "수정본 업로드" : "작업 완료 및 파일 업로드"}
                   </h3>
                   {request.completedFileUrl && (
                     <p className="text-sm text-gray-600 mt-2">
-                      수정본을 업로드하면 기존에 업로드된 파일은 삭제됩니다.
+                      * 이미 완료된 작업입니다. 파일을 다시 업로드하면 <strong>기존 파일은 삭제</strong>되고 새로운 파일로 대체됩니다.
                     </p>
                   )}
                   <div className="mt-4 space-y-4">
@@ -399,23 +400,22 @@ export default function RequestDetailPage() {
                       disabled={isUploading || !completedFile}
                       className="w-full rounded-md bg-blue-600 px-6 py-3 text-base font-medium text-white hover:bg-blue-700 disabled:opacity-50"
                     >
-                      {isUploading ? "업로드 중..." : (request.completedFileUrl ? "✓ 수정본 제출하기" : "✓ 완료 파일 제출하기")}
+                      {isUploading ? "업로드 중..." : (request.completedFileUrl ? "✓ 수정본 덮어쓰기" : "✓ 완료 파일 제출하기")}
                     </button>
                   </div>
                 </div>
               )}
 
               {request.status === 'completed' && request.completedFileUrl && (
-                <div className="rounded-md bg-green-50 p-6 text-center">
-                  <h3 className="text-xl font-semibold text-green-800">작업 완료됨</h3>
-                  <p className="mt-2 text-green-700">이 작업은 완료되어 강사에게 전달되었습니다.</p>
+                <div className="rounded-md bg-green-50 p-6 text-center mt-8">
+                  <h3 className="text-xl font-semibold text-green-800">현재 등록된 완료 파일</h3>
                   <a 
                     href={request.completedFileUrl} 
                     target="_blank" 
                     rel="noopener noreferrer"
                     className="mt-4 inline-block text-blue-600 hover:underline"
                   >
-                    업로드된 완료 파일 확인
+                    다운로드/미리보기
                   </a>
                 </div>
               )}

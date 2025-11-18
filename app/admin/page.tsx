@@ -11,74 +11,62 @@ import {
   collection,
   query,
   where,
-  getDocs,
   Timestamp,
   orderBy,
+  onSnapshot // [수정] 실시간
 } from "firebase/firestore";
 
-// Firestore에서 가져올 요청 데이터의 타입 정의
 interface RequestData {
   id: string;
   title: string;
   instructorName: string;
   academy: string;
-  status: "requested" | "in_progress" | "completed" | "rejected"; // [수정]
+  status: "requested" | "in_progress" | "completed" | "rejected";
   requestedAt: Timestamp;
+  // [신규] 관리자용 안 읽은 메시지 수
+  unreadCountAdmin?: number;
 }
 
 export default function AdminDashboard() {
-  // --- [수정된 부분 1] ---
-  // isAdmin을 user 객체 안에서 가져오도록 수정
   const { user, loading } = useAuth();
-  const isAdmin = user?.isAdmin; // user가 있을 때만 isAdmin 값을 가져옴
-  // --- [수정 끝] ---
+  const isAdmin = user?.isAdmin; 
   const router = useRouter();
   
   const [requests, setRequests] = useState<RequestData[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // 1. 로딩이 끝났는지 확인
     if (loading) return;
 
-    // --- [수정된 부분 2] ---
-    // isAdmin 변수를 올바르게 참조
     if (!user || !isAdmin) {
       alert("접근 권한이 없습니다.");
       router.push("/dashboard");
       return;
     }
-    // --- [수정 끝] ---
 
-    // 3. 관리자일 경우, 요청 목록 불러오기
-    const fetchRequests = async () => {
-      setIsLoading(true);
-      try {
-        // [수정] 'completed' 또는 'rejected' 상태가 아닌 요청만 가져옴 (in ['requested', 'in_progress'])
-        const q = query(
-          collection(db, "requests"),
-          where("status", "in", ["requested", "in_progress"]),
-          orderBy("status", "desc"), // 'requested'가 'in_progress'보다 위로
-          orderBy("requestedAt", "desc")
-        );
-        
-        const querySnapshot = await getDocs(q);
-        const requestList = querySnapshot.docs.map((doc) => ({
-          id: doc.id,
-          ...doc.data(),
-        } as RequestData));
-        
-        setRequests(requestList);
-      } catch (error) {
-        console.error("요청 목록을 불러오는 중 에러:", error);
-      }
+    // 실시간 리스너 사용
+    const q = query(
+      collection(db, "requests"),
+      where("status", "in", ["requested", "in_progress"]),
+      orderBy("status", "desc"),
+      orderBy("requestedAt", "desc")
+    );
+    
+    const unsubscribe = onSnapshot(q, (querySnapshot) => {
+      const requestList = querySnapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      } as RequestData));
+      setRequests(requestList);
       setIsLoading(false);
-    };
+    }, (error) => {
+      console.error("관리자 목록 로딩 에러:", error);
+      setIsLoading(false);
+    });
 
-    fetchRequests();
+    return () => unsubscribe();
   }, [user, loading, isAdmin, router]);
 
-  // 로딩 중 또는 권한 확인 중일 때
   if (loading || isLoading || !isAdmin) {
     return (
       <div className="flex min-h-screen items-center justify-center">
@@ -87,7 +75,6 @@ export default function AdminDashboard() {
     );
   }
 
-  // --- 관리자 전용 UI ---
   return (
     <div className="flex min-h-screen flex-col">
       <main className="flex-grow bg-gray-50 py-12">
@@ -96,7 +83,6 @@ export default function AdminDashboard() {
             <h1 className="text-3xl font-bold text-gray-900">
               관리자 대시보드 (접수된 요청)
             </h1>
-            {/* [신규] 완료된 작업 목록 링크 */}
             <Link
               href="/admin/completed"
               className="rounded-md bg-gray-600 px-4 py-2 text-sm font-medium text-white shadow-sm transition-colors hover:bg-gray-700"
@@ -130,7 +116,15 @@ export default function AdminDashboard() {
                         {req.status === 'requested' && <span className="rounded-full bg-red-100 px-2 py-1 text-xs font-semibold text-red-700">요청됨</span>}
                         {req.status === 'in_progress' && <span className="rounded-full bg-yellow-100 px-2 py-1 text-xs font-semibold text-yellow-700">작업중</span>}
                       </td>
-                      <td className="px-6 py-4 font-medium text-gray-900">{req.title}</td>
+                      <td className="px-6 py-4 font-medium text-gray-900 flex items-center gap-2">
+                        {req.title}
+                        {/* [신규] 알림 배지 */}
+                        {req.unreadCountAdmin && req.unreadCountAdmin > 0 ? (
+                           <span className="inline-flex items-center rounded-md bg-red-50 px-2 py-1 text-xs font-medium text-red-700 ring-1 ring-inset ring-red-600/10">
+                             New
+                           </span>
+                        ) : null}
+                      </td>
                       <td className="px-6 py-4 text-gray-700">{req.instructorName} ({req.academy})</td>
                       <td className="px-6 py-4 text-gray-500">{req.requestedAt.toDate().toLocaleDateString('ko-KR')}</td>
                       <td className="px-6 py-4">
