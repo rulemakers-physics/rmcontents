@@ -104,19 +104,35 @@ export default function HomePage() {
                전체보기
              </Link>
           </div>
-          <div className="space-y-4">
-            {/* 모바일에서는 대표 이미지 1-2개만 깔끔하게 노출 */}
+          
+          {/* [수정 시작] Mobile Showcase Preview 컨테이너 수정 */}
+          <div className="flex space-x-4 overflow-x-auto pb-2 -mx-6 px-6"> 
+             {/* 1. flex: 카드를 가로로 배치
+                 2. space-x-4: 카드 사이의 간격
+                 3. overflow-x-auto: 가로 스크롤 활성화
+                 4. -mx-6 px-6: 컨테이너 좌우 패딩을 제거하고 내부 요소에 패딩을 줘서 스크롤 시 화면 밖으로 나가도록 처리
+             */}
             <MobileContentCard 
               category="실전 모의고사"
               title="OO고 1학기 기말 대비"
               imgSrc="/images/mock-exam.png"
+              href="/showcase/mock-exam"
             />
             <MobileContentCard 
               category="고난도 N제"
               title="1등급 킬러 문항 모음"
               imgSrc="/images/high-difficulty.png"
+              href="/showcase/n-set"
+            />
+            {/* [수정 1] 세 번째 카드 추가 */}
+            <MobileContentCard 
+              category="고난도 문항모음zip"
+              title="최상위권 킬러 문항 모음"
+              imgSrc="/images/high-difficulty.png" // 적절한 이미지로 변경 가능
+              href="/showcase/high-difficulty"
             />
           </div>
+          {/* [수정 끝] */}
         </section>
 
         {/* 4. Mobile Contact Info */}
@@ -486,18 +502,25 @@ function MobileFeatureItem({
 
 /**
  * [Mobile Only] 컨텐츠 카드
+ * [수정] href prop 추가 및 너비(w-64) 지정
  */
 function MobileContentCard({ 
   category, 
   title, 
-  imgSrc 
+  imgSrc,
+  href 
 }: { 
   category: string; 
   title: string; 
   imgSrc: string; 
+  href: string; // [수정] href prop 추가
 }) {
   return (
-    <div className="flex overflow-hidden rounded-lg bg-white shadow-sm border border-slate-200">
+    // [수정 1] Link 컴포넌트로 감싸고 w-64 (너비 고정)를 추가
+    <Link 
+      href={href}
+      className="flex w-64 flex-shrink-0 overflow-hidden rounded-lg bg-white shadow-md border border-slate-200 active:scale-[0.98] transition-transform"
+    >
       <div className="relative w-24 h-24 flex-shrink-0 bg-slate-200">
         <Image src={imgSrc} alt={title} fill className="object-cover" />
       </div>
@@ -505,7 +528,7 @@ function MobileContentCard({
         <span className="text-xs font-semibold text-sky-600 uppercase mb-1">{category}</span>
         <h4 className="text-sm font-bold text-slate-900 line-clamp-2">{title}</h4>
       </div>
-    </div>
+    </Link>
   );
 }
 
