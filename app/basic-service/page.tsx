@@ -28,7 +28,7 @@ const features = [
   {
     icon: BeakerIcon,
     title: "기출 분석 및 내신 N제",
-    desc: "주요 학교의 최신 기출 트렌드를 분석하여 내신 대비에 최적화된 N제를 제공합니다.",
+    desc: "담당 학교의 기출을 분석하여 학교별 내신 대비에 최적화된 N제를 제공합니다.",
   },
   {
     icon: AcademicCapIcon,
@@ -55,7 +55,7 @@ export default function BasicServicePage() {
             viewport={{ once: true }}
             className="text-base font-semibold uppercase tracking-wide text-blue-400"
           >
-            Basic Service
+            Basic Plan
           </motion.p>
           <motion.h1
             variants={fadeInUp}
@@ -64,10 +64,10 @@ export default function BasicServicePage() {
             viewport={{ once: true }}
             className="mt-4 text-4xl font-extrabold leading-tight sm:text-5xl lg:text-6xl"
           >
-            강력한 문제은행과
+            편의성과 퀄리티를 모두 잡은,
             <br />
             <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-teal-400">
-              내신 대비 솔루션
+             맞춤형 내신 대비 솔루션
             </span>
           </motion.h1>
           <motion.p
@@ -78,9 +78,9 @@ export default function BasicServicePage() {
             transition={{ delay: 0.2 }}
             className="mx-auto mt-6 max-w-2xl text-lg text-gray-300"
           >
-            합리적인 비용의 구독형 서비스로 RuleMakers의 핵심 데이터베이스를 활용하여
+            선생님께서 강의에만 집중하실 수 있도록,
             <br className="hidden sm:block" />
-            강의의 효율을 극대화하세요.
+            탄탄한 문제 은행부터 학교별 내신 대비 컨텐츠까지 합리적 비용으로 만나보세요.
           </motion.p>
         </div>
       </section>
@@ -161,7 +161,7 @@ export default function BasicServicePage() {
                   </li>
                   <li className="flex items-center gap-3">
                     <CheckCircleIcon className="h-5 w-5 flex-shrink-0 text-amber-500" />
-                    <span>학원 블로그 개설 및 배너 디자인</span>
+                    <span>학원 블로그 개설 및 배너 제공</span>
                   </li>
                 </ul>
                 <ul className="space-y-4 text-gray-300">

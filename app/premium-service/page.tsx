@@ -66,17 +66,17 @@ export default function PremiumServicePage() {
             viewport={{ once: true }}
           >
             <span className="inline-flex items-center rounded-full bg-blue-500/10 px-3 py-1 text-sm font-medium text-blue-400 ring-1 ring-inset ring-blue-500/20">
-              Premium Plan
+              Maker's Plan
             </span>
             <h1 className="mt-6 text-4xl font-extrabold leading-tight sm:text-5xl lg:text-6xl">
-              오직 고객님만을 위한
+              지금까지 경험하지 못한,
               <br />
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-teal-400">1:1 맞춤형 컨텐츠</span>
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-teal-400">나만을 위한 High End 컨텐츠 연구소</span>
             </h1>
             <p className="mx-auto mt-6 max-w-2xl text-lg text-gray-300">
-              RuleMakers 연구소의 High Quality 자체 제작 문항을 활용하여,
+              시대인재 컨텐츠팀 RuleBreakers 대표가 설립한
               <br className="hidden sm:block" />
-              요청서에 따라 100% 커스터마이징 된 압도적인 퀄리티를 경험하세요.
+              RuleMakers 연구소의 High Quality 자체 제작 문항들을 만나보세요.
             </p>
           </motion.div>
 
@@ -109,10 +109,12 @@ export default function PremiumServicePage() {
         <div className="container mx-auto max-w-6xl px-6">
           <div className="mb-16 md:text-center">
             <h2 className="text-3xl font-bold tracking-tight text-gray-900 sm:text-4xl">
-              프리미엄 플랜 혜택
+              메이커스 플랜 혜택
             </h2>
             <p className="mt-4 text-lg text-gray-600">
-              단순한 문제 제공을 넘어, 강사님의 수업 퀄리티를 높여드리는 파트너가 됩니다.
+              요청서에 따른 100% Custom Contents의 압도적인 퀄리티를 경험하세요.
+              <br />
+              단순한 문항 제공이 아닌, 선생님의 성장을 함께하는 파트너로서 동행하겠습니다.
             </p>
           </div>
 
@@ -148,7 +150,7 @@ export default function PremiumServicePage() {
             지금 바로 시작하세요
           </h2>
           <p className="mt-4 text-lg text-gray-400">
-            복잡한 자료 준비는 RuleMakers에게 맡기고, 강사님은 수업에만 집중하세요.
+            복잡한 자료 준비는 RuleMakers에게 맡기고, 선생님은 수업에만 집중하세요.
           </p>
           <div className="mt-10">
             {/* [수정] 하단 버튼: 문의 페이지(/contact)로 연결 */}

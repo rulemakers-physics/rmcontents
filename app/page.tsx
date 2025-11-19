@@ -207,7 +207,7 @@ export default function HomePage() {
               transition={{ duration: 0.6, delay: 0.2 }}
               className="mt-8 max-w-2xl text-lg text-slate-300 sm:text-xl leading-relaxed"
             >
-              RuleMakers는 학교별 최신 기출 분석과 자체 개발 고난도 문항을 통해
+              RuleMakers는 High End 자체 제작 컨텐츠와 학교별 기출 분석을 통해
               <br className="hidden sm:block" />
               고객님만의 <strong>프리미엄 커스텀 교재</strong>를 신속하게 제작합니다.
             </motion.p>
@@ -274,7 +274,7 @@ export default function HomePage() {
               <FeatureCard
                 icon={DocumentTextIcon}
                 title="서울대 연구진 교차 검수"
-                description="서울대 사범대 출신 전문 연구진과 현직 강사로 구성된 검수팀이 교차 검수를 진행하여 무결점 컨텐츠를 보장합니다."
+                description="서울대 사범대 출신 전문 연구진과 현직 강사로 구성된 검수팀이 교차 검수를 진행합니다."
               />
             </div>
           </div>
@@ -294,10 +294,10 @@ export default function HomePage() {
           <div className="container relative z-10 mx-auto max-w-6xl px-6">
             <div className="text-center mb-16">
               <h2 className="text-3xl font-bold text-slate-900 sm:text-4xl">
-                간편한 작업 요청 프로세스
+                3 Step, 3 Days
               </h2>
               <p className="mt-4 text-lg text-slate-600">
-                복잡한 과정 없이, 단 3단계로 3일 이내에 프리미엄 컨텐츠가 완성됩니다.
+                복잡한 과정 없이, 단 3단계로 3일 이내에 선생님만의 프리미엄 컨텐츠가 완성됩니다.
               </p>
             </div>
 
@@ -429,11 +429,11 @@ export default function HomePage() {
 
               {/* Premium Plan */}
               <ServicePlanCard
-                title="Premium Plan"
+                title="Maker's Plan"
                 subtitle="1:1 맞춤 제작 솔루션"
                 price="연간 계약"
                 features={[
-                { text: "프리미엄 문제은행 (자체 개발 고난도 문항 포함)", included: true },
+                { text: "프리미엄 문제은행 서비스 (자체 개발 고난도 문항 포함)", included: true },
                 { text: "기출 분석 및 내신대비 N제 & 모의고사", included: true },
                 { text: "교육청 모의고사 분석 및 변형 문항", included: true },
                 { text: "주요 개념서 및 부교재 유사 문항", included: true },
