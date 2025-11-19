@@ -51,7 +51,7 @@ export default function LoginPage() {
   return (
     <div className="flex min-h-screen w-full bg-white">
       {/* 1. 왼쪽: 브랜딩 영역 (문구 및 아이콘 수정) */}
-      <div className="hidden lg:flex lg:w-2/5 flex-col justify-center bg-gray-900 p-16 text-white">
+      <div className="hidden lg:flex lg:w-1/3 flex-col justify-center bg-gray-900 p-16 text-white">
         <h1 className="mb-4 text-4xl font-bold">RuleMakers</h1>
         <p className="text-xl text-gray-300 font-light leading-relaxed">
           강사님의 수업 준비 시간을 줄여드리는<br />
@@ -77,7 +77,7 @@ export default function LoginPage() {
       </div>
 
       {/* 2. 오른쪽: 로그인 영역 */}
-      <div className="flex w-full lg:w-3/5 min-h-screen flex-col bg-gray-50">
+      <div className="flex w-full lg:w-2/3 min-h-screen flex-col bg-gray-50">
         
         {/* 상단: 메인 페이지로 돌아가기 */}
         <div className="w-full p-6 text-right sm:p-8">

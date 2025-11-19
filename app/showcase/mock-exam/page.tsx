@@ -63,7 +63,7 @@ export default function MockExamPage() {
               href="/request"
               className="mt-10 inline-block rounded-md bg-blue-600 px-8 py-3 text-base font-medium text-white shadow-lg transition-colors hover:bg-blue-700"
             >
-              프리미엄 요청하기
+              요청하기
             </Link>
           </div>
         </div>
