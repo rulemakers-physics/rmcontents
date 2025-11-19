@@ -73,7 +73,7 @@ export default function PrivacyPage() {
             회사는 고객의 개인정보를 보호하고 개인정보와 관련한 불만을 처리하기 위하여 아래와 같이 관련 부서 및 개인정보 보호책임자를 지정하고 있습니다.
           </p>
           <ul>
-            <li>이메일: support@rulemakers.co.kr</li>
+            <li>이메일: dev@rulemakers.co.kr</li>
             <li>근무시간: 평일 10:00 ~ 18:00</li>
           </ul>
         </article>

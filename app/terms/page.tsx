@@ -67,7 +67,7 @@ export default function TermsPage() {
           </p>
 
           <h2>부칙</h2>
-          <p>본 약관은 2024년 5월 20일부터 적용됩니다.</p>
+          <p>본 약관은 2025년 10월 1일부터 적용됩니다.</p>
         </article>
       </div>
     </div>
