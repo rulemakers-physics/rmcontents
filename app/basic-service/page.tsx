@@ -158,7 +158,7 @@ export default function BasicServicePage() {
               </p>
               
               <div className="mt-8 inline-flex items-center rounded-full bg-amber-400/10 px-4 py-1.5 text-sm font-medium text-amber-300 ring-1 ring-inset ring-amber-400/30">
-                선착순 30개 학원 한정 혜택
+                선착순 한정 혜택
               </div>
 
               <div className="mt-10 grid gap-6 text-left sm:grid-cols-2 sm:gap-x-12">

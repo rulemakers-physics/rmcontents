@@ -17,6 +17,8 @@ import {
   BoltIcon,
   AcademicCapIcon,
   ChatBubbleBottomCenterTextIcon,
+  ChevronRightIcon,
+  StarIcon
 } from "@heroicons/react/24/solid";
 import { motion, Variants } from "framer-motion";
 
@@ -51,111 +53,184 @@ export default function HomePage() {
     <main className="w-full font-sans selection:bg-sky-200 selection:text-sky-900">
       
       {/* ========================================================================
-          [MOBILE VIEW] 모바일 전용 뷰 (md:hidden)
-          - 핵심 내용 위주, 세로 스크롤 최적화, 하단 고정 버튼
+          [MOBILE VIEW RE-DESIGN] 모바일 전용 뷰 (md:hidden)
+          - 디자인 컨셉: "Mobile Premium" (Dark Mode Hero + Glassmorphism)
+          - PC의 화려함을 모바일에 맞게 최적화
       ======================================================================== */}
-      <div className="block md:hidden pb-24 bg-white">
-        {/* 1. Mobile Hero */}
-        <section className="relative bg-slate-950 px-6 py-16 text-center overflow-hidden">
-           {/* 배경 장식 */}
-           <div className="absolute top-[-20%] left-1/2 -translate-x-1/2 w-[300px] h-[300px] bg-sky-500/20 rounded-full blur-[80px]" />
+      <div className="block md:hidden pb-24 bg-slate-50">
+        
+        {/* 1. Mobile Hero: PC의 감성을 가져온 Dark & Grid 스타일 */}
+        <section className="relative bg-slate-950 px-6 pt-20 pb-16 overflow-hidden">
+           {/* 배경 효과: PC 버전의 축소판 */}
+           <div className="absolute inset-0 opacity-[0.1]" 
+                style={{ backgroundImage: `linear-gradient(#ffffff 1px, transparent 1px), linear-gradient(90deg, #ffffff 1px, transparent 1px)`, backgroundSize: '24px 24px' }} />
+           <div className="absolute top-[-20%] left-1/2 -translate-x-1/2 w-[300px] h-[300px] bg-sky-500/30 rounded-full blur-[80px]" />
+           <div className="absolute bottom-[-20%] right-[-20%] w-[250px] h-[250px] bg-indigo-500/20 rounded-full blur-[60px]" />
            
-           <div className="relative z-10">
-             <h1 className="text-3xl font-bold text-white leading-tight">
-               선생님만을 위한<br />
-               <span className="text-transparent bg-clip-text bg-gradient-to-r from-sky-300 to-blue-400">
-                 단 하나의 프리미엄 컨텐츠
+           <div className="relative z-10 flex flex-col items-start text-left">
+             <span className="inline-block px-3 py-1 mb-4 text-xs font-bold tracking-wide text-sky-400 bg-sky-900/30 border border-sky-700/50 rounded-full">
+               Premium Content Service
+             </span>
+             <h1 className="text-4xl font-extrabold text-white leading-tight">
+               선생님을 위한<br />
+               <span className="text-transparent bg-clip-text bg-gradient-to-r from-sky-300 to-blue-500">
+                 맞춤형 컨텐츠
                </span>
              </h1>
-             <p className="mt-4 text-sm text-slate-300 leading-relaxed">
-               학교별 기출 분석부터 고난도 문항 제작까지,<br/>
-               RuleMakers 전문가에게 맡기세요.
+             <p className="mt-4 text-base text-slate-400 leading-relaxed">
+               High End 자체제작 컨텐츠와<br/>
+               학교별 기출 분석을 통한<br/> 
+               선생님만의 프리미엄 커스텀 컨텐츠
              </p>
            </div>
         </section>
 
-        {/* 2. Mobile Quick Features (아이콘 리스트) */}
-        <section className="px-6 py-10 bg-white">
-          <h2 className="text-lg font-bold text-slate-900 mb-6">왜 RuleMakers인가요?</h2>
-          <div className="space-y-4">
-            <MobileFeatureItem 
+
+
+        {/* 3. Core Features (카드형 디자인으로 변경) */}
+        <section className="px-6 py-12 bg-white">
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="text-xl font-bold text-slate-900">Why RuleMakers?</h2>
+          </div>
+          <div className="grid gap-4">
+            <MobileFeatureCard 
               icon={BeakerIcon} 
-              title="학교별 1:1 분석" 
-              desc="교과서, 프린트, 기출 경향 완벽 반영" 
+              title="학교별 1:1 정밀 분석" 
+              desc="교과서, 부교재, 프린트, 최신 기출까지 완벽 반영" 
             />
-            <MobileFeatureItem 
+            <MobileFeatureCard 
               icon={BoltIcon} 
-              title="3일 완성" 
-              desc="업계 최단 시간, 급한 수업 준비 해결" 
+              title="업계 최단 3일 완성" 
+              desc="급한 수업 준비도 문제 없도록 신속하게 제작" 
             />
-            <MobileFeatureItem 
+            <MobileFeatureCard 
               icon={AcademicCapIcon} 
               title="서울대 연구진 검수" 
-              desc="오류 없는 무결점 고퀄리티 문항" 
+              desc="오류 없는 무결점 고퀄리티 문항 보장" 
             />
           </div>
         </section>
 
-        {/* 3. Mobile Showcase Preview (간략화) */}
-        <section className="px-6 py-10 bg-slate-50 border-t border-slate-100">
-          <div className="flex justify-between items-end mb-4">
-             <h2 className="text-lg font-bold text-slate-900">제작 사례 미리보기</h2>
-             <Link href="/showcase" className="text-xs font-medium text-sky-600 underline">
-               전체보기
+        {/* 4. 3-Step Process (PC 내용을 모바일에 맞게 세로 타임라인으로 변환) */}
+        <section className="px-6 py-12 bg-slate-50 border-t border-slate-100">
+           <h2 className="text-xl font-bold text-slate-900 mb-2">3 Steps, 3 Days</h2>
+           <p className="text-sm text-slate-500 mb-8">복잡한 과정 없이 3단계면 충분합니다.</p>
+           
+           <div className="space-y-8 relative pl-2">
+             {/* 타임라인 선 */}
+             <div className="absolute top-2 bottom-2 left-[19px] w-0.5 bg-slate-200" />
+             
+             <MobileProcessItem 
+               step="01" 
+               title="작업 요청" 
+               desc="기출 문제 및 참고 자료 업로드" 
+             />
+             <MobileProcessItem 
+               step="02" 
+               title="분석 및 제작" 
+               desc="전문가의 문항 출제 및 교차 검수" 
+             />
+             <MobileProcessItem 
+               step="03" 
+               title="결과물 수령" 
+               desc="완성된 PDF 파일 다운로드" 
+               isLast
+             />
+           </div>
+        </section>
+
+        {/* 5. Showcase Preview (비주얼 강화) */}
+        <section className="py-12 bg-slate-900 text-white">
+          <div className="px-6 mb-6 flex justify-between items-end">
+             <div>
+               <h2 className="text-xl font-bold text-white">제작 사례</h2>
+               <p className="text-sm text-slate-400 mt-1">실제 제작된 퀄리티를 확인하세요.</p>
+             </div>
+             <Link href="/showcase" className="text-xs font-medium text-sky-400 underline underline-offset-4">
+               더보기
              </Link>
           </div>
           
-          {/* [수정 시작] Mobile Showcase Preview 컨테이너 수정 */}
-          <div className="flex space-x-4 overflow-x-auto pb-2 -mx-6 px-6"> 
-             {/* 1. flex: 카드를 가로로 배치
-                 2. space-x-4: 카드 사이의 간격
-                 3. overflow-x-auto: 가로 스크롤 활성화
-                 4. -mx-6 px-6: 컨테이너 좌우 패딩을 제거하고 내부 요소에 패딩을 줘서 스크롤 시 화면 밖으로 나가도록 처리
-             */}
-            <MobileContentCard 
-              category="실전 모의고사"
-              title="OO고 1학기 기말 대비"
+          {/* 가로 스크롤 컨테이너 */}
+          <div className="flex space-x-4 overflow-x-auto pb-4 px-6 scrollbar-hide"> 
+            <MobileShowcaseCard 
+              category="내신 대비"
+              title="OO고 1학기 기말 적중 모의고사"
               imgSrc="/images/mock-exam.png"
               href="/showcase/mock-exam"
             />
-            <MobileContentCard 
+            <MobileShowcaseCard 
               category="고난도 N제"
-              title="1등급 킬러 문항 모음"
-              imgSrc="/images/high-difficulty.png"
+              title="1등급을 위한 킬러 문항 모음"
+              imgSrc="/images/n-set.png"
               href="/showcase/n-set"
             />
-            {/* [수정 1] 세 번째 카드 추가 */}
-            <MobileContentCard 
-              category="고난도 문항모음zip"
-              title="최상위권 킬러 문항 모음"
-              imgSrc="/images/high-difficulty.png" // 적절한 이미지로 변경 가능
+            <MobileShowcaseCard 
+              category="심화 자료"
+              title="최상위권 전용 시크릿 자료"
+              imgSrc="/images/high-difficulty.png"
               href="/showcase/high-difficulty"
             />
           </div>
-          {/* [수정 끝] */}
         </section>
 
-        {/* 4. Mobile Contact Info */}
-        <section className="px-6 py-10 bg-white text-center">
+        {/* 6. Plans Summary (간단 요약 카드) */}
+        <section className="px-6 py-12 bg-white">
+           <h2 className="text-xl font-bold text-slate-900 mb-6">Service Plans</h2>
+           <div className="space-y-4">
+             <Link href="/basic-service" className="block p-5 rounded-2xl border border-slate-200 bg-white shadow-sm active:scale-[0.99] transition-transform">
+                <div className="flex justify-between items-start mb-2">
+                  <div>
+                    <span className="text-xs font-bold text-slate-500 uppercase">Basic Plan</span>
+                    <h3 className="text-lg font-bold text-slate-900">월 99,000원</h3>
+                  </div>
+                  <div className="p-1.5 bg-slate-100 rounded-full">
+                    <ChevronRightIcon className="w-4 h-4 text-slate-400"/>
+                  </div>
+                </div>
+                <p className="text-sm text-slate-600">합리적인 가격의 기본 문제은행 서비스</p>
+             </Link>
+
+             <Link href="/premium-service" className="block p-5 rounded-2xl border border-sky-100 bg-gradient-to-br from-sky-50 to-white shadow-sm ring-1 ring-sky-500/20 active:scale-[0.99] transition-transform relative overflow-hidden">
+                <div className="absolute top-0 right-0 px-3 py-1 bg-sky-600 text-[10px] font-bold text-white rounded-bl-xl">
+                  RECOMMENDED
+                </div>
+                <div className="flex justify-between items-start mb-2">
+                  <div>
+                    <span className="text-xs font-bold text-sky-600 uppercase">Maker's Plan</span>
+                    <h3 className="text-lg font-bold text-slate-900">1:1 맞춤 제작</h3>
+                  </div>
+                  <div className="p-1.5 bg-white rounded-full shadow-sm">
+                    <ChevronRightIcon className="w-4 h-4 text-sky-600"/>
+                  </div>
+                </div>
+                <p className="text-sm text-slate-600">자체 제작 고난도 문항 & 커스텀 서비스</p>
+             </Link>
+           </div>
+        </section>
+
+        {/* 7. Contact & Footer */}
+        <section className="px-6 py-10 bg-slate-50 text-center mb-10">
            <p className="text-sm text-slate-500 mb-4">
-             궁금한 점이 있으신가요?
+             더 자세한 내용이 궁금하시다면?
            </p>
            <Link 
              href="/contact"
-             className="inline-flex items-center justify-center w-full py-3 rounded-lg border border-slate-200 bg-white text-slate-700 text-sm font-medium hover:bg-slate-50"
+             className="inline-flex items-center justify-center w-full py-3.5 rounded-xl border border-slate-200 bg-white text-slate-700 text-sm font-bold shadow-sm hover:bg-slate-50"
            >
              <ChatBubbleBottomCenterTextIcon className="w-4 h-4 mr-2 text-slate-400" />
              문의 남기기
            </Link>
         </section>
 
-        {/* 5. Mobile Sticky CTA (하단 고정 버튼) */}
-        <div className="fixed bottom-0 left-0 right-0 p-4 bg-white/80 backdrop-blur-md border-t border-slate-200 z-50">
+        {/* 8. Mobile Sticky CTA (고정 버튼) */}
+        <div className="fixed bottom-0 left-0 right-0 p-4 bg-white/90 backdrop-blur-lg border-t border-slate-200 z-50">
           <Link 
             href="/request"
-            className="flex items-center justify-center w-full py-3.5 rounded-xl bg-sky-600 text-white text-base font-bold shadow-lg active:scale-[0.98] transition-transform"
+            className="flex items-center justify-center w-full py-4 rounded-xl bg-slate-900 text-white text-base font-bold shadow-xl shadow-slate-900/20 active:scale-[0.98] transition-transform"
           >
-            지금 바로 작업 요청하기
+            <SparklesIcon className="w-5 h-5 mr-2 text-yellow-400" />
+            작업 요청하기
           </Link>
         </div>
       </div>
@@ -294,7 +369,7 @@ export default function HomePage() {
           <div className="container relative z-10 mx-auto max-w-6xl px-6">
             <div className="text-center mb-16">
               <h2 className="text-3xl font-bold text-slate-900 sm:text-4xl">
-                3 Step, 3 Days
+                3 Steps, 3 Days
               </h2>
               <p className="mt-4 text-lg text-slate-600">
                 복잡한 과정 없이, 단 3단계로 3일 이내에 선생님만의 프리미엄 컨텐츠가 완성됩니다.
@@ -460,7 +535,7 @@ export default function HomePage() {
               준비되셨나요?
             </h2>
             <p className="mt-4 text-xl text-slate-400">
-               선생님의 첫 번째 <span className="text-sky-400 font-semibold">프리미엄 컨텐츠를</span>지금 바로 요청해보세요.
+               선생님의 첫 번째 <span className="text-sky-400 font-semibold">프리미엄 컨텐츠를</span> 지금 바로 요청해보세요.
             </p>
             <div className="mt-10">
               <Link
@@ -759,5 +834,64 @@ function ServicePlanCard({
         자세히 보기
       </Link>
     </motion.div>
+  );
+}
+
+/* ========================================================================
+   [NEW COMPONENT DEFINITIONS FOR MOBILE]
+   아래 컴포넌트들을 파일 하단에 추가하거나 교체해주세요.
+   ======================================================================== */
+
+// 1. 카드 형태로 바뀐 Feature
+function MobileFeatureCard({ icon: Icon, title, desc }: { icon: any, title: string, desc: string }) {
+  return (
+    <div className="flex items-start p-4 rounded-xl bg-slate-50 border border-slate-100 shadow-sm">
+      <div className="flex-shrink-0 w-10 h-10 flex items-center justify-center rounded-lg bg-white shadow-sm mr-4 text-sky-600">
+        <Icon className="w-6 h-6" />
+      </div>
+      <div>
+        <h3 className="text-base font-bold text-slate-900">{title}</h3>
+        <p className="text-xs text-slate-500 mt-1 leading-snug">{desc}</p>
+      </div>
+    </div>
+  );
+}
+
+// 2. 세로 타임라인 Process Item
+function MobileProcessItem({ step, title, desc, isLast }: { step: string, title: string, desc: string, isLast?: boolean }) {
+  return (
+    <div className="relative flex items-start pl-4">
+      {/* Circle */}
+      <div className="absolute left-[10px] -translate-x-1/2 bg-white p-1">
+         <div className="w-5 h-5 rounded-full bg-sky-600 text-white text-[10px] font-bold flex items-center justify-center ring-4 ring-slate-50">
+           {step}
+         </div>
+      </div>
+      <div className={`ml-4 pb-8 ${isLast ? '' : 'border-b border-slate-100'}`}>
+        <h3 className="text-base font-bold text-slate-900">{title}</h3>
+        <p className="text-sm text-slate-500 mt-1">{desc}</p>
+      </div>
+    </div>
+  );
+}
+
+// 3. 비주얼이 강화된 Showcase Card
+function MobileShowcaseCard({ category, title, imgSrc, href }: { category: string, title: string, imgSrc: string, href: string }) {
+  return (
+    <Link href={href} className="flex-shrink-0 w-[260px] group relative rounded-xl overflow-hidden shadow-lg">
+      <div className="relative h-40 bg-slate-800">
+        <Image src={imgSrc} alt={title} fill className="object-cover opacity-80 group-hover:scale-105 transition-transform duration-500" />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent" />
+        
+        <div className="absolute bottom-0 left-0 p-4 w-full">
+           <span className="inline-block px-2 py-0.5 rounded bg-sky-600 text-[10px] font-bold text-white mb-2">
+             {category}
+           </span>
+           <h4 className="text-base font-bold text-white leading-tight line-clamp-2">
+             {title}
+           </h4>
+        </div>
+      </div>
+    </Link>
   );
 }
