@@ -174,7 +174,7 @@ export default function CompanyPage() {
                 </p>
                 <p>
                   저희는 단순한 양산형 문항을 제공하지 않습니다. <strong>현장 경험</strong>이 녹아있는 기획력과 <strong>자체 개발 AI 기술</strong>을 통해,
-                  선생님만의 철학이 담긴 High-End 맞춤형 솔루션을 제공하겠습니다.
+                  선생님만을 위한 High-End 맞춤형 솔루션을 제공하겠습니다.
                 </p>
                 <p className="pt-4 font-bold text-slate-900">
                   RuleMakers와 함께 교육의 새로운 기준을 만들어 가시길 바랍니다.
