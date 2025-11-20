@@ -434,10 +434,10 @@ export default function RequestPage() {
                   상세 요건
                 </h2>
                 <div className="mt-6 grid grid-cols-1 gap-6 md:grid-cols-2">
-                  {/* 필요한 수량 */}
+                  {/* 요청 수량 */}
                   <div>
                     <label htmlFor="quantity" className="block text-sm font-medium text-gray-700">
-                      필요한 수량* (Set)
+                      요청 수량* (ex.모의고사 2회분이면 2)
                     </label>
                     <input
                       id="quantity"
@@ -449,10 +449,10 @@ export default function RequestPage() {
                       className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
                     />
                   </div>
-                  {/* 마감일 */}
+                  {/* 컨텐츠 사용 예정일 */}
                   <div>
                     <label htmlFor="deadline" className="block text-sm font-medium text-gray-700">
-                      마감일*
+                      컨텐츠 사용 예정일*
                     </label>
                     <input
                       id="deadline"

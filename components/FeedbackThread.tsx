@@ -2,9 +2,9 @@
 
 "use client";
 
-import { useState, useEffect, useRef, useMemo, FormEvent, KeyboardEvent } from "react";
+import { useState, useEffect, useRef, useMemo, FormEvent, KeyboardEvent, ChangeEvent } from "react";
 import { useAuth } from "@/context/AuthContext";
-import { db } from "@/lib/firebase";
+import { db, storage } from "@/lib/firebase";
 import {
   collection,
   query,
@@ -18,7 +18,8 @@ import {
   updateDoc,
   increment
 } from "firebase/firestore";
-import { PaperAirplaneIcon } from "@heroicons/react/24/solid";
+import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
+import { PaperAirplaneIcon, PaperClipIcon, XMarkIcon } from "@heroicons/react/24/solid";
 
 interface FeedbackMessage {
   id: string;
@@ -27,6 +28,10 @@ interface FeedbackMessage {
   authorName: string;
   authorId: string;
   timestamp: Timestamp | null; 
+  // 첨부파일 정보
+  fileUrl?: string;
+  fileName?: string;
+  fileType?: "image" | "file";
 }
 
 interface FeedbackThreadProps {
@@ -44,37 +49,32 @@ export default function FeedbackThread({
   const [isLoading, setIsLoading] = useState(true);
   const [isSending, setIsSending] = useState(false);
   const [otherUnreadCount, setOtherUnreadCount] = useState(0);
+  
+  // 파일 첨부 상태
+  const [attachment, setAttachment] = useState<File | null>(null);
 
   const scrollRef = useRef<HTMLDivElement>(null);
+  // 완료 상태여도 채팅은 가능해야 함
   const isJobLocked = requestStatus === "rejected";
 
-  // 1. 메시지 목록 불러오기
   useEffect(() => {
     if (!requestId) return;
 
     const feedbackColRef = collection(db, "requests", requestId, "feedback");
     const q = query(feedbackColRef, orderBy("timestamp", "asc"));
 
-    const unsubscribe = onSnapshot(
-      q,
-      (querySnapshot) => {
-        const msgs: FeedbackMessage[] = [];
-        querySnapshot.forEach((doc) => {
-          msgs.push({ id: doc.id, ...doc.data() } as FeedbackMessage);
-        });
-        setMessages(msgs);
-        setIsLoading(false);
-      },
-      (error) => {
-        console.error("피드백 로딩 중 에러:", error);
-        setIsLoading(false);
-      }
-    );
+    const unsubscribe = onSnapshot(q, (querySnapshot) => {
+      const msgs: FeedbackMessage[] = [];
+      querySnapshot.forEach((doc) => {
+        msgs.push({ id: doc.id, ...doc.data() } as FeedbackMessage);
+      });
+      setMessages(msgs);
+      setIsLoading(false);
+    });
 
     return () => unsubscribe();
   }, [requestId]);
 
-  // 2. 읽음 상태 관리
   useEffect(() => {
     if (!user || !requestId) return;
 
@@ -95,7 +95,6 @@ export default function FeedbackThread({
     return () => unsubscribe();
   }, [requestId, user]);
 
-  // 3. 안 읽은 메시지 ID 계산 ('1' 표시용)
   const unreadMessageIds = useMemo(() => {
     if (!user) return new Set();
     const myMessages = messages.filter(m => m.authorId === user.uid && m.timestamp);
@@ -103,17 +102,21 @@ export default function FeedbackThread({
     return new Set(unreadMsgs.map(m => m.id));
   }, [messages, otherUnreadCount, user]);
 
-  // 4. 스크롤 자동 이동
   useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
-  }, [messages]);
+  }, [messages, attachment]);
 
-  // 5. 메시지 전송 (생략된 로직은 유효함)
+  const handleFileSelect = (e: ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      setAttachment(e.target.files[0]);
+    }
+  };
+
   const handleSubmitMessage = async (e: FormEvent | KeyboardEvent) => {
     e.preventDefault();
-    if (newMessage.trim() === "" || !user || isSending || isJobLocked) return;
+    if ((newMessage.trim() === "" && !attachment) || !user || isSending || isJobLocked) return;
 
     setIsSending(true);
 
@@ -126,6 +129,19 @@ export default function FeedbackThread({
         }
       }
 
+      // 파일 업로드 로직
+      let fileUrl = null;
+      let fileType = null;
+      let fileName = null;
+
+      if (attachment) {
+         const storageRef = ref(storage, `feedback/${requestId}/${Date.now()}_${attachment.name}`);
+         await uploadBytes(storageRef, attachment);
+         fileUrl = await getDownloadURL(storageRef);
+         fileType = attachment.type.startsWith('image/') ? 'image' : 'file';
+         fileName = attachment.name;
+      }
+
       const feedbackColRef = collection(db, "requests", requestId, "feedback");
       await addDoc(feedbackColRef, {
         text: newMessage,
@@ -133,6 +149,9 @@ export default function FeedbackThread({
         authorName: authorName,
         authorId: user.uid,
         timestamp: serverTimestamp(),
+        fileUrl,
+        fileType,
+        fileName
       });
 
       const requestDocRef = doc(db, "requests", requestId);
@@ -142,7 +161,9 @@ export default function FeedbackThread({
         await updateDoc(requestDocRef, { unreadCountAdmin: increment(1) });
       }
 
-      setNewMessage(""); 
+      setNewMessage("");
+      setAttachment(null);
+
     } catch (error) {
       console.error("전송 실패:", error);
     }
@@ -157,27 +178,17 @@ export default function FeedbackThread({
     }
   };
 
-
-  // 6. [FIXED] 날짜 구분선 및 유효성 검사 헬퍼
   const getFormattedDate = (date: Date) => {
     return date.toLocaleDateString("ko-KR", {
-      year: "numeric",
-      month: "long",
-      day: "numeric",
-      weekday: "long",
+      year: "numeric", month: "long", day: "numeric", weekday: "long",
     });
   };
 
   const isNewDay = (current: Timestamp | null, prev: Timestamp | null) => {
-    // [FIX] current가 유효한 Timestamp 객체인지 확인 (runtime error 방지)
     if (!current || typeof current.toDate !== 'function') return false; 
-    
-    // [FIX] prev가 유효한 Timestamp 객체인지 확인
     if (!prev || typeof prev.toDate !== 'function') return true; 
-
     const currDate = current.toDate();
     const prevDate = prev.toDate();
-    
     return (
       currDate.getDate() !== prevDate.getDate() ||
       currDate.getMonth() !== prevDate.getMonth() ||
@@ -185,12 +196,10 @@ export default function FeedbackThread({
     );
   };
 
-
   if (isLoading) return <div className="p-8 text-center text-gray-500 animate-pulse">대화 내용을 불러오는 중...</div>;
 
   return (
     <div className="flex flex-col h-[600px] rounded-xl bg-white shadow-lg border border-gray-200 overflow-hidden">
-      {/* 헤더 */}
       <div className="bg-gray-50 px-6 py-4 border-b border-gray-200 flex justify-between items-center">
         <h3 className="text-lg font-bold text-gray-800 flex items-center gap-2">
           💬 1:1 실시간 소통
@@ -202,7 +211,6 @@ export default function FeedbackThread({
         </span>
       </div>
       
-      {/* 메시지 목록 */}
       <div ref={scrollRef} className="flex-grow overflow-y-auto p-4 space-y-4 bg-gray-50"> 
         {messages.length === 0 ? (
           <div className="flex h-full flex-col items-center justify-center text-gray-500 space-y-2 opacity-70">
@@ -215,19 +223,12 @@ export default function FeedbackThread({
             const isUnread = isCurrentUser && unreadMessageIds.has(msg.id);
             const showDate = msg.timestamp && isNewDay(msg.timestamp, index > 0 ? messages[index - 1].timestamp : null);
 
-            // Timestamp가 null인 경우 (전송 직후) 임시 메시지 표시
             if (!msg.timestamp) {
-                return (
-                    <div key={msg.id} className="text-center text-xs text-gray-400">
-                        * 메시지 전송 중...
-                    </div>
-                );
+                return <div key={msg.id} className="text-center text-xs text-gray-400">* 메시지 전송 중...</div>;
             }
 
             return (
               <div key={msg.id}>
-                
-                {/* 날짜 구분선 */}
                 {showDate && (
                   <div className="flex justify-center my-4">
                     <span className="bg-gray-300 text-gray-700 text-[10px] px-3 py-1 rounded-full shadow-sm">
@@ -236,49 +237,35 @@ export default function FeedbackThread({
                   </div>
                 )}
 
-                {/* 메시지 버블 및 레이아웃 */}
                 <div className={`flex w-full mb-2 ${isCurrentUser ? "justify-end" : "justify-start"}`}>
                   <div className={`flex items-end gap-1 ${isCurrentUser ? "flex-row-reverse" : "flex-row"}`}>
-                    
-                    {/* 시간 및 읽음 표시 컨테이너 */}
                     <div className="flex flex-col items-end justify-end h-full pb-0.5">
-                      {/* 읽음 표시 */}
-                      {isUnread && (
-                        <span className="text-[10px] font-bold text-yellow-500 mb-0.5">
-                          1
-                        </span>
-                      )}
-                      {/* 시간 */}
+                      {isUnread && <span className="text-[10px] font-bold text-yellow-500 mb-0.5">1</span>}
                       <span className="text-[10px] text-gray-500 min-w-fit">
-                        {msg.timestamp.toDate().toLocaleTimeString("ko-KR", {
-                          hour: "2-digit",
-                          minute: "2-digit",
-                          hour12: true
-                        })}
+                        {msg.timestamp.toDate().toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit", hour12: true })}
                       </span>
                     </div>
                     
-                    {/* 메시지 내용 영역 (너비 확장) */}
                     <div className={`flex flex-col max-w-[90%] md:max-w-[85%] ${isCurrentUser ? "items-end" : "items-start"}`}>
-                      {/* 이름 (상대방일 때만 표시) */}
-                      {!isCurrentUser && (
-                        <span className="text-xs text-gray-600 mb-1 px-1">
-                          {msg.authorName}
-                        </span>
-                      )}
+                      {!isCurrentUser && <span className="text-xs text-gray-600 mb-1 px-1">{msg.authorName}</span>}
 
-                      {/* 말풍선 */}
-                      <div
-                        className={`relative px-4 py-3 text-sm whitespace-pre-wrap shadow-sm rounded-xl ${
-                          isCurrentUser
-                            ? "bg-blue-600 text-white rounded-br-none" // 내 메시지 (파란색)
-                            : "bg-white text-gray-800 border border-gray-200 rounded-bl-none" // 상대 메시지 (흰색)
-                        }`}
-                      >
+                      <div className={`relative px-4 py-3 text-sm whitespace-pre-wrap shadow-sm rounded-xl ${
+                          isCurrentUser ? "bg-blue-600 text-white rounded-br-none" : "bg-white text-gray-800 border border-gray-200 rounded-bl-none"
+                        }`}>
                         {msg.text}
+                        
+                        {/* 첨부파일 표시 */}
+                        {msg.fileType === 'image' && msg.fileUrl && (
+                          <img src={msg.fileUrl} alt="첨부 이미지" className="mt-2 max-w-full rounded-lg cursor-pointer hover:opacity-90 transition-opacity" onClick={()=>window.open(msg.fileUrl, '_blank')} />
+                        )}
+                        {msg.fileType === 'file' && msg.fileUrl && (
+                          <a href={msg.fileUrl} target="_blank" rel="noopener noreferrer" className={`flex items-center mt-2 p-2 rounded bg-opacity-10 ${isCurrentUser ? 'bg-white text-blue-100' : 'bg-gray-100 text-blue-600'} hover:underline`}>
+                             <PaperClipIcon className="h-4 w-4 mr-2"/>
+                             <span className="truncate max-w-[150px]">{msg.fileName || "첨부파일"}</span>
+                          </a>
+                        )}
                       </div>
                     </div>
-
                   </div>
                 </div>
               </div>
@@ -289,7 +276,29 @@ export default function FeedbackThread({
 
       {/* 입력 폼 */}
       <div className="bg-white p-4 border-t border-gray-200">
+        {/* 첨부파일 미리보기 */}
+        {attachment && (
+          <div className="flex items-center gap-2 mb-2 p-2 bg-gray-100 rounded-lg w-fit">
+             <span className="text-xs text-gray-600 max-w-[200px] truncate">{attachment.name}</span>
+             <button onClick={() => setAttachment(null)} className="text-gray-400 hover:text-red-500">
+               <XMarkIcon className="h-4 w-4" />
+             </button>
+          </div>
+        )}
+
         <form onSubmit={handleSubmitMessage} className="relative flex items-end gap-2">
+          {/* 파일 첨부 버튼 */}
+          <label className={`p-2 rounded-full cursor-pointer hover:bg-gray-100 transition-colors ${isJobLocked ? 'opacity-50 cursor-not-allowed' : ''}`}>
+             <PaperClipIcon className="h-6 w-6 text-gray-500" />
+             <input 
+               type="file" 
+               className="hidden" 
+               onChange={handleFileSelect} 
+               accept="image/*,.pdf"
+               disabled={isJobLocked}
+             />
+          </label>
+
           <textarea
             rows={1}
             value={newMessage}
@@ -306,9 +315,9 @@ export default function FeedbackThread({
           />
           <button
             type="submit"
-            disabled={isSending || newMessage.trim() === "" || isJobLocked}
+            disabled={isSending || (newMessage.trim() === "" && !attachment) || isJobLocked}
             className={`absolute right-2 bottom-2 p-1.5 rounded-md transition-colors ${
-              newMessage.trim() !== "" 
+              (newMessage.trim() !== "" || attachment)
                 ? "bg-blue-600 text-white hover:bg-blue-700"
                 : "bg-gray-200 text-gray-400"
             }`}

@@ -2,7 +2,7 @@
 
 "use client";
 
-import React from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import {
@@ -43,6 +43,15 @@ const features = [
 ];
 
 export default function BasicServicePage() {
+  // 실시간 인원 업데이트 시뮬레이션 (랜덤값)
+  const [seatsLeft, setSeatsLeft] = useState(12);
+
+  useEffect(() => {
+    // 컴포넌트 마운트 시 5~15 사이의 랜덤 값 설정
+    const random = Math.floor(Math.random() * (15 - 5 + 1)) + 5;
+    setSeatsLeft(random);
+  }, []);
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* 1. Hero Section (Dark Theme) */}
@@ -67,7 +76,7 @@ export default function BasicServicePage() {
             편의성과 퀄리티를 모두 잡은,
             <br />
             <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-teal-400">
-             맞춤형 내신 대비 솔루션
+             베이직 플랜
             </span>
           </motion.h1>
           <motion.p
@@ -129,28 +138,33 @@ export default function BasicServicePage() {
             initial={{ opacity: 0, scale: 0.98 }}
             whileInView={{ opacity: 1, scale: 1 }}
             viewport={{ once: true }}
-            // [수정] 쨍한 파란색 대신 깊은 네이비/슬레이트 배경 사용
             className="relative overflow-hidden rounded-3xl bg-slate-900 px-6 py-16 text-center text-white shadow-2xl ring-1 ring-white/10 sm:px-16"
           >
-            {/* [추가] 은은한 배경 조명 효과 */}
+            {/* 은은한 배경 조명 효과 */}
             <div className="absolute top-0 right-0 -mt-10 -mr-10 h-64 w-64 rounded-full bg-blue-500/20 blur-3xl"></div>
             <div className="absolute bottom-0 left-0 -mb-10 -ml-10 h-64 w-64 rounded-full bg-amber-500/10 blur-3xl"></div>
 
             <div className="relative z-10">
-              {/* [수정] 아이콘 색상을 골드(Amber) 계열로 변경하여 고급스러움 강조 */}
               <GiftIcon className="mx-auto h-16 w-16 text-amber-400" />
               
               <h2 className="mt-6 text-3xl font-bold sm:text-4xl tracking-tight">
-                베이직 서비스 <span className="text-amber-400">초기 도입 프로모션</span>
+                베이직 플랜 <span className="text-amber-400">선착순 한정 프로모션</span>
               </h2>
               
-              <p className="mt-4 text-xl text-gray-300">
-                최초 도입 비용 100만원 <span className="font-semibold text-white underline decoration-amber-400 decoration-2 underline-offset-4">전액 면제</span>
+              <div className="mt-6 mb-8 animate-pulse">
+                 <p className="text-2xl font-bold text-red-400">
+                   현재 마감까지 <span className="text-4xl text-white mx-1">{seatsLeft}</span>자리 남았습니다!
+                 </p>
+              </div>
+              
+              <p className="mt-6 text-xl text-gray-300">
+                최초 도입 비용 
+                <span className="mx-2 text-2xl font-bold text-gray-400 line-through decoration-red-500 decoration-4">100만원</span> 
+                <span className="text-3xl font-extrabold text-amber-400">전액 면제</span>
               </p>
               
-              {/* [수정] 뱃지 스타일을 다크 테마에 맞춰 변경 */}
               <div className="mt-8 inline-flex items-center rounded-full bg-amber-400/10 px-4 py-1.5 text-sm font-medium text-amber-300 ring-1 ring-inset ring-amber-400/30">
-                26년 6월까지, 선착순 30개 학원 한정
+                선착순 30개 학원 한정 혜택
               </div>
 
               <div className="mt-10 grid gap-6 text-left sm:grid-cols-2 sm:gap-x-12">

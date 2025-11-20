@@ -305,11 +305,11 @@ export default function RequestDetailModal({ request, onClose, onSave }: Request
                 <h2 className="flex items-center text-xl font-semibold text-gray-800"><ClipboardDocumentListIcon className="h-6 w-6 mr-2 text-indigo-600" />상세 요건</h2>
                 <div className="mt-6 space-y-6">
                   <div>
-                    <label htmlFor="quantity" className="block text-sm font-medium text-gray-700">필요한 수량* (Set)</label>
+                    <label htmlFor="quantity" className="block text-sm font-medium text-gray-700">요청 수량* (Set)</label>
                     <input id="quantity" type="number" value={quantity} onChange={(e) => setQuantity(e.target.value)} required min="1" disabled={isReadOnly} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 disabled:bg-gray-100 disabled:cursor-not-allowed" />
                   </div>
                   <div>
-                    <label htmlFor="deadline" className="block text-sm font-medium text-gray-700">마감일*</label>
+                    <label htmlFor="deadline" className="block text-sm font-medium text-gray-700">컨텐츠 사용 예정일*</label>
                     <input id="deadline" type="date" value={deadline} onChange={(e) => setDeadline(e.target.value)} required disabled={isReadOnly} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 disabled:bg-gray-100 disabled:cursor-not-allowed" />
                   </div>
                   <div>

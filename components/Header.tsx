@@ -10,14 +10,13 @@ import { useRouter } from "next/navigation";
 import { auth, db } from "@/lib/firebase";
 import { signOut } from "firebase/auth";
 import { collection, query, where, onSnapshot } from "firebase/firestore";
-// [추가] 모바일 햄버거 메뉴 아이콘
-import { Bars3Icon, XMarkIcon } from "@heroicons/react/24/outline";
+import { Bars3Icon, XMarkIcon, ChevronDownIcon } from "@heroicons/react/24/outline";
 
 export default function Header() {
   const { user, loading } = useAuth();
   const router = useRouter();
   
-  // [수정] 모바일 메뉴 토글 상태 관리
+  // 모바일 메뉴 토글 상태
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
   // 알림 상태 관리
@@ -29,13 +28,12 @@ export default function Header() {
     try {
       await signOut(auth);
       router.push("/");
-      setIsMenuOpen(false); // 로그아웃 후 메뉴 닫기
+      setIsMenuOpen(false);
     } catch (error) {
       console.error("로그아웃 실패:", error);
     }
   };
   
-  // [신규] 메뉴 클릭 시 메뉴 닫는 핸들러
   const handleMenuClick = (href: string) => {
     setIsMenuOpen(false);
     router.push(href);
@@ -86,105 +84,21 @@ export default function Header() {
     }
   }, [user, loading]);
 
-  // [신규] PC/모바일에서 사용될 공통 메뉴 목록을 배열로 정의
-  const navItems = (isMobile = false) => (
-    <>
-      <NavItem href="/basic-service" isMobile={isMobile}>
-        베이직 서비스
-      </NavItem>
-      <NavItem href="/premium-service" isMobile={isMobile}>
-        프리미엄 서비스
-      </NavItem>
-      <NavItem href="/showcase" isMobile={isMobile}>
-        컨텐츠 샘플
-      </NavItem>
-    </>
-  );
-
-  // [신규] 로그인 상태에 따른 사용자 메뉴 목록을 배열로 정의
-  const userItems = (isMobile = false) => {
-    if (loading) return null;
-
-    if (!user) {
-      // 비로그인 시
-      return (
-        <button
-          onClick={() => handleMenuClick("/login")}
-          className={`${isMobile ? 'mt-4 w-full' : ''} rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-700 whitespace-nowrap`}
-        >
-          로그인
-        </button>
-      );
-    }
-
-    // 로그인 시
-    return (
-      <>
-        <NavItem href="/dashboard" isMobile={isMobile} className="relative">
-          대시보드
-          {unreadDashboard > 0 && (
-            <span className="absolute -top-2 -right-3 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[10px] text-white">
-              {unreadDashboard > 9 ? "9+" : unreadDashboard}
-            </span>
-          )}
-        </NavItem>
-        <NavItem href="/request" isMobile={isMobile}>
-          작업 요청하기
-        </NavItem>
-
-        {/* 관리자 전용 메뉴 */}
-        {user.isAdmin && (
-          <>
-            <NavItem href="/admin/completed" isMobile={isMobile} className="relative rounded-md bg-green-100 px-3 py-1 text-green-700 hover:bg-green-200">
-              [완료된 작업]
-              {unreadCompleted > 0 && (
-                <span className="absolute -top-2 -right-2 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[10px] text-white">
-                  {unreadCompleted > 9 ? "9+" : unreadCompleted}
-                </span>
-              )}
-            </NavItem>
-            <NavItem href="/admin" isMobile={isMobile} className="relative rounded-md bg-red-100 px-3 py-1 text-red-700 hover:bg-red-200">
-              [접수된 작업]
-              {unreadActive > 0 && (
-                <span className="absolute -top-2 -right-2 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[10px] text-white">
-                  {unreadActive > 9 ? "9+" : unreadActive}
-                </span>
-              )}
-            </NavItem>
-          </>
-        )}
-
-        <button
-          onClick={handleLogout}
-          className={`${isMobile ? 'mt-4 w-full text-left' : 'whitespace-nowrap'} text-sm font-medium text-gray-600 transition-colors hover:text-red-600`}
-        >
-          로그아웃
-        </button>
-      </>
-    );
-  };
-  
-  // [수정] NavItem 컴포넌트: Link와 스타일을 통합하고, isMobile에 따라 스타일 분기 처리
-  const NavItem = ({ href, children, isMobile, className = '' }: { href: string; children: React.ReactNode; isMobile: boolean; className?: string }) => (
-    <Link
-      href={href}
-      onClick={() => setIsMenuOpen(false)} // 클릭 시 메뉴 닫기
-      className={`text-sm font-medium transition-colors hover:text-blue-600 whitespace-nowrap ${
-        isMobile ? 'block w-full py-2 text-gray-800 border-b border-gray-100' : 'text-gray-600'
-      } ${className}`}
-    >
+  // 드롭다운 메뉴 아이템 컴포넌트 (PC용)
+  const DropdownMenuItem = ({ href, children }: { href: string; children: React.ReactNode }) => (
+    <Link href={href} className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 hover:text-blue-600">
       {children}
     </Link>
   );
 
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-white/90 backdrop-blur-sm">
-      <div className="container mx-auto flex h-16 max-w-5xl items-center justify-between px-6">
+      <div className="container mx-auto flex h-16 max-w-6xl items-center justify-between px-6">
         
         {/* 로고 */}
         <Link
           href="/"
-          className="flex items-center text-2xl font-bold text-gray-900 flex-shrink-0" // flex-shrink-0 추가
+          className="flex items-center text-2xl font-bold text-gray-900 flex-shrink-0"
           onClick={() => setIsMenuOpen(false)}
         >
           <Image
@@ -194,18 +108,116 @@ export default function Header() {
             height={28}
             className="mr-2"
           />
-          <span className="text-xl">RuleMakers</span> {/* 모바일에서 로고 폰트 크기 조정 */}
+          <span className="text-xl">RuleMakers</span>
         </Link>
 
         {/* PC 네비게이션 메뉴 (md 이상에서 보임) */}
-        <nav className="hidden md:flex items-center space-x-6">
-          {navItems(false)}
-          {userItems(false)}
+        <nav className="hidden md:flex items-center space-x-8">
+          
+          {/* 1. 회사 소개 */}
+          <Link href="/company" className="text-sm font-medium text-gray-600 hover:text-blue-600 transition-colors">
+            회사 소개
+          </Link>
+
+          {/* 2. 플랜 소개 (드롭다운) */}
+          <div className="relative group">
+            <button className="flex items-center text-sm font-medium text-gray-600 group-hover:text-blue-600 outline-none transition-colors">
+              플랜 소개 <ChevronDownIcon className="ml-1 h-4 w-4" />
+            </button>
+            <div className="absolute left-0 mt-0 w-40 origin-top-left bg-white border border-gray-200 rounded-md shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 transform translate-y-2 group-hover:translate-y-0">
+              <div className="py-1">
+                <DropdownMenuItem href="/basic-service">베이직 플랜</DropdownMenuItem>
+                <DropdownMenuItem href="/premium-service">메이커스 플랜</DropdownMenuItem>
+              </div>
+            </div>
+          </div>
+
+          {/* 3. 컨텐츠 샘플 (드롭다운) */}
+          <div className="relative group">
+            <button className="flex items-center text-sm font-medium text-gray-600 group-hover:text-blue-600 outline-none transition-colors">
+              컨텐츠 샘플 <ChevronDownIcon className="ml-1 h-4 w-4" />
+            </button>
+            <div className="absolute left-0 mt-0 w-56 origin-top-left bg-white border border-gray-200 rounded-md shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 transform translate-y-2 group-hover:translate-y-0">
+              <div className="py-1">
+                <DropdownMenuItem href="/showcase">전체 보기</DropdownMenuItem>
+                <DropdownMenuItem href="/showcase/mock-exam">학교별 실전 모의고사</DropdownMenuItem>
+                <DropdownMenuItem href="/showcase/n-set">학교별 내신 대비 N제</DropdownMenuItem>
+                <DropdownMenuItem href="/showcase/high-difficulty">고난도 문항모음</DropdownMenuItem>
+              </div>
+            </div>
+          </div>
+
+          {/* 4. 마이 페이지 (로그인 시) */}
+          {user && (
+            <div className="relative group">
+              <button className="flex items-center text-sm font-medium text-gray-600 group-hover:text-blue-600 outline-none transition-colors">
+                마이 페이지 <ChevronDownIcon className="ml-1 h-4 w-4" />
+                {/* 알림 뱃지 (통합) */}
+                {(unreadDashboard > 0 || unreadActive > 0 || unreadCompleted > 0) && (
+                  <span className="absolute -top-2 -right-2 flex h-3 w-3 items-center justify-center rounded-full bg-red-500"></span>
+                )}
+              </button>
+              <div className="absolute right-0 mt-0 w-56 origin-top-right bg-white border border-gray-200 rounded-md shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 transform translate-y-2 group-hover:translate-y-0">
+                <div className="py-1">
+                  <Link href="/dashboard" className="flex justify-between px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 hover:text-blue-600">
+                    대시보드
+                    {unreadDashboard > 0 && (
+                      <span className="ml-2 rounded-full bg-red-500 px-1.5 py-0.5 text-[10px] text-white">
+                        {unreadDashboard > 9 ? "9+" : unreadDashboard}
+                      </span>
+                    )}
+                  </Link>
+                  <DropdownMenuItem href="/request">작업 요청하기</DropdownMenuItem>
+                  <DropdownMenuItem href="/profile/settings">프로필 설정</DropdownMenuItem>
+                  
+                  {/* 관리자 메뉴 */}
+                  {user.isAdmin && (
+                    <>
+                      <div className="border-t my-1"></div>
+                      <Link href="/admin" className="flex justify-between px-4 py-2 text-sm text-red-700 hover:bg-red-50 bg-red-50/50">
+                        [관리자] 접수된 작업
+                        {unreadActive > 0 && (
+                          <span className="ml-2 rounded-full bg-red-600 px-1.5 py-0.5 text-[10px] text-white">
+                            {unreadActive > 9 ? "9+" : unreadActive}
+                          </span>
+                        )}
+                      </Link>
+                      <Link href="/admin/completed" className="flex justify-between px-4 py-2 text-sm text-green-700 hover:bg-green-50 bg-green-50/50">
+                        [관리자] 완료된 작업
+                        {unreadCompleted > 0 && (
+                          <span className="ml-2 rounded-full bg-red-600 px-1.5 py-0.5 text-[10px] text-white">
+                            {unreadCompleted > 9 ? "9+" : unreadCompleted}
+                          </span>
+                        )}
+                      </Link>
+                    </>
+                  )}
+                  
+                  <div className="border-t my-1"></div>
+                  <button
+                    onClick={handleLogout}
+                    className="block w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-gray-50"
+                  >
+                    로그아웃
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* 비로그인 시 로그인 버튼 */}
+          {!user && !loading && (
+            <Link
+              href="/login"
+              className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-700 whitespace-nowrap"
+            >
+              로그인
+            </Link>
+          )}
         </nav>
 
-        {/* 모바일 햄버거 버튼 (md 미만에서 보임) */}
+        {/* 모바일 햄버거 버튼 */}
         <div className="md:hidden flex items-center">
-          {/* 비로그인 시 로그인 버튼 노출 */}
           {!user && !loading && (
              <button
                 onClick={() => handleMenuClick("/login")}
@@ -229,24 +241,60 @@ export default function Header() {
         </div>
       </div>
 
-      {/* 모바일 메뉴 오버레이 (isMenuOpen 상태에 따라 토글) */}
+      {/* 모바일 메뉴 오버레이 */}
       <div
         className={`md:hidden absolute w-full bg-white/95 backdrop-blur-sm shadow-xl transition-all duration-300 ease-in-out ${
           isMenuOpen ? 'max-h-screen opacity-100 border-t' : 'max-h-0 opacity-0 overflow-hidden'
         }`}
       >
-        <div className="flex flex-col px-6 py-4 space-y-2">
-          {navItems(true)}
+        <div className="flex flex-col px-6 py-4 space-y-4 overflow-y-auto max-h-[80vh]">
           
-          {/* 구분선 */}
-          <div className="py-2">
-            <div className="h-px bg-gray-200" />
+          <Link href="/company" onClick={() => setIsMenuOpen(false)} className="text-base font-medium text-gray-800 py-2 border-b border-gray-100">
+            회사 소개
+          </Link>
+
+          <div className="space-y-2">
+            <p className="text-xs font-semibold text-gray-400 uppercase">플랜 소개</p>
+            <Link href="/basic-service" onClick={() => setIsMenuOpen(false)} className="block pl-4 text-sm text-gray-700 py-1">베이직 플랜</Link>
+            <Link href="/premium-service" onClick={() => setIsMenuOpen(false)} className="block pl-4 text-sm text-gray-700 py-1">메이커스 플랜</Link>
           </div>
 
-          {/* 사용자 메뉴 (대시보드, 요청하기, 관리자 메뉴, 로그아웃) */}
-          <div className="flex flex-col space-y-2">
-            {userItems(true)}
+          <div className="space-y-2">
+            <p className="text-xs font-semibold text-gray-400 uppercase">컨텐츠 샘플</p>
+            <Link href="/showcase" onClick={() => setIsMenuOpen(false)} className="block pl-4 text-sm text-gray-700 py-1">전체 보기</Link>
+            <Link href="/showcase/mock-exam" onClick={() => setIsMenuOpen(false)} className="block pl-4 text-sm text-gray-700 py-1">학교별 실전 모의고사</Link>
+            <Link href="/showcase/n-set" onClick={() => setIsMenuOpen(false)} className="block pl-4 text-sm text-gray-700 py-1">학교별 내신 대비 N제</Link>
+            <Link href="/showcase/high-difficulty" onClick={() => setIsMenuOpen(false)} className="block pl-4 text-sm text-gray-700 py-1">고난도 문항모음</Link>
           </div>
+
+          {user && (
+            <div className="space-y-2 pt-2 border-t border-gray-200">
+              <p className="text-xs font-semibold text-gray-400 uppercase">마이 페이지</p>
+              <Link href="/dashboard" onClick={() => setIsMenuOpen(false)} className="block pl-4 text-sm text-gray-700 py-1 flex justify-between">
+                대시보드
+                {unreadDashboard > 0 && <span className="text-red-500 text-xs font-bold">{unreadDashboard}</span>}
+              </Link>
+              <Link href="/request" onClick={() => setIsMenuOpen(false)} className="block pl-4 text-sm text-gray-700 py-1">작업 요청하기</Link>
+              <Link href="/profile/settings" onClick={() => setIsMenuOpen(false)} className="block pl-4 text-sm text-gray-700 py-1">프로필 설정</Link>
+              
+              {user.isAdmin && (
+                <>
+                  <Link href="/admin" onClick={() => setIsMenuOpen(false)} className="block pl-4 text-sm text-red-700 py-1 flex justify-between">
+                    [관리자] 접수된 작업
+                    {unreadActive > 0 && <span className="text-red-500 text-xs font-bold">{unreadActive}</span>}
+                  </Link>
+                  <Link href="/admin/completed" onClick={() => setIsMenuOpen(false)} className="block pl-4 text-sm text-green-700 py-1 flex justify-between">
+                    [관리자] 완료된 작업
+                    {unreadCompleted > 0 && <span className="text-red-500 text-xs font-bold">{unreadCompleted}</span>}
+                  </Link>
+                </>
+              )}
+              
+              <button onClick={handleLogout} className="block w-full text-left pl-4 text-sm text-red-600 py-2 mt-2">
+                로그아웃
+              </button>
+            </div>
+          )}
         </div>
       </div>
     </header>

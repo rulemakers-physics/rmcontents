@@ -95,32 +95,16 @@ export default function ContactPage() {
             </motion.div>
 
             {/* Option 2: 전화 상담 */}
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ delay: 0.2 }}
-              className="flex flex-col items-center rounded-2xl bg-white p-10 text-center shadow-sm ring-1 ring-gray-200 transition-shadow hover:shadow-lg"
-            >
-              <div className="mb-6 flex h-16 w-16 items-center justify-center rounded-full bg-blue-50 text-blue-600">
+            <motion.div className="flex flex-col items-center rounded-2xl bg-white p-10 text-center shadow-sm ring-1 ring-gray-200 transition-shadow hover:shadow-lg">
+              <div className="mb-6 flex h-16 w-16 items-center justify-center rounded-full bg-gray-100 text-gray-500">
                 <PhoneIcon className="h-8 w-8" />
               </div>
               <h3 className="text-2xl font-bold text-gray-900">전화 상담</h3>
               <p className="mt-3 text-gray-600">
-                전문 상담원과 직접 통화하며
-                <br />
-                상세한 안내를 받으실 수 있습니다.
+                현재 전화 상담은 운영하지 않습니다.<br />
+                카카오톡에 연락처를 남겨주시면<br />
+                <strong>3일 이내</strong>에 담당자가 연락드리겠습니다.
               </p>
-              <div className="mt-8">
-                {/* 전화번호가 미정일 때의 UI 처리 */}
-                <span className="inline-flex items-center gap-2 rounded-lg bg-gray-100 px-6 py-3 text-base font-semibold text-gray-500 cursor-not-allowed">
-                  <PhoneIcon className="h-4 w-4" />
-                  번호 준비중
-                </span>
-                <p className="mt-2 text-xs text-gray-400">
-                  (평일 10:00 - 18:00 운영 예정)
-                </p>
-              </div>
             </motion.div>
 
           </div>
