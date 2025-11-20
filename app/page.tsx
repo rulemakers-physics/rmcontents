@@ -62,7 +62,7 @@ export default function HomePage() {
            
            <div className="relative z-10">
              <h1 className="text-3xl font-bold text-white leading-tight">
-               고객님만을 위한<br />
+               선생님만을 위한<br />
                <span className="text-transparent bg-clip-text bg-gradient-to-r from-sky-300 to-blue-400">
                  단 하나의 프리미엄 컨텐츠
                </span>
@@ -193,7 +193,7 @@ export default function HomePage() {
               transition={{ duration: 0.6, delay: 0.1 }}
               className="text-5xl font-extrabold leading-tight tracking-tight sm:text-6xl lg:text-7xl"
             >
-              고객님만의{" "}
+              선생님만의{" "}
               <span className="text-transparent bg-clip-text bg-gradient-to-r from-sky-300 via-blue-400 to-indigo-400">
                 프리미엄 컨텐츠
               </span>,
@@ -209,7 +209,7 @@ export default function HomePage() {
             >
               RuleMakers는 High End 자체 제작 컨텐츠와 학교별 기출 분석을 통해
               <br className="hidden sm:block" />
-              고객님만의 <strong>프리미엄 커스텀 교재</strong>를 신속하게 제작합니다.
+              선생님만의 <strong>프리미엄 커스텀 교재</strong>를 신속하게 제작합니다.
             </motion.p>
             
             <motion.div
@@ -400,7 +400,7 @@ export default function HomePage() {
           <div className="container mx-auto max-w-5xl px-6">
             <div className="text-center mb-16">
               <h2 className="text-3xl font-bold text-slate-900 sm:text-4xl">
-                서비스 플랜
+                Service Plans
               </h2>
               <p className="mt-4 text-lg text-slate-600">
                 학원 규모와 필요에 맞는 최적의 플랜을 선택하세요.
@@ -412,15 +412,18 @@ export default function HomePage() {
               <ServicePlanCard
                 title="Basic Plan"
                 subtitle="기본 문제은행 및 내신 대비 자료"
-                price="구독형"
+                planType="구독형"
+                originalPrice="월 198,000원"
+                price="월 99,000원"
+                promotionText="2025년 Early Bird 특가"
                 features={[
                 { text: "기본 문제은행 서비스", included: true },
                 { text: "기출 분석 및 내신대비 N제 & 모의고사", included: true },
-                { text: "교육청 모의고사 분석 및 변형 문항", included: true },
+                { text: "교육청 모의고사 분석 및 유사 문항", included: true },
                 { text: "주요 개념서 및 부교재 유사 문항", included: true },
                 { text: "자체 개발 고난도 문항 풀", included: false },
                 { text: "요청서 기반 커스텀 제작", included: false },
-                { text: "교육청 대비 모의고사 + 변형 모의고사", included: false },
+                { text: "교육청 대비 모의고사 + 유사 문항 모의고사", included: false },
                 { text: "컨셉별 N제 / 특정 문항 유사 문항", included: false },
               ]}
                 isPrimary={false}
@@ -431,14 +434,17 @@ export default function HomePage() {
               <ServicePlanCard
                 title="Maker's Plan"
                 subtitle="1:1 맞춤 제작 솔루션"
-                price="연간 계약"
+                planType="연간 계약"
+                price="별도 문의"
+                promotionText="카카오톡 채널 상담 필요"
                 features={[
                 { text: "프리미엄 문제은행 서비스 (자체 개발 고난도 문항 포함)", included: true },
                 { text: "기출 분석 및 내신대비 N제 & 모의고사", included: true },
-                { text: "교육청 모의고사 분석 및 변형 문항", included: true },
+                { text: "교육청 모의고사 분석 및 유사 문항", included: true },
                 { text: "주요 개념서 및 부교재 유사 문항", included: true },
+                { text: "자체 개발 고난도 문항 풀", included: true },
                 { text: "요청서 기반 커스텀 제작", included: true },
-                { text: "교육청 대비 모의고사 + 변형 모의고사", included: true },
+                { text: "교육청 대비 모의고사 + 유사 문항 모의고사", included: true },
                 { text: "컨셉별 N제 / 특정 문항에 대한 유사 문항 제공", included: true },
               ]}
                 isPrimary={true}
@@ -455,7 +461,7 @@ export default function HomePage() {
               준비되셨나요?
             </h2>
             <p className="mt-4 text-xl text-slate-400">
-               고객님의 첫 번째 <span className="text-sky-400 font-semibold">프리미엄 컨텐츠를</span>지금 바로 요청해보세요.
+               선생님의 첫 번째 <span className="text-sky-400 font-semibold">프리미엄 컨텐츠를</span>지금 바로 요청해보세요.
             </p>
             <div className="mt-10">
               <Link
@@ -635,29 +641,32 @@ function ContentSampleCard({
 }
 
 /**
- * Service Plan Card: Differentiated design (Desktop)
- * 수정됨: features 타입을 객체 배열로 변경하고 included 여부에 따른 스타일 분기 처리
+ * [수정됨] ServicePlanCard: 가격 및 프로모션 정보를 위한 Props 확장
  */
 function ServicePlanCard({
   title,
   subtitle,
-  price,
+  planType,       // [신규] "구독형" or "연간 계약" 라벨
+  price,          // [수정] 메인 가격 텍스트 (ex: "월 99,000원")
+  originalPrice,  // [신규] 할인 전 가격 (ex: "198,000원") - 선택적
+  promotionText,  // [신규] 프로모션/안내 문구 (ex: "Early Bird 특가") - 선택적
   features,
   isPrimary,
   link,
 }: {
   title: string;
   subtitle: string;
-  price: string;
-  // 수정 1: 문자열 배열(string[])에서 객체 배열로 타입 변경
-  features: { text: string; included: boolean }[]; 
+  planType: string;      // 기존 price props를 용도에 맞게 분리
+  price: string;         // 실제 표시될 가격
+  originalPrice?: string; // 할인 전 가격 (옵션)
+  promotionText?: string; // 하단 강조 문구 (옵션)
+  features: { text: string; included: boolean }[];
   isPrimary: boolean;
   link: string;
 }) {
   return (
     <motion.div
       variants={fadeInUp}
-      // [수정 1] flex-col과 h-full을 추가하여 높이를 채우고 내부 요소 배치
       className={`relative flex flex-col h-full rounded-3xl border p-8 shadow-lg transition-all hover:-translate-y-1 ${
         isPrimary
           ? "border-sky-500 bg-slate-900 text-white ring-4 ring-sky-500/10 shadow-sky-100"
@@ -671,49 +680,75 @@ function ServicePlanCard({
       )}
 
       <div className="mb-8">
+        {/* 1. 플랜 타이틀 & 서브타이틀 */}
         <h3 className={`text-2xl font-bold ${isPrimary ? "text-white" : "text-slate-900"}`}>
           {title}
         </h3>
         <p className={`mt-1 text-sm ${isPrimary ? "text-slate-400" : "text-slate-500"}`}>
           {subtitle}
         </p>
-        <div className="mt-6 flex items-baseline gap-1">
-          <span className="text-4xl font-extrabold tracking-tight">{price}</span>
+
+        {/* 2. 가격 및 정보 표시 영역 (대폭 수정됨) */}
+        <div className="mt-6">
+          {/* (1) 플랜 타입 (구독형/연간 계약) */}
+          <span className={`inline-block rounded-md px-2 py-1 text-xs font-bold mb-2 ${
+            isPrimary 
+              ? "bg-slate-800 text-sky-400 border border-slate-700" 
+              : "bg-slate-100 text-slate-600 border border-slate-200"
+          }`}>
+            {planType}
+          </span>
+
+          {/* (2) 가격 표시 */}
+          <div className="flex items-baseline flex-wrap gap-x-2">
+            {originalPrice && (
+              <span className={`text-lg font-medium line-through ${
+                isPrimary ? "text-slate-500" : "text-slate-400"
+              }`}>
+                {originalPrice}
+              </span>
+            )}
+            <span className="text-4xl font-extrabold tracking-tight">{price}</span>
+          </div>
+
+          {/* (3) 프로모션/안내 문구 */}
+          {promotionText && (
+            <p className={`mt-2 text-sm font-bold ${
+              isPrimary ? "text-sky-400" : "text-red-600"
+            }`}>
+              {promotionText}
+            </p>
+          )}
         </div>
       </div>
 
+      {/* 기능 목록 */}
       <ul className="mb-8 flex-1 space-y-4">
         {features.map((feature, i) => (
           <li 
             key={i} 
-            // [수정 2] Basic Plan (isPrimary: false)의 미포함 항목도 opacity-40 대신 opacity-70 정도로 완화하여 흐릿함을 줄임
-            // Premium Plan (isPrimary: true)의 미포함 항목은 slate-600이므로 opacity-100 유지
             className={`flex items-start gap-3 ${!feature.included && !isPrimary ? "opacity-70" : ""}`}
           >
-            {/* 수정 3: included 여부에 따라 아이콘 변경 (Check vs X) */}
             {feature.included ? (
               <CheckCircleIcon
                 className={`h-5 w-5 flex-shrink-0 ${
-                  isPrimary ? "text-sky-400" : "text-sky-600" // [수정 3] Basic Plan의 포함 항목 아이콘 색상을 강조 (slate-400 -> sky-600)
+                  isPrimary ? "text-sky-400" : "text-sky-600"
                 }`}
               />
             ) : (
               <XCircleIcon
                 className={`h-5 w-5 flex-shrink-0 ${
-                  isPrimary ? "text-slate-600" : "text-slate-400" // [수정 4] Basic Plan의 미포함 항목 아이콘 색상을 진하게 (slate-300 -> slate-400)
+                  isPrimary ? "text-slate-600" : "text-slate-400"
                 }`}
               />
             )}
-            
-            <span className={`text-sm ${isPrimary ? "text-slate-300" : "text-slate-700"} ${!feature.included && "line-through"}`}>
-              {/* [수정 5] Basic Plan의 텍스트 색상을 조금 더 진하게 (slate-600 -> slate-700) */}
+            <span className={`text-sm ${isPrimary ? "text-slate-100" : "text-slate-800"} ${!feature.included}`}>
               {feature.text}
             </span>
           </li>
         ))}
       </ul>
 
-      {/* [수정 6] 버튼이 카드 하단에 고정되도록 `mt-auto` 대신 `mb-0` 사용 및 상위 ul의 flex-1로 공간 확보 */}
       <Link
         href={link}
         className={`mt-auto block w-full rounded-xl py-3 text-center text-base font-bold transition-colors ${

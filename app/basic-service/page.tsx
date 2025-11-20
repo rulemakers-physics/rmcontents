@@ -32,25 +32,19 @@ const features = [
   },
   {
     icon: AcademicCapIcon,
-    title: "교육청 모의고사 변형",
-    desc: "매년 시행되는 교육청 모의고사를 발빠르게 분석하고, 고퀄리티 변형 문항을 업데이트합니다.",
+    title: "교육청 모의고사 분석 및 유사문항",
+    desc: "매년 시행되는 교육청 모의고사를 발빠르게 분석하고, 고퀄리티 유사 문항을 업데이트합니다.",
   },
   {
     icon: CheckCircleIcon,
     title: "부교재 유사 문항",
-    desc: "EBS 및 주요 개념서, 부교재의 핵심 문항을 선별하여 유사 유형으로 변형 제공합니다.",
+    desc: "EBS 및 주요 개념서, 부교재의 핵심 문항을 선별하여 유사 유형으로 제공합니다.",
   },
 ];
 
 export default function BasicServicePage() {
-  // 실시간 인원 업데이트 시뮬레이션 (랜덤값)
-  const [seatsLeft, setSeatsLeft] = useState(12);
-
-  useEffect(() => {
-    // 컴포넌트 마운트 시 5~15 사이의 랜덤 값 설정
-    const random = Math.floor(Math.random() * (15 - 5 + 1)) + 5;
-    setSeatsLeft(random);
-  }, []);
+  // 실시간 인원 업데이트
+  const seatsLeft = 30
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -89,7 +83,7 @@ export default function BasicServicePage() {
           >
             선생님께서 강의에만 집중하실 수 있도록,
             <br className="hidden sm:block" />
-            탄탄한 문제 은행부터 학교별 내신 대비 컨텐츠까지 합리적 비용으로 만나보세요.
+            탄탄한 문제은행부터 학교별 내신 대비 컨텐츠까지 합리적 비용으로 만나보세요.
           </motion.p>
         </div>
       </section>
@@ -159,7 +153,7 @@ export default function BasicServicePage() {
               
               <p className="mt-6 text-xl text-gray-300">
                 최초 도입 비용 
-                <span className="mx-2 text-2xl font-bold text-gray-400 line-through decoration-red-500 decoration-4">100만원</span> 
+                <span className="mx-2 text-2xl font-bold text-gray-400 line-through decoration-red-400 decoration-4">100만원</span> 
                 <span className="text-3xl font-extrabold text-amber-400">전액 면제</span>
               </p>
               

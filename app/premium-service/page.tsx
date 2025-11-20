@@ -11,7 +11,7 @@ import {
   ClipboardDocumentCheckIcon,
   CpuChipIcon,
   BookOpenIcon,
-  ClockIcon,
+  IdentificationIcon,
   ArrowRightIcon,
 } from "@heroicons/react/24/outline";
 
@@ -24,32 +24,32 @@ const premiumFeatures = [
   {
     icon: SparklesIcon,
     title: "프리미엄 문제은행",
-    desc: "RuleMakers 자체 개발 고난도 문항을 포함한 모든 문항 풀을 사용하여 맞춤형 문항을 제작합니다.",
+    desc: "고난도 문항부터 서술형 문항까지. RuleMakers 자체 개발 High End 문항을 총 망라한 문항 풀로 제작하는 맞춤 자료",
   },
   {
     icon: PencilSquareIcon,
-    title: "커스텀 N제 & 모의고사",
-    desc: "강사님의 요청서에 따라 기출 분석, 내신 N제, 실전 모의고사를 100% 맞춤 제작합니다.",
+    title: "프리미엄 N제 제공",
+    desc: "특정 킬러 유형부터 취약 단원, 신유형까지 원하시는 컨셉에 맞춘 특화 자료를 제작해드립니다.",
   },
   {
     icon: ClipboardDocumentCheckIcon,
-    title: "교육청 Full Package",
-    desc: "교육청 모의고사 분석 및 변형 문항은 물론, 실전 대비 모의고사까지 완벽하게 제공합니다.",
+    title: "학생 관리 시스템",
+    desc: "진단 평가를 통한 학생 관리와 학부모 레포트. 평가 결과 기반 학습지 및 컨텐츠 추천까지",
   },
   {
     icon: BookOpenIcon,
-    title: "주요 교재 완벽 분석",
-    desc: "사용하시는 주요 개념서 및 부교재를 정밀 분석하여 수업과 연계된 고퀄리티 유사 문항을 제공합니다.",
+    title: "Custom Contents",
+    desc: "학교별, 학생 수준별 맞춤 컨텐츠를 바탕으로 나만의 커리큘럼 설계 기출 분석, 내신 N제, 실전 모의고사를 100% 맞춤 제작합니다.",
   },
   {
     icon: CpuChipIcon,
-    title: "컨셉별/킬러 N제",
-    desc: "특정 킬러 유형, 취약 단원, 신유형 등 원하시는 컨셉에 맞춘 특화 자료를 제작해드립니다.",
+    title: "내신대비 Contents",
+    desc: "학교별 기출 분석 레포트와 요청서에 따라 제공되는 학교별 모의고사 및 N제로 내신 완전 대비",
   },
   {
-    icon: ClockIcon,
-    title: "신속한 제작 및 검수",
-    desc: "요청 후 3일 이내 완성되며, 전문 연구진의 교차 검수까지 완료된 최종본을 전달합니다.",
+    icon: IdentificationIcon,
+    title: "1:1 담당자 배정",
+    desc: "선생님의 컨텐츠와 커리큘럼을 지원할 담당자를 배정하여 빠른 소통과 니즈에 맞는 컨텐츠를 제공합니다.",
   },
 ];
 
