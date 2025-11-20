@@ -65,16 +65,16 @@ export default function PremiumServicePage() {
             whileInView="animate"
             viewport={{ once: true }}
           >
-            <span className="inline-flex items-center rounded-full bg-blue-500/10 px-3 py-1 text-sm font-medium text-blue-400 ring-1 ring-inset ring-blue-500/20">
+            <span className="text-base font-semibold uppercase tracking-wide text-blue-400">
               Maker's Plan
             </span>
             <h1 className="mt-6 text-4xl font-extrabold leading-tight sm:text-5xl lg:text-6xl">
-              지금까지 경험하지 못한,
+              나만을 위한 High End 컨텐츠,
               <br />
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-teal-400">나만을 위한 High End 컨텐츠 연구소</span>
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-teal-400">메이커스 플랜</span>
             </h1>
             <p className="mx-auto mt-6 max-w-2xl text-lg text-gray-300">
-              시대인재 컨텐츠팀 RuleBreakers 대표가 설립한
+              시대인재 컨텐츠팀 RuleBreakers 대표가 설립한,
               <br className="hidden sm:block" />
               RuleMakers 연구소의 High Quality 자체 제작 문항들을 만나보세요.
             </p>

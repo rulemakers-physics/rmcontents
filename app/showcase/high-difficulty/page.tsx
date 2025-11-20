@@ -14,7 +14,7 @@ export default function HighDifficultyPage() {
             컨텐츠 샘플
           </p>
           <h1 className="mt-2 text-4xl font-extrabold sm:text-5xl">
-            고난도 문항모음
+            고난이도 문항모음zip
           </h1>
           <p className="mt-6 max-w-2xl mx-auto text-lg text-gray-300">
             상위권 변별을 위한 고난도 킬러 문항, 신유형 문항만을 선별하여
@@ -35,7 +35,7 @@ export default function HighDifficultyPage() {
             >
               <Image
                 src="/images/high-difficulty.png"
-                alt="고난도 문항모음 샘플"
+                alt="고난이도 문항모음zip 샘플"
                 fill={true}
                 sizes="(max-width: 768px) 100vw, 50vw"
                 className="object-cover"

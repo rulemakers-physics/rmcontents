@@ -190,7 +190,7 @@ export default function HomePage() {
             <motion.h1
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: 0.1 }}
+              transition={{ duration: 0.6, delay: 0.2 }}
               className="text-5xl font-extrabold leading-tight tracking-tight sm:text-6xl lg:text-7xl"
             >
               선생님만의{" "}
@@ -331,7 +331,6 @@ export default function HomePage() {
                 className="inline-flex items-center gap-2 rounded-lg bg-slate-900 px-8 py-4 text-lg font-bold text-white shadow-lg transition-transform hover:-translate-y-1 hover:bg-slate-800"
               >
                 지금 바로 시작하기
-                <ArrowDownTrayIcon className="h-5 w-5" />
               </Link>
             </div>
           </div>
@@ -413,7 +412,7 @@ export default function HomePage() {
                 title="Basic Plan"
                 subtitle="기본 문제은행 및 내신 대비 자료"
                 planType="구독형"
-                originalPrice="월 198,000원"
+                originalPrice="월 199,000원"
                 price="월 99,000원"
                 promotionText="2025년 Early Bird 특가"
                 features={[

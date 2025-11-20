@@ -54,7 +54,7 @@ const samples = [
     mockImageUrl: "/images/n-set.png", // 메인 페이지와 동일한 경로
   },
   {
-    title: "고난도 문항모음", // [추가] 세 번째 항목
+    title: "고난이도 문항모음zip", // [추가] 세 번째 항목
     slug: "high-difficulty", // [신규]
     description:
       "상위권 변별을 위한 고난도 킬러 문항, 신유형 문항만을 선별하여 제공합니다.",

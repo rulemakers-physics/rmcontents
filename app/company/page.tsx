@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { motion } from "framer-motion";
+import { motion, Variants } from "framer-motion";
 import { 
   AcademicCapIcon, 
   BeakerIcon, 
@@ -12,7 +12,8 @@ import {
 } from "@heroicons/react/24/outline";
 
 // --- Animation Variants ---
-const fadeInUp = {
+// fadeInUp 변수에 ': Variants' 타입을 추가합니다.
+const fadeInUp: Variants = {
   hidden: { opacity: 0, y: 20 },
   visible: { 
     opacity: 1, 
@@ -21,7 +22,8 @@ const fadeInUp = {
   }
 };
 
-const staggerContainer = {
+// staggerContainer 변수에도 ': Variants' 타입을 추가하면 좋습니다.
+const staggerContainer: Variants = {
   hidden: { opacity: 0 },
   visible: {
     opacity: 1,

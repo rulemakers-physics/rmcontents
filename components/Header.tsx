@@ -122,12 +122,12 @@ export default function Header() {
           {/* 2. 플랜 소개 (드롭다운) */}
           <div className="relative group">
             <button className="flex items-center text-sm font-medium text-gray-600 group-hover:text-blue-600 outline-none transition-colors cursor-pointer">
-              About Plans <ChevronDownIcon className="ml-1 h-4 w-4" />
+              Service Plans <ChevronDownIcon className="ml-1 h-4 w-4" />
             </button>
             <div className="absolute left-0 mt-0 w-40 origin-top-left bg-white border border-gray-200 rounded-md shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 transform translate-y-2 group-hover:translate-y-0">
               <div className="py-1">
-                <DropdownMenuItem href="/basic-service">베이직 플랜</DropdownMenuItem>
-                <DropdownMenuItem href="/premium-service">메이커스 플랜</DropdownMenuItem>
+                <DropdownMenuItem href="/basic-service">Basic Plan</DropdownMenuItem>
+                <DropdownMenuItem href="/premium-service">Maker's Plan</DropdownMenuItem>
               </div>
             </div>
           </div>
@@ -135,14 +135,14 @@ export default function Header() {
           {/* 3. 컨텐츠 샘플 (드롭다운) */}
           <div className="relative group">
             <button className="flex items-center text-sm font-medium text-gray-600 group-hover:text-blue-600 outline-none transition-colors cursor-pointer">
-              About Contents <ChevronDownIcon className="ml-1 h-4 w-4" />
+              Contents <ChevronDownIcon className="ml-1 h-4 w-4" />
             </button>
             <div className="absolute left-0 mt-0 w-56 origin-top-left bg-white border border-gray-200 rounded-md shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 transform translate-y-2 group-hover:translate-y-0">
               <div className="py-1">
                 <DropdownMenuItem href="/showcase">전체 보기</DropdownMenuItem>
                 <DropdownMenuItem href="/showcase/mock-exam">학교별 실전 모의고사</DropdownMenuItem>
                 <DropdownMenuItem href="/showcase/n-set">학교별 내신 대비 N제</DropdownMenuItem>
-                <DropdownMenuItem href="/showcase/high-difficulty">고난도 문항모음</DropdownMenuItem>
+                <DropdownMenuItem href="/showcase/high-difficulty">고난이도 문항모음zip</DropdownMenuItem>
               </div>
             </div>
           </div>
@@ -160,7 +160,7 @@ export default function Header() {
               <div className="absolute right-0 mt-0 w-56 origin-top-right bg-white border border-gray-200 rounded-md shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 transform translate-y-2 group-hover:translate-y-0">
                 <div className="py-1">
                   <Link href="/dashboard" className="flex justify-between px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 hover:text-blue-600">
-                    대시보드
+                    요청한 작업 목록
                     {unreadDashboard > 0 && (
                       <span className="ml-2 rounded-full bg-red-500 px-1.5 py-0.5 text-[10px] text-white">
                         {unreadDashboard > 9 ? "9+" : unreadDashboard}
@@ -258,8 +258,8 @@ export default function Header() {
 
           <div className="space-y-2">
             <p className="text-xs font-semibold text-gray-400 uppercase">플랜 소개</p>
-            <Link href="/basic-service" onClick={() => setIsMenuOpen(false)} className="block pl-4 text-sm text-gray-700 py-1">베이직 플랜</Link>
-            <Link href="/premium-service" onClick={() => setIsMenuOpen(false)} className="block pl-4 text-sm text-gray-700 py-1">메이커스 플랜</Link>
+            <Link href="/basic-service" onClick={() => setIsMenuOpen(false)} className="block pl-4 text-sm text-gray-700 py-1">Basic Plan</Link>
+            <Link href="/premium-service" onClick={() => setIsMenuOpen(false)} className="block pl-4 text-sm text-gray-700 py-1">Maker's Plan</Link>
           </div>
 
           <div className="space-y-2">
