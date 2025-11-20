@@ -116,13 +116,13 @@ export default function Header() {
           
           {/* 1. 회사 소개 */}
           <Link href="/company" className="text-sm font-medium text-gray-600 hover:text-blue-600 transition-colors">
-            회사 소개
+            About Us
           </Link>
 
           {/* 2. 플랜 소개 (드롭다운) */}
           <div className="relative group">
-            <button className="flex items-center text-sm font-medium text-gray-600 group-hover:text-blue-600 outline-none transition-colors">
-              플랜 소개 <ChevronDownIcon className="ml-1 h-4 w-4" />
+            <button className="flex items-center text-sm font-medium text-gray-600 group-hover:text-blue-600 outline-none transition-colors cursor-pointer">
+              About Plans <ChevronDownIcon className="ml-1 h-4 w-4" />
             </button>
             <div className="absolute left-0 mt-0 w-40 origin-top-left bg-white border border-gray-200 rounded-md shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 transform translate-y-2 group-hover:translate-y-0">
               <div className="py-1">
@@ -134,8 +134,8 @@ export default function Header() {
 
           {/* 3. 컨텐츠 샘플 (드롭다운) */}
           <div className="relative group">
-            <button className="flex items-center text-sm font-medium text-gray-600 group-hover:text-blue-600 outline-none transition-colors">
-              컨텐츠 샘플 <ChevronDownIcon className="ml-1 h-4 w-4" />
+            <button className="flex items-center text-sm font-medium text-gray-600 group-hover:text-blue-600 outline-none transition-colors cursor-pointer">
+              About Contents <ChevronDownIcon className="ml-1 h-4 w-4" />
             </button>
             <div className="absolute left-0 mt-0 w-56 origin-top-left bg-white border border-gray-200 rounded-md shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 transform translate-y-2 group-hover:translate-y-0">
               <div className="py-1">
@@ -150,8 +150,8 @@ export default function Header() {
           {/* 4. 마이 페이지 (로그인 시) */}
           {user && (
             <div className="relative group">
-              <button className="flex items-center text-sm font-medium text-gray-600 group-hover:text-blue-600 outline-none transition-colors">
-                마이 페이지 <ChevronDownIcon className="ml-1 h-4 w-4" />
+              <button className="flex items-center text-sm font-medium text-gray-600 group-hover:text-blue-600 outline-none transition-colors cursor-pointer">
+                My Page <ChevronDownIcon className="ml-1 h-4 w-4" />
                 {/* 알림 뱃지 (통합) */}
                 {(unreadDashboard > 0 || unreadActive > 0 || unreadCompleted > 0) && (
                   <span className="absolute -top-2 -right-2 flex h-3 w-3 items-center justify-center rounded-full bg-red-500"></span>
@@ -196,7 +196,7 @@ export default function Header() {
                   <div className="border-t my-1"></div>
                   <button
                     onClick={handleLogout}
-                    className="block w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-gray-50"
+                    className="block w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-gray-50 cursor-pointer"
                   >
                     로그아웃
                   </button>
@@ -204,6 +204,9 @@ export default function Header() {
               </div>
             </div>
           )}
+          <Link href="/contact" className="text-sm font-medium text-gray-600 hover:text-blue-600 transition-colors">
+            Contact
+          </Link>
 
           {/* 비로그인 시 로그인 버튼 */}
           {!user && !loading && (
@@ -290,7 +293,7 @@ export default function Header() {
                 </>
               )}
               
-              <button onClick={handleLogout} className="block w-full text-left pl-4 text-sm text-red-600 py-2 mt-2">
+              <button onClick={handleLogout} className="block w-full text-left pl-4 text-sm text-red-600 py-2 mt-2 cursor-pointer">
                 로그아웃
               </button>
             </div>
