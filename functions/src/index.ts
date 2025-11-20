@@ -7,6 +7,19 @@ import axios from "axios"; // [신규] 슬랙 연동을 위한 axios 임포트
 // Firebase Admin SDK 초기화
 admin.initializeApp(); 
 
+// 연구원 이름 <-> 슬랙 Member ID 매핑
+// [중요] 실제 슬랙 멤버 ID로 교체해야 멘션이 작동합니다.
+const RESEARCHER_SLACK_IDS: Record<string, string> = {
+  "김성배": "김성배",
+  "김호권": "김호권",
+  "김희경": "김호권",
+  "노유민": "노유민",
+  "이민지": "이민지",
+  "이정한": "이정한",
+  "이호열": "이호열",
+  "최명수": "최명수"
+};
+
 /**
  * [트리거] 새로운 사용자 계정이 생성될 때마다 자동으로 실행됩니다. (v1 방식)
  * (기존 코드 원본 유지)
@@ -173,6 +186,16 @@ export const sendSlackNotificationOnNewFeedback = functions.firestore
       return null;
     }
 
+    // [수정] 담당자 정보 구성
+    const assignedName = requestData.assignedResearcher; 
+    let assigneeText = "미배정"; // 담당자가 없을 경우 기본 문구
+
+    if (assignedName) {
+      // 슬랙 ID가 있으면 멘션 포맷(<@ID>), 없으면 이름만 표시
+      const slackId = RESEARCHER_SLACK_IDS[assignedName];
+      assigneeText = slackId ? `<@${slackId}>` : assignedName;
+    }
+
     // 4. 슬랙 메시지 구성
     const slackMessage = {
       blocks: [
@@ -193,6 +216,11 @@ export const sendSlackNotificationOnNewFeedback = functions.firestore
             {
               type: "mrkdwn",
               text: `*작성자:*\n${feedbackData.authorName}`
+            },
+            // [수정] 담당자 필드 추가
+            {
+              type: "mrkdwn",
+              text: `*담당자:*\n${assigneeText}`
             }
           ]
         },

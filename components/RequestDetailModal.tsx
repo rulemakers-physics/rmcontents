@@ -11,8 +11,13 @@ import {
   PaperClipIcon,
   XMarkIcon,
   ExclamationTriangleIcon,
+  UserCircleIcon, // [신규] 담당자 아이콘
 } from "@heroicons/react/24/outline";
-import FeedbackThread from "./FeedbackThread"; // [신규] 피드백 컴포넌트
+import FeedbackThread from "./FeedbackThread"; 
+import { ref, uploadBytes, getDownloadURL } from "firebase/storage"; // [신규]
+import { storage } from "@/lib/firebase"; // [신규]
+import { v4 as uuidv4 } from "uuid"; // [신규]
+import { useAuth } from "@/context/AuthContext"; // [신규]
 
 // --- 단원 데이터 (변경 없음) ---
 interface MajorTopic {
@@ -48,6 +53,18 @@ const scienceUnits: Subject[] = [
 ];
 // --- ---
 
+// [신규] 파일 데이터 타입 정의
+interface ReferenceFile {
+  name: string;
+  url: string;
+  path: string;
+}
+
+// [신규] RequestData 확장 (담당자 필드 인식을 위해)
+interface ExtendedRequestData extends RequestData {
+  assignedResearcher?: string;
+}
+
 interface RequestDetailModalProps {
   request: RequestData;
   onClose: () => void;
@@ -55,10 +72,10 @@ interface RequestDetailModalProps {
 }
 
 export default function RequestDetailModal({ request, onClose, onSave }: RequestDetailModalProps) {
-  
+  const { user } = useAuth(); // [신규] 파일 업로드 경로에 user.uid 사용
   const isReadOnly = request.status !== 'requested';
 
-  // --- 폼 State (변경 없음) ---
+  // --- 폼 State ---
   const [title, setTitle] = useState("");
   const [contentKind, setContentKind] = useState("");
   const [openMajorTopics, setOpenMajorTopics] = useState<string[]>([]);
@@ -68,10 +85,14 @@ export default function RequestDetailModal({ request, onClose, onSave }: Request
   const [questionCount, setQuestionCount] = useState("");
   const [deadline, setDeadline] = useState("");
   const [optionalDetails, setOptionalDetails] = useState("");
+  
+  // [수정] 파일 및 저장 상태 관리
+  const [currentFiles, setCurrentFiles] = useState<ReferenceFile[]>([]);
+  const [isUploading, setIsUploading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   // --- ---
 
-  // --- useEffect (변경 없음) ---
+  // --- useEffect ---
   useEffect(() => {
     setTitle(request.title);
     setContentKind(request.contentKind);
@@ -80,7 +101,8 @@ export default function RequestDetailModal({ request, onClose, onSave }: Request
     setQuestionCount(request.questionCount);
     setDeadline(request.deadline);
     setOptionalDetails(request.details || "");
-    
+    // [신규] 초기 파일 목록 설정
+    setCurrentFiles(request.referenceFiles || []);
   }, [request]);
   
   // --- 단원 핸들러 (변경 없음) ---
@@ -131,40 +153,84 @@ export default function RequestDetailModal({ request, onClose, onSave }: Request
       selectedScope[subjectName][majorTopicName].includes(minorTopicName)
     );
   };
-  // --- ---
 
-  // --- 저장 핸들러 (변경 없음) ---
+  // --- [신규] 파일 추가 핸들러 ---
+  const handleAddFiles = async (e: ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files || e.target.files.length === 0 || !user) return;
+    setIsUploading(true);
+
+    try {
+      const newFiles = Array.from(e.target.files);
+      const uploadPromises = newFiles.map(async (file) => {
+        const uniqueFileName = `${uuidv4()}-${file.name}`;
+        const storagePath = `uploads/requests/${user.uid}/${uniqueFileName}`;
+        const fileRef = ref(storage, storagePath);
+        await uploadBytes(fileRef, file);
+        const fileUrl = await getDownloadURL(fileRef);
+        return {
+          name: file.name,
+          url: fileUrl,
+          path: storagePath,
+        };
+      });
+
+      const uploadedFiles = await Promise.all(uploadPromises);
+      setCurrentFiles((prev) => [...prev, ...uploadedFiles]);
+    } catch (error) {
+      console.error("파일 업로드 실패:", error);
+      alert("파일 업로드 중 오류가 발생했습니다.");
+    }
+    setIsUploading(false);
+  };
+
+  // --- [신규] 파일 삭제 핸들러 ---
+  const handleDeleteFile = (indexToRemove: number) => {
+    if (confirm("이 파일을 목록에서 삭제하시겠습니까? ('변경 내용 저장' 버튼을 눌러야 반영됩니다)")) {
+      setCurrentFiles((prev) => prev.filter((_, idx) => idx !== indexToRemove));
+    }
+  };
+
+  // --- [수정] 저장 핸들러 ---
   const handleSaveSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    if (isReadOnly) return;
     
-    if (!title || !contentKind || !quantity || !questionCount || !deadline || 
-        Object.keys(selectedScope).length === 0) 
-    {
-      alert("필수 항목(*)을 모두 입력해주세요. (단원 범위 포함)");
-      return;
+    // 기본 정보 유효성 검사는 '접수됨(requested)' 상태일 때만 수행
+    if (!isReadOnly) {
+      if (!title || !contentKind || !quantity || !questionCount || !deadline || 
+          Object.keys(selectedScope).length === 0) 
+      {
+        alert("필수 항목(*)을 모두 입력해주세요. (단원 범위 포함)");
+        return;
+      }
     }
 
     setIsSaving(true);
+
+    // 업데이트할 데이터 구성
     const updatedData: Partial<RequestData> = {
-      title,
-      contentKind,
-      scope: selectedScope,
-      quantity: parseInt(quantity, 10),
-      questionCount,
-      deadline,
-      details: optionalDetails,
+      // 파일 정보와 상세 내용(details)은 상태와 무관하게 항상 업데이트 가능
+      referenceFiles: currentFiles,
+      details: optionalDetails, 
     };
+
+    // '접수됨' 상태일 때만 나머지 핵심 필드도 업데이트
+    if (!isReadOnly) {
+      updatedData.title = title;
+      updatedData.contentKind = contentKind;
+      updatedData.scope = selectedScope;
+      updatedData.quantity = parseInt(quantity, 10);
+      updatedData.questionCount = questionCount;
+      updatedData.deadline = deadline;
+    }
 
     await onSave(updatedData);
     setIsSaving(false);
   };
 
-
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4">
       <div className="relative w-full max-w-4xl max-h-[90vh] rounded-lg bg-gray-100 shadow-xl">
-        {/* 모달 헤더 (변경 없음) */}
+        {/* 모달 헤더 */}
         <div className="flex items-center justify-between p-4 border-b border-gray-300 bg-white rounded-t-lg">
           <h2 className="text-2xl font-bold text-gray-900">
             {isReadOnly ? "요청 내역 확인" : "요청 내역 수정"}
@@ -174,7 +240,7 @@ export default function RequestDetailModal({ request, onClose, onSave }: Request
           </button>
         </div>
 
-        {/* 모달 바디 (변경 없음) */}
+        {/* 모달 바디 */}
         <div className="overflow-y-auto max-h-[calc(90vh-140px)] p-6 space-y-8">
           
           {request.status === 'rejected' && (
@@ -189,7 +255,16 @@ export default function RequestDetailModal({ request, onClose, onSave }: Request
             </div>
           )}
 
-          {/* --- 폼 (변경 없음) --- */}
+          {/* [신규] 담당자 배정 정보 표시 */}
+          {(request as ExtendedRequestData).assignedResearcher && (
+             <div className="rounded-md bg-blue-50 p-4 border border-blue-200 flex items-center gap-2">
+                <UserCircleIcon className="h-5 w-5 text-blue-600" />
+                <span className="text-blue-700 font-bold">담당 연구원:</span>
+                <span className="text-blue-900">{(request as ExtendedRequestData).assignedResearcher}</span>
+             </div>
+          )}
+
+          {/* --- 폼 --- */}
           <form onSubmit={handleSaveSubmit} className="space-y-8">
             
             <div className="rounded-lg bg-white p-6 shadow-lg sm:p-8">
@@ -223,6 +298,11 @@ export default function RequestDetailModal({ request, onClose, onSave }: Request
                   <ChevronDownIcon className="pointer-events-none absolute right-3 top-8 h-5 w-5 text-gray-400" />
                 </div>
               </div>
+            </div>
+
+              {/* --- 피드백 쓰레드 (prop 전달) --- */}
+            <div className="mt-8">
+            <FeedbackThread requestId={request.id} requestStatus={request.status} />
             </div>
 
             <div className="rounded-lg bg-white p-6 shadow-lg sm:p-8">
@@ -318,57 +398,56 @@ export default function RequestDetailModal({ request, onClose, onSave }: Request
                   </div>
                 </div>
               </div>
+
               <div className="rounded-lg bg-white p-6 shadow-lg sm:p-8">
-                <h2 className="flex items-center text-xl font-semibold text-gray-800"><PaperClipIcon className="h-6 w-6 mr-2 text-indigo-600" />추가 사항</h2>
+                <h2 className="flex items-center text-xl font-semibold text-gray-800"><PaperClipIcon className="h-6 w-6 mr-2 text-indigo-600" />추가 사항 및 파일</h2>
                 <div className="mt-6 space-y-6">
                   <div>
                     <label htmlFor="optionalDetails" className="block text-sm font-medium text-gray-700">상세 요청 내용 (선택)</label>
-                    <textarea id="optionalDetails" rows={5} value={optionalDetails} onChange={(e) => setOptionalDetails(e.target.value)} disabled={isReadOnly} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 disabled:bg-gray-100 disabled:cursor-not-allowed" placeholder="특정 유형, 스타일..."/>
+                    {/* [수정] 상세 요청 내용도 항상 수정 가능하게 변경 */}
+                    <textarea id="optionalDetails" rows={5} value={optionalDetails} onChange={(e) => setOptionalDetails(e.target.value)} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500" placeholder="추가 요청사항이나 변경사항이 있다면 언제든 수정해주세요."/>
                   </div>
                   
                   <div>
-                    <label className="block text-sm font-medium text-gray-700">첨부된 참고 파일</label>
-                    {request.referenceFiles && request.referenceFiles.length > 0 ? (
-                      <ul className="mt-3 space-y-2 rounded-md border border-gray-200 bg-gray-50 p-3">
-                        {request.referenceFiles.map((file) => (
-                          <li key={file.path}>
-                            <a
-                              href={file.url}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="flex items-center gap-2 text-sm font-medium text-blue-600 hover:underline"
-                            >
-                              <PaperClipIcon className="h-4 w-4" />
-                              <span>{file.name}</span>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">첨부 파일 (수정 가능)</label>
+                    
+                    {/* [수정] 파일 리스트 (삭제 기능 추가) */}
+                    {currentFiles.length > 0 ? (
+                      <ul className="space-y-2 mb-4">
+                        {currentFiles.map((file, idx) => (
+                          <li key={idx} className="flex items-center justify-between bg-gray-50 p-2 rounded border border-gray-200">
+                            <a href={file.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-sm text-blue-600 hover:underline truncate">
+                              <PaperClipIcon className="h-4 w-4 flex-shrink-0" />
+                              <span className="truncate">{file.name}</span>
                             </a>
+                            <button type="button" onClick={() => handleDeleteFile(idx)} className="text-gray-400 hover:text-red-500 ml-2">
+                              <XMarkIcon className="h-5 w-5" />
+                            </button>
                           </li>
                         ))}
                       </ul>
                     ) : (
-                      <div className="mt-2 flex items-center gap-4 rounded-md bg-gray-100 p-3">
-                        <DocumentArrowUpIcon className="h-5 w-5 text-gray-500"/>
-                        <span className="text-sm text-gray-600">
-                          첨부 파일 없음
-                        </span>
-                      </div>
+                      <p className="text-sm text-gray-500 mb-4">첨부된 파일이 없습니다.</p>
                     )}
-                    {!isReadOnly && (
-                      <p className="mt-2 text-xs text-gray-500">파일을 수정하려면 요청을 취소하고 다시 생성해야 합니다.</p>
-                    )}
+
+                    {/* [수정] 파일 추가 버튼 (항상 노출) */}
+                    <label className="cursor-pointer inline-flex items-center rounded-md bg-white px-3 py-2 text-sm font-medium text-indigo-700 border border-indigo-600 shadow-sm hover:bg-indigo-50">
+                       {isUploading ? "업로드 중..." : (
+                         <>
+                           <DocumentArrowUpIcon className="h-4 w-4 mr-2"/>
+                           파일 추가하기
+                         </>
+                       )}
+                       <input type="file" multiple accept=".pdf,.png,.jpg,.jpeg" onChange={handleAddFiles} className="hidden" disabled={isUploading} />
+                    </label>
                   </div>
                 </div>
               </div>
             </div>
           </form>
-
-          {/* --- [수정] 피드백 쓰레드 (prop 전달) --- */}
-          <div className="mt-8">
-            <FeedbackThread requestId={request.id} requestStatus={request.status} />
-          </div>
-
         </div>
 
-        {/* --- 모달 푸터 (변경 없음) --- */}
+        {/* --- 모달 푸터 --- */}
         <div className="flex items-center justify-end space-x-3 p-4 border-t border-gray-300 bg-white rounded-b-lg">
           <button
             type="button"
@@ -377,16 +456,15 @@ export default function RequestDetailModal({ request, onClose, onSave }: Request
           >
             닫기
           </button>
-          {!isReadOnly && (
-            <button
-              type="button"
-              onClick={handleSaveSubmit} 
-              disabled={isSaving}
-              className="rounded-md border border-transparent bg-indigo-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-indigo-700 disabled:opacity-50"
-            >
-              {isSaving ? "저장 중..." : "변경 내용 저장"}
-            </button>
-          )}
+          {/* [수정] 저장 버튼은 항상 활성화 (파일/내용 저장을 위해) */}
+          <button
+            type="button"
+            onClick={handleSaveSubmit} 
+            disabled={isSaving || isUploading}
+            className="rounded-md border border-transparent bg-indigo-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-indigo-700 disabled:opacity-50"
+          >
+            {isSaving ? "저장 중..." : "변경 내용 저장"}
+          </button>
         </div>
 
       </div>
