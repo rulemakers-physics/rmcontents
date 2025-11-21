@@ -9,8 +9,11 @@ import {
   BuildingOffice2Icon,
   CheckCircleIcon,
   ClockIcon,
-  SparklesIcon
+  SparklesIcon,
+  MapPinIcon,
+  PhoneIcon
 } from "@heroicons/react/24/outline";
+import BranchMap3D from "@/components/BranchMap3D";
 
 // --- Animation Variants ---
 const fadeInUp: Variants = {
@@ -32,6 +35,52 @@ const staggerContainer: Variants = {
     }
   }
 };
+
+// ▼▼▼ [1] 위치 데이터 배열 추가 (이 부분을 수정해서 내용을 채우세요) ▼▼▼
+const BRANCH_LIST = [
+  {
+    id: 1,
+    name: "샤인학원 고등 본관",
+    address: "주소를 입력해주세요 (예: 서울 관악구 ...)",
+    phone: "02-0000-0000",
+    type: "Academy", // 뱃지 표시용
+  },
+  {
+    id: 2,
+    name: "샤인학원 수학과학관",
+    address: "주소를 입력해주세요",
+    phone: "02-0000-0000",
+    type: "Academy",
+  },
+  {
+    id: 3,
+    name: "샤인학원 초중등관",
+    address: "주소를 입력해주세요",
+    phone: "02-0000-0000",
+    type: "Academy",
+  },
+  {
+    id: 4,
+    name: "EG학원 금천관",
+    address: "주소를 입력해주세요",
+    phone: "02-0000-0000",
+    type: "Academy",
+  },
+  {
+    id: 5,
+    name: "EG학원 난곡관",
+    address: "주소를 입력해주세요",
+    phone: "02-0000-0000",
+    type: "Academy",
+  },
+  {
+    id: 6,
+    name: "샤인독서실 동작 본관",
+    address: "주소를 입력해주세요",
+    phone: "02-0000-0000",
+    type: "Study Center",
+  },
+];
 
 export default function CompanyPage() {
   return (
@@ -262,7 +311,50 @@ export default function CompanyPage() {
           </div>
         </div>
       </section>
+      {/* [신규] 3D Location Map Section */}
+      <section className="bg-slate-950 py-0 overflow-hidden border-y border-slate-800">
+        <div className="container mx-auto px-6 pt-20 text-center">
+           <motion.div 
+             initial="hidden" whileInView="visible" viewport={{ once: true }} variants={fadeInUp}
+             className="mb-10"
+           >
+             <span className="text-blue-500 font-bold tracking-widest text-xs uppercase">Our Locations</span>
+             <h2 className="text-3xl md:text-4xl font-bold text-white mt-3">
+               RuleMakers in Seoul
+             </h2>
+             <p className="text-slate-400 mt-4">
+               관악, 동작, 금천의 교육 현장에서<br/>학생들과 가장 가까이 호흡합니다.
+             </p>
+           </motion.div>
+        </div>
+        
+        {/* 3D 지도 컴포넌트 삽입 */}
+        <BranchMap3D />
+      </section>
 
+      {/* [신규] Branch Details Grid (텍스트 정보) */}
+      <section className="py-24 bg-white">
+         <div className="container mx-auto px-6 max-w-6xl">
+            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+               {BRANCH_LIST.map(branch => (
+                  <div key={branch.id} className="p-6 rounded-2xl border border-slate-200 hover:border-blue-200 hover:shadow-xl transition-all">
+                     <span className={`text-[10px] font-bold px-2 py-1 rounded text-white mb-3 inline-block ${branch.type === 'Academy' ? 'bg-blue-500' : 'bg-indigo-500'}`}>
+                        {branch.type}
+                     </span>
+                     <h3 className="text-xl font-bold text-slate-900 mb-4">{branch.name}</h3>
+                     <div className="space-y-2 text-sm text-slate-600">
+                        <p className="flex items-center gap-2">
+                           <MapPinIcon className="w-4 h-4 text-slate-400"/> {branch.address}
+                        </p>
+                        <p className="flex items-center gap-2">
+                           <PhoneIcon className="w-4 h-4 text-slate-400"/> {branch.phone}
+                        </p>
+                     </div>
+                  </div>
+               ))}
+            </div>
+         </div>
+      </section>
       {/* 4. Technology Section (Deep Dark with Glassmorphism) */}
       <section className="py-24 bg-slate-950 text-white overflow-hidden relative">
         {/* Abstract Background */}
@@ -485,6 +577,67 @@ export default function CompanyPage() {
     </div>
   </div>
 </section>
+{/* ▼▼▼ [2] History 섹션 바로 아래에 위치 정보 섹션 추가 ▼▼▼ */}
+      <section className="py-24 bg-slate-50 border-t border-slate-200">
+        <div className="container mx-auto px-6 max-w-6xl">
+          <motion.div
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true }}
+            variants={fadeInUp}
+            className="text-center mb-16"
+          >
+            <h2 className="text-3xl font-bold text-slate-900">Our Branches</h2>
+            <p className="text-slate-500 mt-4 max-w-2xl mx-auto">
+              RuleMakers는 서울 관악/동작/금천 지역을 거점으로<br />
+              6개의 직영 학원 및 프리미엄 독서실을 운영하며 현장과 호흡합니다.
+            </p>
+          </motion.div>
+
+          <motion.div
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true }}
+            variants={staggerContainer}
+            className="grid gap-6 md:grid-cols-2 lg:grid-cols-3"
+          >
+            {BRANCH_LIST.map((branch) => (
+              <motion.div
+                key={branch.id}
+                variants={fadeInUp}
+                className="group bg-white p-6 rounded-2xl border border-slate-200 shadow-sm hover:shadow-xl hover:border-blue-200 transition-all duration-300 hover:-translate-y-1"
+              >
+                <div className="flex items-center justify-between mb-4">
+                  <span className={`text-xs font-bold px-3 py-1 rounded-full ${
+                    branch.type === 'Academy' 
+                      ? 'bg-blue-50 text-blue-600' 
+                      : 'bg-indigo-50 text-indigo-600'
+                  }`}>
+                    {branch.type}
+                  </span>
+                  {/* 네이버/카카오맵 아이콘 등을 넣어 링크 연결 가능 */}
+                </div>
+                
+                <h3 className="text-xl font-bold text-slate-900 mb-4 group-hover:text-blue-600 transition-colors">
+                  {branch.name}
+                </h3>
+                
+                <div className="space-y-3 text-sm text-slate-600">
+                  <div className="flex items-start gap-3">
+                    <MapPinIcon className="w-5 h-5 text-slate-400 flex-shrink-0 mt-0.5" />
+                    <span className="leading-relaxed">{branch.address}</span>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <PhoneIcon className="w-5 h-5 text-slate-400 flex-shrink-0" />
+                    <span className="font-medium">{branch.phone}</span>
+                  </div>
+                </div>
+              </motion.div>
+            ))}
+          </motion.div>
+        </div>
+      </section>
+      
     </main>
   );
 }

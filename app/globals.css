@@ -37,3 +37,34 @@ body {
   /* [수정] Arial 대신 CSS 변수(Pretendard)를 기본 폰트로 사용 */
   font-family: var(--font-sans);
 }
+
+
+/* 3D Transform 유틸리티 (Tailwind 기본에 없을 경우 대비) */
+.perspective-2000 {
+  perspective: 2000px;
+}
+.transform-style-3d {
+  transform-style: preserve-3d;
+}
+
+/* global.css 맨 아래에 추가하세요 */
+
+/* 1. 스캔 라인 애니메이션 정의 */
+@keyframes scan {
+  0% {
+    transform: translateY(-50%);
+  }
+  100% {
+    transform: translateY(0%);
+  }
+}
+
+/* 2. Tailwind 클래스처럼 사용할 수 있게 클래스 생성 */
+.animate-scan-slow {
+  animation: scan 4s linear infinite;
+}
+
+
+.backface-hidden {
+  backface-visibility: hidden;
+}
