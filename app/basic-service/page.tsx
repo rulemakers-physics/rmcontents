@@ -85,6 +85,28 @@ export default function BasicServicePage() {
             <br className="hidden sm:block" />
             탄탄한 문제은행부터 학교별 내신 대비 컨텐츠까지 합리적 비용으로 만나보세요.
           </motion.p>
+          
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ delay: 0.3 }}
+            className="mt-10 flex justify-center gap-4"
+          >
+            <Link
+              href="/contact"
+              className="rounded-lg bg-blue-600 px-8 py-3.5 text-base font-semibold text-white shadow-lg transition-colors hover:bg-blue-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
+            >
+              도입 문의하기
+            </Link>
+            <Link
+              href="/showcase"
+              className="group flex items-center gap-2 rounded-lg border border-gray-600 px-8 py-3.5 text-base font-semibold text-gray-300 transition-colors hover:border-gray-500 hover:text-white"
+            >
+              샘플 확인하기
+              <ArrowRightIcon className="h-4 w-4 transition-transform group-hover:translate-x-1" />
+            </Link>
+          </motion.div>
         </div>
       </section>
 

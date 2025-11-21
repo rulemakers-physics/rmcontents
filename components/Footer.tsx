@@ -79,8 +79,8 @@ const Footer = () => {
         {/* [수정] 저작권과 법적 고지를 하나의 그룹으로 묶음 */}
         <div className="flex flex-col items-center space-y-2 text-center">
           {/* 2. [순서 변경] 저작권 문구 (중간) */}
-          <p className="text-sm text-gray-500">
-            © {currentYear} RuleMakers. All rights reserved.
+          <p className="text-sm text-gray-600">
+            © {currentYear} RuleMakers Inc. All rights reserved.
           </p>
 
           {/* 3. [순서 변경] 법적 고지 링크 (가장 아래) */}
