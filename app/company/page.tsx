@@ -360,7 +360,7 @@ export default function CompanyPage() {
               <ul className="mt-1 space-y-1">
                 <li className="flex items-start gap-2 pl-5 text-slate-500 text-sm">
                   <span className="text-slate-300 mt-2 h-px w-2 bg-slate-300 flex-shrink-0"></span>
-                  위상 분석 기반 문항 유사도 및 특성 분석 알고리즘
+                  위상 분석 기반 문항 유사도 및 특성 분석 알고리즘 자체 개발
                 </li>
               </ul>
             </li>
