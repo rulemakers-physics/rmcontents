@@ -41,35 +41,35 @@ const BRANCH_LIST = [
   {
     id: 1,
     name: "샤인학원 고등 본관",
-    address: "주소를 입력해주세요 (예: 서울 관악구 ...)",
+    address: "서울 동작구 여의대방로 200",
     phone: "02-0000-0000",
     type: "Academy", // 뱃지 표시용
   },
   {
     id: 2,
     name: "샤인학원 수학과학관",
-    address: "주소를 입력해주세요",
+    address: "서울 영등포구 여의대방로 79 2층, 3층",
     phone: "02-0000-0000",
     type: "Academy",
   },
   {
     id: 3,
     name: "샤인학원 초중등관",
-    address: "주소를 입력해주세요",
+    address: "서울 동작구 대방동길 86",
     phone: "02-0000-0000",
     type: "Academy",
   },
   {
     id: 4,
     name: "EG학원 금천관",
-    address: "주소를 입력해주세요",
+    address: "서울 금천구 남부순환로 1372 2층 EG학원",
     phone: "02-0000-0000",
     type: "Academy",
   },
   {
     id: 5,
     name: "EG학원 난곡관",
-    address: "주소를 입력해주세요",
+    address: "서울 관악구 남부순환로 1495 2-3층",
     phone: "02-0000-0000",
     type: "Academy",
   },
@@ -311,50 +311,7 @@ export default function CompanyPage() {
           </div>
         </div>
       </section>
-      {/* [신규] 3D Location Map Section */}
-      <section className="bg-slate-950 py-0 overflow-hidden border-y border-slate-800">
-        <div className="container mx-auto px-6 pt-20 text-center">
-           <motion.div 
-             initial="hidden" whileInView="visible" viewport={{ once: true }} variants={fadeInUp}
-             className="mb-10"
-           >
-             <span className="text-blue-500 font-bold tracking-widest text-xs uppercase">Our Locations</span>
-             <h2 className="text-3xl md:text-4xl font-bold text-white mt-3">
-               RuleMakers in Seoul
-             </h2>
-             <p className="text-slate-400 mt-4">
-               관악, 동작, 금천의 교육 현장에서<br/>학생들과 가장 가까이 호흡합니다.
-             </p>
-           </motion.div>
-        </div>
-        
-        {/* 3D 지도 컴포넌트 삽입 */}
-        <BranchMap3D />
-      </section>
 
-      {/* [신규] Branch Details Grid (텍스트 정보) */}
-      <section className="py-24 bg-white">
-         <div className="container mx-auto px-6 max-w-6xl">
-            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-               {BRANCH_LIST.map(branch => (
-                  <div key={branch.id} className="p-6 rounded-2xl border border-slate-200 hover:border-blue-200 hover:shadow-xl transition-all">
-                     <span className={`text-[10px] font-bold px-2 py-1 rounded text-white mb-3 inline-block ${branch.type === 'Academy' ? 'bg-blue-500' : 'bg-indigo-500'}`}>
-                        {branch.type}
-                     </span>
-                     <h3 className="text-xl font-bold text-slate-900 mb-4">{branch.name}</h3>
-                     <div className="space-y-2 text-sm text-slate-600">
-                        <p className="flex items-center gap-2">
-                           <MapPinIcon className="w-4 h-4 text-slate-400"/> {branch.address}
-                        </p>
-                        <p className="flex items-center gap-2">
-                           <PhoneIcon className="w-4 h-4 text-slate-400"/> {branch.phone}
-                        </p>
-                     </div>
-                  </div>
-               ))}
-            </div>
-         </div>
-      </section>
       {/* 4. Technology Section (Deep Dark with Glassmorphism) */}
       <section className="py-24 bg-slate-950 text-white overflow-hidden relative">
         {/* Abstract Background */}
@@ -577,6 +534,26 @@ export default function CompanyPage() {
     </div>
   </div>
 </section>
+      {/* [신규] 3D Location Map Section */}
+      <section className="bg-slate-950 py-0 overflow-hidden border-y border-slate-800">
+        <div className="container mx-auto px-6 pt-20 text-center">
+           <motion.div 
+             initial="hidden" whileInView="visible" viewport={{ once: true }} variants={fadeInUp}
+             className="mb-10"
+           >
+             <span className="text-blue-500 font-bold tracking-widest text-xs uppercase">Our Locations</span>
+             <h2 className="text-3xl md:text-4xl font-bold text-white mt-3">
+               RuleMakers in Seoul
+             </h2>
+             <p className="text-slate-400 mt-4">
+               관악, 동작, 금천의 교육 현장에서<br/>학생들과 가장 가까이 호흡합니다.
+             </p>
+           </motion.div>
+        </div>
+        
+        {/* 3D 지도 컴포넌트 삽입 */}
+        <BranchMap3D />
+      </section>
 {/* ▼▼▼ [2] History 섹션 바로 아래에 위치 정보 섹션 추가 ▼▼▼ */}
       <section className="py-24 bg-slate-50 border-t border-slate-200">
         <div className="container mx-auto px-6 max-w-6xl">

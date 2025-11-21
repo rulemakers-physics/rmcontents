@@ -80,21 +80,16 @@ export default function BranchMap3D() {
             </div>
 
             {/* ⚠️ 지도 이미지: 이미지를 구하면 아래 주석을 해제하고 경로를 수정하세요 */}
-            {/* <Image 
+            <Image 
               src="/images/map-dark.png" 
               alt="Map Background" 
               fill
               className="object-cover opacity-60 grayscale mix-blend-overlay"
             />
-            */}
 
             {/* 스캔 라인 애니메이션 (global.css에 정의됨) */}
             <div className="absolute inset-0 bg-gradient-to-b from-transparent via-blue-500/10 to-transparent h-[200%] w-full animate-scan-slow pointer-events-none" />
             
-            {/* 지역 라벨 */}
-            <div className="absolute top-[10%] left-[10%] text-white/5 font-black text-[8vw] leading-none select-none pointer-events-none">
-                SEOUL<br/>SOUTH
-            </div>
           </div>
 
           {/* --- [PINS & MARKERS] --- */}
@@ -108,13 +103,6 @@ export default function BranchMap3D() {
           ))}
 
         </motion.div>
-      </div>
-
-      {/* 하단 안내 문구 */}
-      <div className="absolute bottom-8 left-0 w-full text-center pointer-events-none z-50">
-        <p className="text-white/40 text-sm tracking-widest uppercase animate-pulse">
-          Interactive Map System
-        </p>
       </div>
     </section>
   );
