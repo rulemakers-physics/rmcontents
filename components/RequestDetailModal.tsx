@@ -330,7 +330,7 @@ export default function RequestDetailModal({ request, onClose, onSave }: Request
                             </button>
                             {isOpen && (
                               <div className="border-t border-gray-200 bg-white p-4">
-                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2">
+                                <div className="flex flex-col space-y-1">
                                   {majorTopic.minorTopics.map((minorTopic) => (
                                     <div key={minorTopic} className="flex items-center">
                                       <input

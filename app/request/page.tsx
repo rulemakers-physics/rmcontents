@@ -364,7 +364,7 @@ export default function RequestPage() {
                               {/* 중주제 목록 (Accordion Content) */}
                               {isOpen && (
                                 <div className="border-t border-gray-200 bg-white p-4">
-                                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2">
+                                  <div className="flex flex-col space-y-1">
                                     {majorTopic.minorTopics.map((minorTopic) => (
                                       <div key={minorTopic} className="flex items-center">
                                         <input
@@ -579,6 +579,27 @@ export default function RequestPage() {
           {/* === 오른쪽 사이드바 (변경 없음) === */}
           <div className="md:col-span-1">
             <div className="md:sticky md:top-24 space-y-6">
+              {/* [추가] 단원 선택 가이드 (스크롤 따라옴) */}
+              <div className="rounded-lg bg-indigo-900 p-6 shadow-lg text-white">
+                <h3 className="flex items-center text-lg font-bold">
+                  <BookOpenIcon className="h-5 w-5 mr-2 text-yellow-400" />
+                  단원 선택 가이드
+                </h3>
+                <div className="mt-4 space-y-3 text-sm text-indigo-100">
+                  <p>
+                    <span className="font-bold text-white">Tip 1.</span><br/>
+                      출판사마다 단원 구성이 다를 수 있습니다. 주제명을 기준으로 선택해주세요.
+                  </p>
+                  <p>
+                    <span className="font-bold text-white">Tip 2.</span><br/>
+                    <span className="underline decoration-yellow-400/50 underline-offset-4">시험 범위가 겹치는 경우</span>,
+                    해당되는 모든 소단원을 넉넉하게 체크해주시는 것이 좋습니다.
+                    </p>
+                    <p className="pt-2 text-xs opacity-80 border-t border-indigo-700">
+                      * 선택하신 범위 내에서 문항 선별 및 난이도 조정이 이루어집니다.
+                    </p>
+                  </div>
+                </div>
               {/* 핵심 가치 카드 */}
               <div className="rounded-lg bg-white p-6 shadow-lg">
                 <h3 className="text-lg font-semibold text-gray-900">

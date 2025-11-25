@@ -11,7 +11,13 @@ import {
   ClockIcon,
   SparklesIcon,
   MapPinIcon,
-  PhoneIcon
+  PhoneIcon,
+  // ▼▼▼ [추가된 아이콘] ▼▼▼
+  UserGroupIcon,       // 팀 아이콘
+  CommandLineIcon,     // 개발 아이콘
+  DocumentTextIcon,    // 컨텐츠 아이콘
+  TrophyIcon,           // 뱃지용
+  ChatBubbleLeftRightIcon // [추가] CS팀 아이콘
 } from "@heroicons/react/24/outline";
 import BranchMap3D from "@/components/BranchMap3D";
 
@@ -155,8 +161,8 @@ export default function CompanyPage() {
               </div>
               <h3 className="text-xl font-bold text-slate-900 mb-3">Mission</h3>
               <p className="text-slate-600 leading-relaxed break-keep">
-                <strong>최적화된 학습 경험을 제공하는 것.</strong><br/>
-                단순한 지식 전달을 넘어, 학습자가 성취를 느끼는 본질적인 가치를 전달합니다.
+                <strong>교육을 최적화하는 것.</strong><br/>
+                학습자의 상태와 학습 목표를 바탕으로 최적의 학습 경험을 설계하여 <strong>효율적인 성장</strong>을 만듭니다.
               </p>
             </motion.div>
 
@@ -167,8 +173,8 @@ export default function CompanyPage() {
               </div>
               <h3 className="text-xl font-bold text-slate-900 mb-3">Vision</h3>
               <p className="text-slate-600 leading-relaxed break-keep">
-                <strong>목표 달성을 위한 최적의 경로 제시.</strong><br/>
-                구체적인 목표를 설정하고 이를 달성하기 위한 가장 확실한 로드맵을 그리는 서비스를 만듭니다.
+                <strong>최고의 교육 지원 솔루션</strong><br/>
+                교수자가 학습자를 이해하는 것을 돕고, 의도한 대로 교육을 제공할 수 있도록 지원합니다.
               </p>
             </motion.div>
 
@@ -180,7 +186,7 @@ export default function CompanyPage() {
               <h3 className="text-xl font-bold text-slate-900 mb-3">Identity</h3>
               <p className="text-slate-600 leading-relaxed break-keep">
                 <strong>New Standard of Education.</strong><br/>
-                교육 현장의 목소리와 기술적 전문성을 결합하여 교육의 새로운 기준(Standard)을 제시합니다.
+                RuleMakers는 모두의 성장을 추구하고, 가치를 만들어 나가 새로운 세상을 설계합니다.
               </p>
             </motion.div>
           </motion.div>
@@ -210,8 +216,8 @@ export default function CompanyPage() {
                 </div>
                 
                 <h2 className="text-3xl md:text-4xl font-bold text-slate-900 mb-10 leading-snug break-keep">
-                  좋은 컨텐츠가 강사의 경쟁력이자,<br/>
-                  <span className="bg-blue-100/50 px-1">곧 학생의 성적입니다.</span>
+                  에듀테크,<br/>
+                  <span className="bg-blue-100/50 px-1">기술이 아니라 교육입니다.</span>
                 </h2>
                 
                 <div className="prose prose-lg text-slate-600 leading-loose space-y-6 break-keep font-light">
@@ -226,8 +232,13 @@ export default function CompanyPage() {
                     수많은 학생들과 호흡하고 강사님들을 지원하며 느낀 점은 명확했습니다.
                     현장의 강사님들이 수업 준비와 행정 업무 속에서 자신만의 고퀄리티 컨텐츠를 제작하는 것은 현실적으로 매우 어렵다는 것입니다.
                   </p>
+                  <p>
+                    학생을 이해하는 데 도움을 주는 "데이터"를 바탕으로,
+                    더 나은 교육 환경을 제공하기 위한 "기술"을 개발하여
+                    <strong> 교육자의 의도를 온전히 전달할 수 있는 "컨텐츠"</strong>를 제공합니다.
+                  </p>
                   <div className="bg-white p-6 rounded-xl border-l-4 border-blue-600 shadow-sm italic text-slate-800">
-                    "RuleMakers의 컨텐츠 시스템은 이러한 문제를 해결하기 위해 시작되었습니다."
+                    <strong>"기술자가 아닌 교육자의 관점으로 선생님들의 고민과 아이디어가 온전히 구현될 수 있도록, 룰메이커스가 지원하겠습니다."</strong>
                   </div>
                   <p>
                     저희는 단순한 양산형 문항을 제공하지 않습니다. <strong>현장 경험</strong>이 녹아있는 기획력과 <strong>자체 개발 AI 기술</strong>을 통해,
@@ -255,7 +266,7 @@ export default function CompanyPage() {
                 <div className="flex justify-between items-start mb-8">
                     <div>
                         <h3 className="text-2xl font-bold text-slate-900">이 승 용</h3>
-                        <p className="text-blue-600 font-medium text-sm mt-1">Founder & CEO</p>
+                        <p className="text-blue-600 font-medium text-sm mt-1">대표이사, 창업자</p>
                     </div>
                     <div className="h-12 w-12 rounded-full bg-slate-100 flex items-center justify-center">
                          <img 
@@ -298,7 +309,7 @@ export default function CompanyPage() {
                   </h4>
                   <div className="bg-slate-50 p-5 rounded-2xl border border-slate-100">
                     <ul className="space-y-2 text-sm text-slate-700">
-                      <li className="font-bold text-slate-900 pb-2 mb-2 border-b border-slate-200 block">대표 (CEO)</li>
+                      <li className="font-bold text-slate-900 pb-2 mb-2 border-b border-slate-200 block">대표이사 (CEO)</li>
                       <li>• RuleMakers / RuleBreakersBooks</li>
                       <li>• 샤인학원 (고등 본관 / 수학과학관 / 초중등관)</li>
                       <li>• EG학원 (금천관 / 난곡관)</li>
@@ -309,6 +320,151 @@ export default function CompanyPage() {
               </div>
             </motion.div>
           </div>
+        </div>
+      </section>
+
+      {/* 3.5. Organization & Expertise Section */}
+      <section className="py-24 bg-white border-t border-slate-100">
+        <div className="container mx-auto px-6 max-w-6xl">
+          <motion.div
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true }}
+            variants={fadeInUp}
+            className="text-center mb-16"
+          >
+            <span className="text-blue-600 font-bold tracking-widest text-xs uppercase flex items-center justify-center gap-2">
+              <UserGroupIcon className="w-4 h-4" /> Organization
+            </span>
+            <h2 className="text-3xl md:text-4xl font-bold mt-3 text-slate-900 leading-snug">
+              각 분야 전문가들이 만드는<br />
+              <span className="text-slate-500">교육의 새로운 기준</span>
+            </h2>
+          </motion.div>
+
+          <motion.div 
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true }}
+            variants={staggerContainer}
+            className="grid md:grid-cols-2 gap-6" // [수정] 3열 -> 2열 그리드
+          >
+            {/* 1. R&D Team */}
+            <motion.div variants={fadeInUp} className="relative group h-full">
+              <div className="absolute inset-0 bg-gradient-to-b from-blue-50 to-transparent rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+              <div className="relative bg-white border border-slate-200 p-8 rounded-2xl h-full hover:shadow-xl hover:-translate-y-1 transition-all duration-300 flex flex-col">
+                <div className="flex items-center justify-between mb-6">
+                  <div className="p-3 bg-slate-50 rounded-xl border border-slate-100 text-slate-700">
+                    <AcademicCapIcon className="w-8 h-8" />
+                  </div>
+                  <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-blue-600/5 text-blue-700 text-xs font-bold uppercase border border-blue-600/10">
+                    <TrophyIcon className="w-3 h-3" /> Research
+                  </span>
+                </div>
+                <h3 className="text-xl font-bold text-slate-900 mb-3">연구팀</h3>
+                <p className="text-base text-slate-600 leading-relaxed break-keep mb-6">
+                  서울대학교 사범대학 출신 연구진이 교육과정의 본질을 분석하고,
+                  <br />최적의 학습 경험(LX)을 설계합니다.
+                </p>
+                <ul className="space-y-2 mt-auto pt-4 border-t border-slate-100">
+                  <li className="text-sm font-medium text-slate-500 flex items-center gap-2">
+                    <CheckCircleIcon className="w-4 h-4 text-blue-500" /> 교육과정/교과서 심층 분석
+                  </li>
+                  <li className="text-sm font-medium text-slate-500 flex items-center gap-2">
+                    <CheckCircleIcon className="w-4 h-4 text-blue-500" /> 문항 난이도 및 위상 설계
+                  </li>
+                </ul>
+              </div>
+            </motion.div>
+
+            {/* 2. Contents Team */}
+            <motion.div variants={fadeInUp} className="relative group h-full">
+              <div className="absolute inset-0 bg-gradient-to-b from-sky-50 to-transparent rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+              <div className="relative bg-white border border-slate-200 p-8 rounded-2xl h-full hover:shadow-xl hover:-translate-y-1 transition-all duration-300 flex flex-col">
+                <div className="flex items-center justify-between mb-6">
+                  <div className="p-3 bg-slate-50 rounded-xl border border-slate-100 text-slate-700">
+                    <DocumentTextIcon className="w-8 h-8" />
+                  </div>
+                  <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-sky-600/5 text-sky-700 text-xs font-bold uppercase border border-sky-600/10">
+                    <TrophyIcon className="w-3 h-3" /> Contents
+                  </span>
+                </div>
+                <h3 className="text-xl font-bold text-slate-900 mb-3">컨텐츠 제작팀</h3>
+                <p className="text-base text-slate-600 leading-relaxed break-keep mb-6">
+                  시대인재 컨텐츠팀 RuleBreakers 및 서울대학교 출신으로 구성된
+                  <br />RuleMakers 컨텐츠팀이
+                  <br /> 직접 제작 및 검수하여 압도적인 퀄리티의 문항을 생산합니다.
+                </p>
+                <ul className="space-y-2 mt-auto pt-4 border-t border-slate-100">
+                  <li className="text-sm font-medium text-slate-500 flex items-center gap-2">
+                    <CheckCircleIcon className="w-4 h-4 text-sky-500" /> High-End 킬러 문항 제작
+                  </li>
+                  <li className="text-sm font-medium text-slate-500 flex items-center gap-2">
+                    <CheckCircleIcon className="w-4 h-4 text-sky-500" /> 최신 수능/내신 트렌드 반영
+                  </li>
+                </ul>
+              </div>
+            </motion.div>
+
+            {/* 3. Dev Team */}
+            <motion.div variants={fadeInUp} className="relative group h-full">
+              <div className="absolute inset-0 bg-gradient-to-b from-indigo-50 to-transparent rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+              <div className="relative bg-white border border-slate-200 p-8 rounded-2xl h-full hover:shadow-xl hover:-translate-y-1 transition-all duration-300 flex flex-col">
+                <div className="flex items-center justify-between mb-6">
+                  <div className="p-3 bg-slate-50 rounded-xl border border-slate-100 text-slate-700">
+                    <CommandLineIcon className="w-8 h-8" />
+                  </div>
+                  <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-indigo-600/5 text-indigo-700 text-xs font-bold uppercase border border-indigo-600/10">
+                    <TrophyIcon className="w-3 h-3" /> Dev
+                  </span>
+                </div>
+                <h3 className="text-xl font-bold text-slate-900 mb-3">플랫폼 개발팀</h3>
+                <p className="text-base text-slate-600 leading-relaxed break-keep mb-6">
+                  SKY 출신 개발진이 프론트엔드&백엔드 및 알고리즘과 AI 모델을 책임지며,
+                  <br />최고의 사용자 경험을 위한 안정적이고 혁신적인 기술 환경을 구축합니다.
+                </p>
+                <ul className="space-y-2 mt-auto pt-4 border-t border-slate-100">
+                  <li className="text-sm font-medium text-slate-500 flex items-center gap-2">
+                    <CheckCircleIcon className="w-4 h-4 text-indigo-500" /> 자체 AI 모델 및 알고리즘 개발
+                  </li>
+                  <li className="text-sm font-medium text-slate-500 flex items-center gap-2">
+                    <CheckCircleIcon className="w-4 h-4 text-indigo-500" /> 데이터베이스 및 서비스 최적화
+                  </li>
+                </ul>
+              </div>
+            </motion.div>
+
+            {/* 4. CS & Solution Team [NEW] */}
+            <motion.div variants={fadeInUp} className="relative group h-full">
+              <div className="absolute inset-0 bg-gradient-to-b from-teal-50 to-transparent rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+              <div className="relative bg-white border border-slate-200 p-8 rounded-2xl h-full hover:shadow-xl hover:-translate-y-1 transition-all duration-300 flex flex-col">
+                <div className="flex items-center justify-between mb-6">
+                  <div className="p-3 bg-slate-50 rounded-xl border border-slate-100 text-slate-700">
+                    <ChatBubbleLeftRightIcon className="w-8 h-8" />
+                  </div>
+                  <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-teal-600/5 text-teal-700 text-xs font-bold uppercase border border-teal-600/10">
+                    <TrophyIcon className="w-3 h-3" /> Solution & CS
+                  </span>
+                </div>
+                <h3 className="text-xl font-bold text-slate-900 mb-3">교육 솔루션&CS팀</h3>
+                <p className="text-base text-slate-600 leading-relaxed break-keep mb-6">
+                  단순한 고객 응대가 아닙니다.
+                  현장 경험이 풍부한
+                  <br /><strong> 서울대학교 사범대학 및 서울교대 출신 교육 전문가</strong>가
+                  <br />직접 선생님과 학원에 최적화된 솔루션을 제안하고 밀착 관리합니다.
+                </p>
+                <ul className="space-y-2 mt-auto pt-4 border-t border-slate-100">
+                  <li className="text-sm font-medium text-slate-500 flex items-center gap-2">
+                    <CheckCircleIcon className="w-4 h-4 text-teal-500" /> 1:1 맞춤형 컨설팅
+                  </li>
+                  <li className="text-sm font-medium text-slate-500 flex items-center gap-2">
+                    <CheckCircleIcon className="w-4 h-4 text-teal-500" /> 전담 매니저 밀착 케어
+                  </li>
+                </ul>
+              </div>
+            </motion.div>
+
+          </motion.div>
         </div>
       </section>
 
