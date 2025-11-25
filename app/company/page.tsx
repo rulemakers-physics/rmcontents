@@ -17,7 +17,10 @@ import {
   CommandLineIcon,     // 개발 아이콘
   DocumentTextIcon,    // 컨텐츠 아이콘
   TrophyIcon,           // 뱃지용
-  ChatBubbleLeftRightIcon // [추가] CS팀 아이콘
+  ChatBubbleLeftRightIcon, // [추가] CS팀 아이콘
+  ServerIcon,       // [추가] 인프라/서버 아이콘
+  ShareIcon,        // [추가] 그래프/네트워크 아이콘
+  Square3Stack3DIcon // [추가] 레이어/구조 아이콘
 } from "@heroicons/react/24/outline";
 import BranchMap3D from "@/components/BranchMap3D";
 
@@ -389,7 +392,7 @@ export default function CompanyPage() {
                     <TrophyIcon className="w-3 h-3" /> Contents
                   </span>
                 </div>
-                <h3 className="text-xl font-bold text-slate-900 mb-3">컨텐츠 제작팀</h3>
+                <h3 className="text-xl font-bold text-slate-900 mb-3">컨텐츠팀</h3>
                 <p className="text-base text-slate-600 leading-relaxed break-keep mb-6">
                   시대인재 컨텐츠팀 RuleBreakers 및 서울대학교 출신으로 구성된
                   <br />RuleMakers 컨텐츠팀이
@@ -468,54 +471,87 @@ export default function CompanyPage() {
         </div>
       </section>
 
-      {/* 4. Technology Section (Deep Dark with Glassmorphism) */}
+      {/* 4. Technology Section (Updated: Bento Grid Style) */}
       <section className="py-24 bg-slate-950 text-white overflow-hidden relative">
-        {/* Abstract Background */}
-        <div className="absolute top-0 left-0 w-full h-full overflow-hidden z-0">
-             <div className="absolute top-[-20%] right-[-10%] w-[600px] h-[600px] bg-blue-600/10 rounded-full blur-[100px]" />
-             <div className="absolute bottom-[-20%] left-[-10%] w-[600px] h-[600px] bg-indigo-600/10 rounded-full blur-[100px]" />
+        {/* Background Effects */}
+        <div className="absolute top-0 left-0 w-full h-full z-0">
+           <div className="absolute top-[-20%] left-[-10%] w-[800px] h-[800px] bg-blue-900/20 rounded-full blur-[120px]" />
+           <div className="absolute bottom-[-20%] right-[-10%] w-[600px] h-[600px] bg-indigo-900/10 rounded-full blur-[120px]" />
+           {/* Grid Pattern Overlay */}
+           <div className="absolute inset-0 bg-[url('/grid.svg')] opacity-[0.03]" />
         </div>
 
         <div className="container mx-auto px-6 max-w-6xl relative z-10">
           <div className="text-center mb-20">
-            <span className="text-blue-400 font-semibold tracking-widest text-xs uppercase flex items-center justify-center gap-2">
-                <SparklesIcon className="w-4 h-4" /> Technology Stacks
+            <span className="text-blue-500 font-bold tracking-widest text-xs uppercase flex items-center justify-center gap-2">
+                <CpuChipIcon className="w-4 h-4" /> Core Technology
             </span>
-            <h2 className="text-3xl md:text-4xl font-bold mt-4">Data & AI Driven Solution</h2>
-            <p className="text-slate-400 mt-4 max-w-2xl mx-auto font-light break-keep">
-              전문 연구진의 분석 능력에 자체 개발 AI 모델과 알고리즘이 더해져<br className="hidden md:block"/>
-              독보적인 퀄리티의 컨텐츠를 생산합니다.
+            <h2 className="text-3xl md:text-4xl font-bold mt-4 leading-tight">
+              Data-Driven,<br />
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-indigo-300">
+                AI-Powered Solution
+              </span>
+            </h2>
+            <p className="text-slate-400 mt-5 max-w-2xl mx-auto font-light break-keep leading-relaxed">
+              RuleMakers는 단순한 문제은행이 아닙니다.<br />
+              교육학적 깊이가 있는 <strong>지식 그래프</strong>와 <strong>벡터 검색 기술</strong>로 가장 정교한 맞춤형 컨텐츠를 구현합니다.
             </p>
           </div>
 
-          <div className="grid md:grid-cols-3 gap-8">
-             {[
-                {
-                  icon: CpuChipIcon, 
-                  title: "AI Modeling", 
-                  desc: "자체 개발한 딥러닝/머신러닝 모델과 문항 분석 기술을 활용하여 문항의 난이도, 유형, 개념 요소를 정밀하게 분석하고 분류합니다."
-                },
-                {
-                  icon: BeakerIcon, 
-                  title: "Deep Analysis", 
-                  desc: "15개정 및 22개정 교육과정을 완벽하게 분해하여 개념 구조와 출제 경향을 DB화했습니다. (교과서 및 문항 전수 분석)"
-                },
-                {
-                  icon: AcademicCapIcon, 
-                  title: "Premium DB", 
-                  desc: "단순 양산형 문항이 아닌, 엄선된 프리미엄 문항 데이터베이스를 바탕으로 강사님께 최적의 자료를 제공합니다."
-                }
-             ].map((feature, idx) => (
-               <div key={idx} className="group bg-white/5 backdrop-blur-md border border-white/10 p-8 rounded-2xl hover:bg-white/10 hover:border-white/20 transition-all duration-300 hover:-translate-y-2">
-                  <div className="mb-6 inline-block p-3 rounded-lg bg-blue-500/10 group-hover:bg-blue-500/20 transition-colors">
-                    <feature.icon className="h-8 w-8 text-blue-400 group-hover:text-blue-300" />
+          {/* Bento Grid Layout */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+             
+             {/* Main Card: Knowledge Graph (Span 2 cols) */}
+             <div className="md:col-span-2 bg-gradient-to-br from-slate-900 to-slate-800 border border-slate-700/50 rounded-3xl p-8 relative overflow-hidden group">
+                <div className="absolute top-0 right-0 p-6 opacity-10 group-hover:opacity-20 transition-opacity">
+                  <ShareIcon className="w-32 h-32 text-blue-400" />
+                </div>
+                <div className="relative z-10">
+                  <div className="w-12 h-12 bg-blue-500/20 rounded-xl flex items-center justify-center mb-6 border border-blue-500/30">
+                    <ShareIcon className="w-6 h-6 text-blue-400" />
                   </div>
-                  <h3 className="text-xl font-bold mb-3 text-white group-hover:text-blue-100">{feature.title}</h3>
-                  <p className="text-sm text-slate-400 leading-relaxed break-keep group-hover:text-slate-300">
-                    {feature.desc}
+                  <h3 className="text-2xl font-bold text-white mb-3">Curriculum Knowledge Graph</h3>
+                  <p className="text-slate-400 leading-relaxed break-keep max-w-lg">
+                    15개정 및 22개정 교육과정을 초미세 단위(Micro-concept)로 분해하여 체계적인 <strong>지식 그래프(Knowledge Graph)</strong>를 구축했습니다. 단순 단원 분류를 넘어 개념 간의 위계와 연계성을 완벽하게 구조화했습니다.
                   </p>
-               </div>
-             ))}
+                </div>
+             </div>
+
+             {/* Card 2: AI Vector Search */}
+             <div className="bg-slate-900 border border-slate-800 rounded-3xl p-8 hover:border-blue-500/30 transition-colors group">
+                <div className="w-12 h-12 bg-indigo-500/20 rounded-xl flex items-center justify-center mb-6 border border-indigo-500/30">
+                  <SparklesIcon className="w-6 h-6 text-indigo-400" />
+                </div>
+                <h3 className="text-xl font-bold text-white mb-3">AI Vector Search</h3>
+                <p className="text-sm text-slate-400 leading-relaxed break-keep">
+                  문항의 텍스트와 수식을 <strong>벡터(Vector)화</strong>하여 의미적 유사도를 분석합니다. 단순 키워드 매칭으로는 불가능한 '맥락이 같은 문항'을 찾아냅니다.
+                </p>
+             </div>
+
+             {/* Card 3: Quality Control (Human-in-the-loop) */}
+             <div className="bg-slate-900 border border-slate-800 rounded-3xl p-8 hover:border-blue-500/30 transition-colors group">
+                <div className="w-12 h-12 bg-teal-500/20 rounded-xl flex items-center justify-center mb-6 border border-teal-500/30">
+                  <CheckCircleIcon className="w-6 h-6 text-teal-400" />
+                </div>
+                <h3 className="text-xl font-bold text-white mb-3">Human-in-the-loop</h3>
+                <p className="text-sm text-slate-400 leading-relaxed break-keep">
+                  AI의 추천 결과는 서울대 연구진의 <strong>이중 검수(Double-Check)</strong>를 거쳐 최종 확정됩니다. 이 데이터는 다시 AI 모델을 학습시키는 선순환 구조를 만듭니다.
+                </p>
+             </div>
+
+             {/* Bottom Wide Card: Scalable Infra */}
+             <div className="md:col-span-2 bg-gradient-to-br from-slate-900 to-slate-800 border border-slate-700/50 rounded-3xl p-8 flex flex-col md:flex-row items-start md:items-center gap-6 relative overflow-hidden group">
+                 <div className="w-12 h-12 bg-sky-500/20 rounded-xl flex items-center justify-center border border-sky-500/30 flex-shrink-0">
+                    <ServerIcon className="w-6 h-6 text-sky-400" />
+                 </div>
+                 <div className="relative z-10">
+                    <h3 className="text-xl font-bold text-white mb-2">Cloud Native Infrastructure</h3>
+                    <p className="text-sm text-slate-400 break-keep">
+                      Google Cloud Platform(GCP) 기반의 Serverless 아키텍처로 대규모 트래픽에도 안정적인 서비스를 제공하며, 데이터 보안과 백업을 철저히 관리합니다.
+                    </p>
+                 </div>
+             </div>
+
           </div>
         </div>
       </section>
