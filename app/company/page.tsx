@@ -497,12 +497,12 @@ export default function CompanyPage() {
             <h2 className="text-3xl md:text-4xl font-bold mt-4 leading-tight">
               Data-Driven,<br />
               <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-indigo-300">
-                AI-Powered Solution
+                Research Based Solution
               </span>
             </h2>
             <p className="text-slate-400 mt-5 max-w-2xl mx-auto font-light break-keep leading-relaxed">
               RuleMakers는 단순한 문제은행이 아닙니다.<br />
-              교육학적 깊이가 있는 <strong>지식 그래프</strong>와 <strong>벡터 검색 기술</strong>로 가장 정교한 맞춤형 컨텐츠를 구현합니다.
+              교육학적 깊이가 있는 <strong>연구</strong>와 <strong>기술</strong>의 결합으로 가장 정교한 맞춤형 컨텐츠를 구현합니다.
             </p>
           </div>
 
@@ -520,7 +520,7 @@ export default function CompanyPage() {
                   </div>
                   <h3 className="text-2xl font-bold text-white mb-3">Curriculum Knowledge Graph</h3>
                   <p className="text-slate-400 leading-relaxed break-keep max-w-lg">
-                    15개정 및 22개정 교육과정을 초미세 단위(Micro-concept)로 분해하여 체계적인 <strong>지식 그래프(Knowledge Graph)</strong>를 구축했습니다. 단순 단원 분류를 넘어 개념 간의 위계와 연계성을 완벽하게 구조화했습니다.
+                    15개정 및 22개정 교육과정을 초미세 단위(Micro-concept)로 분해하여 체계적인 <strong>개념 구조</strong>를 구축했습니다. 단순 단원 분류를 넘어 개념 간의 위계와 연계성을 완벽하게 구조화했습니다.
                   </p>
                 </div>
              </div>
@@ -532,7 +532,7 @@ export default function CompanyPage() {
                 </div>
                 <h3 className="text-xl font-bold text-white mb-3">AI Vector Search</h3>
                 <p className="text-sm text-slate-400 leading-relaxed break-keep">
-                  문항의 텍스트와 수식을 <strong>벡터(Vector)화</strong>하여 의미적 유사도를 분석합니다. 단순 키워드 매칭으로는 불가능한 '맥락이 같은 문항'을 찾아냅니다.
+                  문항의 텍스트와 수식을 <strong>벡터(Vector)화</strong>하여 분석합니다. 단순 키워드 매칭으로는 불가능한 '맥락이 같은 문항'을 찾아냅니다.
                 </p>
              </div>
 
@@ -593,14 +593,119 @@ export default function CompanyPage() {
 
         {/* Content Box */}
         <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md hover:border-blue-200 transition-all">
-          <ul className="space-y-3 text-slate-600 text-sm md:text-base">
-            {/* 1. 일반 항목 */}
-            <li className="flex items-start gap-2">
-              <span className="text-blue-500 mt-1.5 h-1.5 w-1.5 rounded-full bg-blue-500 flex-shrink-0"></span>
-              <span className="font-medium text-slate-700">22개정 교육과정 교과서 및 개념 구조 연구</span>
+          <ul className="space-y-4 text-slate-600 text-sm md:text-base">
+            
+            {/* 1. 15개정 컨텐츠 개발 */}
+            <li>
+              <div className="flex items-start gap-2">
+                <span className="text-blue-500 mt-1.5 h-1.5 w-1.5 rounded-full bg-blue-500 flex-shrink-0"></span>
+                <span className="font-medium text-slate-700">15개정 물리학I, 화학I, 생명과학I, 지구과학I 컨텐츠 개발</span>
+              </div>
+              <ul className="mt-1 space-y-1">
+                <li className="flex items-start gap-2 pl-5 text-slate-500 text-sm">
+                  <span className="text-slate-300 mt-2 h-px w-2 bg-slate-300 flex-shrink-0"></span>
+                  <strong>ShineRoad 한 손에 잡히는 수능 개념노트</strong> 물리학1, 화학1, 생명과학1 (15개정) 출판
+                </li>
+                <li className="flex items-start gap-2 pl-5 text-slate-500 text-sm">
+                  <span className="text-slate-300 mt-2 h-px w-2 bg-slate-300 flex-shrink-0"></span>
+                  교과서 기반으로 15개정 평가원, 교육청 기출 전문항 심층 분석
+                </li>
+                <li className="flex items-start gap-2 pl-5 text-slate-500 text-sm">
+                  <span className="text-slate-300 mt-2 h-px w-2 bg-slate-300 flex-shrink-0"></span>
+                  고난도 기출 문항을 풀기 위한 단계 별 학습 문항 물리학I, 화학I, 생명과학I 약 5,000제 개발
+                </li>
+              </ul>
             </li>
 
-            {/* 2. AI 연구 */}
+            {/* 2. 22개정 교과서 연구 */}
+            <li>
+              <div className="flex items-start gap-2">
+                <span className="text-blue-500 mt-1.5 h-1.5 w-1.5 rounded-full bg-blue-500 flex-shrink-0"></span>
+                <span className="font-medium text-slate-700">22개정 교육과정 교과서 및 개념 구조 연구</span>
+              </div>
+              <ul className="mt-1 space-y-1">
+                <li className="flex items-start gap-2 pl-5 text-slate-500 text-sm">
+                  <span className="text-slate-300 mt-2 h-px w-2 bg-slate-300 flex-shrink-0"></span>
+                  22개정 통합과학 1, 2 5종 교과서 문장 단위 분석
+                </li>
+                <li className="flex items-start gap-2 pl-5 text-slate-500 text-sm">
+                  <span className="text-slate-300 mt-2 h-px w-2 bg-slate-300 flex-shrink-0"></span>
+                  22개정 일반선택(물리, 화학, 생명, 지구) 각 4종 교과서 문장 단위 분석
+                </li>
+                <li className="flex items-start gap-2 pl-5 text-slate-500 text-sm">
+                  <span className="text-slate-300 mt-2 h-px w-2 bg-slate-300 flex-shrink-0"></span>
+                  일반선택 개념서 집필을 위한 연구
+                </li>
+              </ul>
+            </li>
+
+            {/* 3. 22개정 통합과학 컨텐츠 */}
+            <li>
+              <div className="flex items-start gap-2">
+                <span className="text-blue-500 mt-1.5 h-1.5 w-1.5 rounded-full bg-blue-500 flex-shrink-0"></span>
+                <span className="font-medium text-slate-700">22개정 통합과학 컨텐츠 개발</span>
+              </div>
+              <ul className="mt-1 space-y-1">
+                <li className="flex items-start gap-2 pl-5 text-slate-500 text-sm">
+                  <span className="text-slate-300 mt-2 h-px w-2 bg-slate-300 flex-shrink-0"></span>
+                  개념 진단 문항 약 7,000개 개발 ("하루과학" 앱에서 학습 가능)
+                </li>
+                <li className="flex items-start gap-2 pl-5 text-slate-500 text-sm">
+                  <span className="text-slate-300 mt-2 h-px w-2 bg-slate-300 flex-shrink-0"></span>
+                  통합과학 자체제작 고난도 문항 약 3,500제 개발
+                </li>
+                <li className="flex items-start gap-2 pl-5 text-slate-500 text-sm">
+                  <span className="text-slate-300 mt-2 h-px w-2 bg-slate-300 flex-shrink-0"></span>
+                  <strong>PASS</strong> 통합과학 1, 2 개념서 집필 (Perfect Answer for Studying Science)
+                </li>
+                <li className="flex items-start gap-2 pl-5 text-slate-500 text-sm">
+                  <span className="text-slate-300 mt-2 h-px w-2 bg-slate-300 flex-shrink-0"></span>
+                  <strong>PASS</strong> 통합과학 1, 2 300제 집필
+                </li>
+              </ul>
+            </li>
+
+            {/* 4. 22개정 일반선택 컨텐츠 */}
+            <li>
+              <div className="flex items-start gap-2">
+                <span className="text-blue-500 mt-1.5 h-1.5 w-1.5 rounded-full bg-blue-500 flex-shrink-0"></span>
+                <span className="font-medium text-slate-700">22개정 일반선택(물리, 화학, 생명, 지구) 컨텐츠 개발</span>
+              </div>
+              <ul className="mt-1 space-y-1">
+                <li className="flex items-start gap-2 pl-5 text-slate-500 text-sm">
+                  <span className="text-slate-300 mt-2 h-px w-2 bg-slate-300 flex-shrink-0"></span>
+                  개념 진단 문항 과목당 약 6,000제 개발 ("하루과학" 앱 내에서 학습 가능)
+                </li>
+                <li className="flex items-start gap-2 pl-5 text-slate-500 text-sm">
+                  <span className="text-slate-300 mt-2 h-px w-2 bg-slate-300 flex-shrink-0"></span>
+                  단계별 학습을 위한 징검다리 문항 개발
+                </li>
+              </ul>
+            </li>
+
+            {/* 5. 중등 과학 컨텐츠 */}
+            <li>
+              <div className="flex items-start gap-2">
+                <span className="text-blue-500 mt-1.5 h-1.5 w-1.5 rounded-full bg-blue-500 flex-shrink-0"></span>
+                <span className="font-medium text-slate-700">중등 과학 수준 진단 및 복습 컨텐츠 개발</span>
+              </div>
+              <ul className="mt-1 space-y-1">
+                <li className="flex items-start gap-2 pl-5 text-slate-500 text-sm">
+                  <span className="text-slate-300 mt-2 h-px w-2 bg-slate-300 flex-shrink-0"></span>
+                  22개정 통합과학 학습에 꼭 필요한 중등 과학 개념 선별
+                </li>
+                <li className="flex items-start gap-2 pl-5 text-slate-500 text-sm">
+                  <span className="text-slate-300 mt-2 h-px w-2 bg-slate-300 flex-shrink-0"></span>
+                  학생의 중등 과학 수준을 빈틈없이 진단하고 수준을 체크할 수 있는 진단 시스템 개발
+                </li>
+                <li className="flex items-start gap-2 pl-5 text-slate-500 text-sm">
+                  <span className="text-slate-300 mt-2 h-px w-2 bg-slate-300 flex-shrink-0"></span>
+                  필수적인 중등 과학 개념 복습을 위한 개념 복습서 집필
+                </li>
+              </ul>
+            </li>
+
+            {/* 6. AI 모델 및 DB화 */}
             <li>
               <div className="flex items-start gap-2">
                 <span className="text-blue-500 mt-1.5 h-1.5 w-1.5 rounded-full bg-blue-500 flex-shrink-0"></span>
@@ -609,28 +714,99 @@ export default function CompanyPage() {
               <ul className="mt-1 space-y-1">
                 <li className="flex items-start gap-2 pl-5 text-slate-500 text-sm">
                   <span className="text-slate-300 mt-2 h-px w-2 bg-slate-300 flex-shrink-0"></span>
-                  위상 분석 기반 문항 유사도 및 특성 분석 알고리즘 자체 개발
+                  자사 보유 과학탐구 문항에 대해 세분화된 태그 기반 유형 분류를 통한 DB 구축
+                </li>
+                <li className="flex items-start gap-2 pl-5 text-slate-500 text-sm">
+                  <span className="text-slate-300 mt-2 h-px w-2 bg-slate-300 flex-shrink-0"></span>
+                  위상적 접근과 AI 모델을 활용한 문항 간 의미론적 거리 측정, 유사도 및 패턴 분류
+                </li>
+                <li className="flex items-start gap-2 pl-5 text-slate-500 text-sm">
+                  <span className="text-slate-300 mt-2 h-px w-2 bg-slate-300 flex-shrink-0"></span>
+                  학생 오답 데이터에 따라, 취약점 분석과 약점 보완 문항 제공 알고리즘 개발
                 </li>
               </ul>
             </li>
 
-            {/* 3. 컨텐츠 */}
+            {/* 7. 칼럼 */}
             <li>
               <div className="flex items-start gap-2">
                 <span className="text-blue-500 mt-1.5 h-1.5 w-1.5 rounded-full bg-blue-500 flex-shrink-0"></span>
-                <span className="font-medium text-slate-700">22개정 과학 탐구 컨텐츠 개발</span>
+                <span className="font-medium text-slate-700">학생을 위한 교육 서비스</span>
               </div>
               <ul className="mt-1 space-y-1">
                 <li className="flex items-start gap-2 pl-5 text-slate-500 text-sm">
                   <span className="text-slate-300 mt-2 h-px w-2 bg-slate-300 flex-shrink-0"></span>
-                  과학탐구 개념 학습 앱 "하루과학" 런칭
+                  15개정 과학탐구 I과목 6, 9월 모의평가 및 수능 심층 분석 칼럼 집필
                 </li>
                 <li className="flex items-start gap-2 pl-5 text-slate-500 text-sm">
                   <span className="text-slate-300 mt-2 h-px w-2 bg-slate-300 flex-shrink-0"></span>
-                  PASS 통합과학 개념서 집필 (Perfect Answer for Studying Science)
+                  교육과정 변동 및 입시 제도 주요 이슈 카드뉴스 발행
+                </li>
+                <li className="flex items-start gap-2 pl-5 text-slate-500 text-sm">
+                  <span className="text-slate-300 mt-2 h-px w-2 bg-slate-300 flex-shrink-0"></span>
+                  학생들을 위한 공부법, 동기부여 칼럼 집필
+                </li>
+                <li className="flex items-start gap-2 pl-5 text-slate-500 text-sm">
+                  <span className="text-slate-300 mt-2 h-px w-2 bg-slate-300 flex-shrink-0"></span>
+                  서울 소재 약 10여개 고등학교에 대해 맞춤형 통합과학 내신대비 모의고사 무료배포
                 </li>
               </ul>
             </li>
+            
+            {/* 8. 자사 학원 */}
+            <li>
+              <div className="flex items-start gap-2">
+                <span className="text-blue-500 mt-1.5 h-1.5 w-1.5 rounded-full bg-blue-500 flex-shrink-0"></span>
+                <span className="font-medium text-slate-700">서울 소재 자사 보유 학원 컨텐츠 강화</span>
+              </div>
+              <ul className="mt-1 space-y-1">
+                <li className="flex items-start gap-2 pl-5 text-slate-500 text-sm">
+                  <span className="text-slate-300 mt-2 h-px w-2 bg-slate-300 flex-shrink-0"></span>
+                  통합과학 수강반 약 10여개 학교에 대해 내신 기출 분석 진행
+                </li>
+                <li className="flex items-start gap-2 pl-5 text-slate-500 text-sm">
+                  <span className="text-slate-300 mt-2 h-px w-2 bg-slate-300 flex-shrink-0"></span>
+                  개념 진단 문항 약 7,000제를 활용하여 Daily Test 진행, 간편한 복습 지도
+                </li>
+                <li className="flex items-start gap-2 pl-5 text-slate-500 text-sm">
+                  <span className="text-slate-300 mt-2 h-px w-2 bg-slate-300 flex-shrink-0"></span>
+                  자사 문항 풀 기반 유사 문항 선별하여 학교별 맞춤형 내신 저격 모의고사 4회차분 제공
+                </li>
+              </ul>
+            </li>
+
+            {/* 9. 제휴 및 협업 */}
+            <li>
+              <div className="flex items-start gap-2">
+                <span className="text-blue-500 mt-1.5 h-1.5 w-1.5 rounded-full bg-blue-500 flex-shrink-0"></span>
+                <span className="font-medium text-slate-700">대형 학원 및 강사와 제휴 및 협업 진행</span>
+              </div>
+              <ul className="mt-1 space-y-1">
+                <li className="flex items-start gap-2 pl-5 text-slate-500 text-sm">
+                  <span className="text-slate-300 mt-2 h-px w-2 bg-slate-300 flex-shrink-0"></span>
+                  서울 소재 자사 소유 학원을 위한 자체 제작 맞춤형 통합과학 및 수능 I과목 컨텐츠 공급
+                </li>
+                <li className="flex items-start gap-2 pl-5 text-slate-500 text-sm">
+                  <span className="text-slate-300 mt-2 h-px w-2 bg-slate-300 flex-shrink-0"></span>
+                  외부 강사의 개별 요청에 따른 통합과학 맞춤형 학습지, N제, 실전 모의고사 공급
+                </li>
+              </ul>
+            </li>
+
+            {/* 9. 멘토링 */}
+            <li>
+              <div className="flex items-start gap-2">
+                <span className="text-blue-500 mt-1.5 h-1.5 w-1.5 rounded-full bg-blue-500 flex-shrink-0"></span>
+                <span className="font-medium text-slate-700">멘토링 서비스 개발 및 시범 도입</span>
+              </div>
+              <ul className="mt-1 space-y-1">
+                <li className="flex items-start gap-2 pl-5 text-slate-500 text-sm">
+                  <span className="text-slate-300 mt-2 h-px w-2 bg-slate-300 flex-shrink-0"></span>
+                  상세한 매뉴얼과 체계적인 컨텐츠 기반, 학생 수준별 멘토링 서비스 개발 자사 시범 운영
+                </li>
+              </ul>
+            </li>
+
           </ul>
         </div>
       </div>
