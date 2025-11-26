@@ -225,30 +225,38 @@ export default function CompanyPage() {
                 
                 <div className="prose prose-lg text-slate-600 leading-loose space-y-6 break-keep font-light">
                   <p>
-                    안녕하세요, <strong>RuleMakers 대표 이승용</strong>입니다.
+                    안녕하십니까, <strong>RuleMakers 대표이사 이승용</strong>입니다.
                   </p>
+                  
                   <p>
                     저는 서울대학교 화학교육과를 졸업하고 시대인재 컨텐츠팀에서의 출제 경험을 거쳐, 
-                    현재는 서울 관악/동작/금천 지역에서 6개의 학원과 독서실을 직접 운영하고 있습니다.
+                    현재 서울 관악/동작/금천 지역에서 6개의 학원과 독서실을 직접 운영하고 있습니다.
                   </p>
+                  
                   <p>
-                    수많은 학생들과 호흡하고 강사님들을 지원하며 느낀 점은 명확했습니다.
-                    현장의 강사님들이 수업 준비와 행정 업무 속에서 자신만의 고퀄리티 컨텐츠를 제작하는 것은 현실적으로 매우 어렵다는 것입니다.
+                    교육 이론부터 현장의 실무, 그리고 학원 운영까지 두루 경험하며 제가 느낀 점은 명확했습니다.
+                    현장의 선생님들이 수업 준비와 행정 업무의 늪에서 벗어나, 자신만의 <strong>‘고퀄리티 컨텐츠’</strong>를 제작하는 것은 현실적으로 매우 어렵다는 점입니다.
                   </p>
-                  <p>
-                    학생을 이해하는 데 도움을 주는 "데이터"를 바탕으로,
-                    더 나은 교육 환경을 제공하기 위한 "기술"을 개발하여
-                    <strong> 교육자의 의도를 온전히 전달할 수 있는 "컨텐츠"</strong>를 제공합니다.
-                  </p>
-                  <div className="bg-white p-6 rounded-xl border-l-4 border-blue-600 shadow-sm italic text-slate-800">
-                    <strong>"기술자가 아닌 교육자의 관점으로 선생님들의 고민과 아이디어가 온전히 구현될 수 있도록, 룰메이커스가 지원하겠습니다."</strong>
+
+                  <div className="bg-white p-6 rounded-xl border-l-4 border-blue-600 shadow-sm text-slate-800">
+                    <p className="font-bold mb-4 not-italic">
+                      "룰메이커스는 기술자가 아닌, 교육자의 관점에서 이 문제를 해결하고자 합니다."
+                    </p>
+                    <ul className="list-disc pl-5 space-y-2 m-0 text-base">
+                      <li>학생을 깊이 있게 이해하는 <strong>데이터 (Data)</strong></li>
+                      <li>더 나은 교육 환경을 구축하는 <strong>기술 (Tech)</strong></li>
+                      <li>교육자의 의도를 온전히 담아내는 <strong>컨텐츠 (Content)</strong></li>
+                    </ul>
                   </div>
+                  
                   <p>
-                    저희는 단순한 양산형 문항을 제공하지 않습니다. <strong>현장 경험</strong>이 녹아있는 기획력과 <strong>자체 개발 AI 기술</strong>을 통해,
-                    선생님만을 위한 High-End 맞춤형 솔루션을 제공하겠습니다.
+                    저희는 단순한 양산형 문항을 지양합니다. 
+                    현장 경험이 녹아있는 기획력과 자체 개발 AI 기술을 결합하여, 
+                    선생님의 고민과 아이디어가 현실이 되는 <strong>High-End 맞춤형 솔루션</strong>을 제공하겠습니다.
                   </p>
+                  
                   <p className="pt-4 font-bold text-slate-900 flex items-center gap-2">
-                    RuleMakers 대표 <span className="font-serif text-xl">이 승 용</span>
+                    RuleMakers 대표이사 <span className="font-serif text-xl">이 승 용</span>
                   </p>
                 </div>
               </div>
