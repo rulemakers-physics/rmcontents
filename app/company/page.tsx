@@ -802,7 +802,7 @@ export default function CompanyPage() {
               <ul className="mt-1 space-y-1">
                 <li className="flex items-start gap-2 pl-5 text-slate-500 text-sm">
                   <span className="text-slate-300 mt-2 h-px w-2 bg-slate-300 flex-shrink-0"></span>
-                  상세한 매뉴얼과 체계적인 컨텐츠 기반, 학생 수준별 멘토링 서비스 개발 자사 시범 운영
+                  상세한 매뉴얼과 체계적인 컨텐츠 기반, 학생 수준별 멘토링 서비스 개발 및 자사 소유 학원 대상 시범 운영
                 </li>
               </ul>
             </li>
