@@ -461,7 +461,7 @@ export default function CompanyPage() {
                 <p className="text-base text-slate-600 leading-relaxed break-keep mb-6">
                   단순한 고객 응대가 아닙니다.
                   현장 경험이 풍부한
-                  <br /><strong> 서울대학교 사범대학 및 서울교대 출신 교육 전문가</strong>가
+                  <br /><strong> 서울대학교 사범대학 및 서울교육대학교 출신 교육 전문가</strong>가
                   <br />직접 선생님과 학원에 최적화된 솔루션을 제안하고 밀착 관리합니다.
                 </p>
                 <ul className="space-y-2 mt-auto pt-4 border-t border-slate-100">
