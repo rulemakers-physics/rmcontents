@@ -1,7 +1,8 @@
 // components/RequestDetailModal.tsx
 
 import { useState, FormEvent, ChangeEvent, useEffect } from "react";
-import { RequestData } from "@/app/dashboard/page"; 
+import { RequestData } from "@/types/request";
+import { toast } from "react-hot-toast";
 import {
   BookOpenIcon,
   ChevronDownIcon,

@@ -32,33 +32,7 @@ import {
   DocumentTextIcon, 
   ChevronRightIcon 
 } from "@heroicons/react/24/outline";
-
-// --- 타입 정의 (types/request.ts가 있다면 거기서 import 권장) ---
-export interface ReferenceFile {
-  name: string;
-  url: string;
-  path: string;
-}
-
-export interface RequestData {
-  id: string;
-  title: string;
-  status: "requested" | "in_progress" | "completed" | "rejected";
-  requestedAt: Timestamp;
-  completedAt?: Timestamp;
-  completedFileUrl?: string;
-  
-  contentKind: string;
-  quantity: number;
-  questionCount: string;
-  deadline: string;
-  scope: Record<string, Record<string, string[]>>;
-  details?: string;
-  referenceFiles?: ReferenceFile[];
-  instructorId: string;
-  rejectReason?: string;
-  unreadCountInstructor?: number;
-}
+import { RequestData } from "@/types/request";
 
 export default function DashboardPage() {
   const { user, userData, loading, isFirstLogin } = useAuth();
