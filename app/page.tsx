@@ -21,6 +21,7 @@ import {
   StarIcon
 } from "@heroicons/react/24/solid";
 import { motion, Variants } from "framer-motion";
+import { ArrowRight } from "lucide-react";
 
 /**
  * 애니메이션 Variants
@@ -291,25 +292,46 @@ export default function HomePage() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6, delay: 0.3 }}
-              className="mt-10 flex flex-col items-center gap-4 sm:flex-row"
+              className="mt-12 flex flex-col items-center w-full"
             >
-              {/* Primary CTA Button */}
-              <button
-                onClick={handleScrollToWorks}
-                className="group relative rounded-lg bg-sky-600 px-8 py-4 text-base font-bold text-white shadow-[0_0_20px_rgba(14,165,233,0.3)] transition-all hover:bg-sky-500 hover:shadow-[0_0_30px_rgba(14,165,233,0.5)] hover:-translate-y-0.5 cursor-pointer"
-              >
-                <span className="relative z-10 ">지금 작업 요청하기</span>
-                {/* Inner Glow Effect */}
-                <div className="absolute inset-0 -z-0 rounded-lg bg-gradient-to-t from-black/10 to-white/20 opacity-0 transition-transform group-hover:opacity-100" />
-              </button>
-              
-              {/* Secondary CTA Button */}
-              <Link
-                href="/showcase"
-                className="group rounded-lg border border-slate-600 bg-slate-800/50 px-8 py-4 text-base font-medium text-slate-200 backdrop-blur-sm transition-all hover:border-slate-500 hover:bg-slate-800 hover:text-white"
-              >
-                컨텐츠 샘플 보기 <span className="ml-1 inline-block transition-transform group-hover:translate-x-1">&rarr;</span>
-              </Link>
+              {/* 1. 메인 버튼 그룹 (가로 배열, 높이/스타일 통일) */}
+              <div className="flex flex-col sm:flex-row gap-4 w-full sm:w-auto justify-center">
+                
+                {/* Primary Button: 문제은행 (Gradient & Glow) */}
+                <Link 
+                  href="/service/maker" 
+                  className="group relative flex items-center justify-center gap-2 px-8 py-4 bg-gradient-to-r from-blue-600 to-sky-600 hover:from-blue-500 hover:to-sky-500 text-white text-lg font-bold rounded-xl transition-all hover:scale-[1.02] shadow-lg shadow-blue-900/50 ring-1 ring-white/20"
+                >
+                  문제은행 무료 체험
+                  <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+                </Link>
+                
+                {/* Secondary Button: 전국 모의고사 (Glassmorphism & Pulse Dot) */}
+                <Link 
+                  href="/mock-exam" 
+                  className="group flex items-center justify-center gap-2 px-8 py-4 bg-slate-800/50 hover:bg-slate-700/50 backdrop-blur-sm border border-slate-700 hover:border-slate-500 text-white text-lg font-bold rounded-xl transition-all hover:scale-[1.02]"
+                >
+                  <span className="relative flex h-2 w-2 mr-1">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
+                  </span>
+                  전국 모의고사 입장
+                </Link>
+              </div>
+
+              {/* 2. 보조 텍스트 링크 (하단 배치로 시선 정리) */}
+              <div className="mt-8 flex items-center gap-6 text-sm font-medium text-slate-400">
+                <Link href="/pricing" className="flex items-center gap-1.5 hover:text-white transition-colors border-b border-transparent hover:border-slate-400 pb-0.5">
+                  <CheckCircleIcon className="w-4 h-4 text-slate-500" />
+                  합리적인 요금제
+                </Link>
+                <span className="w-1 h-1 rounded-full bg-slate-700" />
+                <Link href="/showcase" className="flex items-center gap-1.5 hover:text-white transition-colors border-b border-transparent hover:border-slate-400 pb-0.5">
+                  <DocumentTextIcon className="w-4 h-4 text-slate-500" />
+                  샘플 컨텐츠 보기
+                </Link>
+              </div>
+
             </motion.div>
           </div>
         </section>

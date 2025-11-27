@@ -119,6 +119,20 @@ export default function Header() {
             About Us
           </Link>
 
+          {/* ▼▼▼ [추가] 문제은행 메뉴 ▼▼▼ */}
+          <Link href="/service/maker" className="flex items-center gap-1 text-sm font-bold text-blue-600 hover:text-blue-700 transition-colors">
+          문제은행
+          <span className="px-1.5 py-0.5 text-[10px] bg-blue-100 text-blue-700 rounded-full">BETA</span>
+          </Link>
+          {/* ▲▲▲ [추가] ▲▲▲ */}
+
+          {/* ▼▼▼ [수정] 전국 모의고사 (NEW 뱃지 추가 및 강조) ▼▼▼ */}
+          <Link href="/mock-exam" className="flex items-center gap-1 text-sm font-medium text-gray-600 hover:text-purple-600 transition-colors">
+            RuleMakers 전국 단위 모의고사
+            <span className="px-1.5 py-0.5 text-[10px] bg-purple-100 text-purple-700 rounded-full animate-pulse">NEW</span>
+          </Link>
+          {/* ▲▲▲ [수정] ▲▲▲ */}
+
           {/* 2. 플랜 소개 (드롭다운) */}
           <div className="relative group">
             <button className="flex items-center text-sm font-medium text-gray-600 group-hover:text-blue-600 outline-none transition-colors cursor-pointer">

@@ -147,6 +147,25 @@ export default function BasicServicePage() {
         </div>
       </section>
 
+      {/* ▼▼▼ [추가] 직접 만들기 CTA 섹션 ▼▼▼ */}
+    <section className="py-16 bg-blue-50 border-y border-blue-100">
+      <div className="container mx-auto max-w-4xl px-6 text-center">
+        <h3 className="text-2xl font-bold text-slate-900 mb-4">
+          지금 바로 나만의 시험지를 만들어보세요
+        </h3>
+        <p className="text-slate-600 mb-8 max-w-2xl mx-auto">
+          Basic Plan의 방대한 문항 데이터를 활용하여, 클릭 몇 번으로 원하는 구성의 PDF 시험지를 제작할 수 있습니다.
+        </p>
+        <Link 
+          href="/service/maker"
+          className="inline-flex items-center justify-center px-8 py-3 bg-blue-600 text-white font-bold rounded-lg hover:bg-blue-700 transition-colors shadow-md"
+        >
+          시험지 제작 도구 실행하기
+        </Link>
+      </div>
+    </section>
+    {/* ▲▲▲ [추가] ▲▲▲ */}
+
       {/* 3. Promotion Section (Redesigned) */}
       <section className="bg-white pb-24">
         <div className="container mx-auto max-w-4xl px-6">

@@ -227,20 +227,10 @@ export default function CompanyPage() {
                   <p>
                     안녕하십니까, <strong>RuleMakers 대표이사 이승용</strong>입니다.
                   </p>
-                  
-                  <p>
-                    저는 서울대학교 화학교육과를 졸업하고 시대인재 컨텐츠팀에서의 출제 경험을 거쳐, 
-                    현재 서울 관악/동작/금천 지역에서 6개의 학원과 독서실을 직접 운영하고 있습니다.
-                  </p>
-                  
-                  <p>
-                    교육 이론부터 현장의 실무, 그리고 학원 운영까지 두루 경험하며 제가 느낀 점은 명확했습니다.
-                    현장의 선생님들이 수업 준비와 행정 업무의 늪에서 벗어나, 자신만의 <strong>‘고퀄리티 컨텐츠’</strong>를 제작하는 것은 현실적으로 매우 어렵다는 점입니다.
-                  </p>
 
                   <div className="bg-white p-6 rounded-xl border-l-4 border-blue-600 shadow-sm text-slate-800">
                     <p className="font-bold mb-4 not-italic">
-                      "룰메이커스는 기술자가 아닌, 교육자의 관점에서 이 문제를 해결하고자 합니다."
+                      "기술자가 아닌 교육자의 관점으로 선생님들의 고민과 아이디어가 온전히 구현될 수 있도록, 룰메이커스가 지원하겠습니다."
                     </p>
                     <ul className="list-disc pl-5 space-y-2 m-0 text-base">
                       <li>학생을 깊이 있게 이해하는 <strong>데이터 (Data)</strong></li>
@@ -248,12 +238,7 @@ export default function CompanyPage() {
                       <li>교육자의 의도를 온전히 담아내는 <strong>컨텐츠 (Content)</strong></li>
                     </ul>
                   </div>
-                  
-                  <p>
-                    저희는 단순한 양산형 문항을 지양합니다. 
-                    현장 경험이 녹아있는 기획력과 자체 개발 AI 기술을 결합하여, 
-                    선생님의 고민과 아이디어가 현실이 되는 <strong>High-End 맞춤형 솔루션</strong>을 제공하겠습니다.
-                  </p>
+                
                   
                   <p className="pt-4 font-bold text-slate-900 flex items-center gap-2">
                     RuleMakers 대표이사 <span className="font-serif text-xl">이 승 용</span>
@@ -793,7 +778,7 @@ export default function CompanyPage() {
               </ul>
             </li>
 
-            {/* 9. 멘토링 */}
+            {/* 10. 멘토링 */}
             <li>
               <div className="flex items-start gap-2">
                 <span className="text-blue-500 mt-1.5 h-1.5 w-1.5 rounded-full bg-blue-500 flex-shrink-0"></span>

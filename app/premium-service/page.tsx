@@ -87,6 +87,14 @@ export default function PremiumServicePage() {
             transition={{ delay: 0.3 }}
             className="mt-10 flex justify-center gap-4"
           >
+            {/* ▼▼▼ [추가] 프리미엄 문제은행 버튼 ▼▼▼ */}
+            <Link
+            href="/service/maker"
+            className="rounded-lg bg-teal-500 px-8 py-3.5 text-base font-semibold text-white shadow-lg transition-colors hover:bg-teal-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal-500"
+            >
+            프리미엄 문제은행 체험
+            </Link>
+            {/* ▲▲▲ [추가] ▲▲▲ */}
             <Link
               href="/contact"
               className="rounded-lg bg-blue-600 px-8 py-3.5 text-base font-semibold text-white shadow-lg transition-colors hover:bg-blue-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
