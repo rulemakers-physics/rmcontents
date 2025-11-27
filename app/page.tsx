@@ -323,12 +323,12 @@ export default function HomePage() {
               <div className="mt-8 flex items-center gap-6 text-sm font-medium text-slate-400">
                 <Link href="/pricing" className="flex items-center gap-1.5 hover:text-white transition-colors border-b border-transparent hover:border-slate-400 pb-0.5">
                   <CheckCircleIcon className="w-4 h-4 text-slate-500" />
-                  합리적인 요금제
+                  요금제 보러가기
                 </Link>
                 <span className="w-1 h-1 rounded-full bg-slate-700" />
                 <Link href="/showcase" className="flex items-center gap-1.5 hover:text-white transition-colors border-b border-transparent hover:border-slate-400 pb-0.5">
                   <DocumentTextIcon className="w-4 h-4 text-slate-500" />
-                  샘플 컨텐츠 보기
+                  샘플 컨텐츠 보러가기
                 </Link>
               </div>
 

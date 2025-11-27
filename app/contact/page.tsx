@@ -219,9 +219,7 @@ export default function ContactPage() {
               <ul className="space-y-6 text-slate-600">
                 <li className="flex items-start gap-4">
                   <span className="font-semibold text-slate-900 min-w-[80px]">Address</span>
-                  <span>서울특별시 관악구 솔밭로 19-1
-                    <br />
-                    (Meeting Room: 401호) </span> {/* ⚠️ 실제 주소로 변경 */}
+                  <span>서울특별시 관악구 솔밭로 19-1</span>
                 </li>
                 <li className="flex items-start gap-4">
                   <span className="font-semibold text-slate-900 min-w-[80px]">Email</span>

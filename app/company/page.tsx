@@ -164,7 +164,7 @@ export default function CompanyPage() {
               </div>
               <h3 className="text-xl font-bold text-slate-900 mb-3">Mission</h3>
               <p className="text-slate-600 leading-relaxed break-keep">
-                <strong>교육을 최적화하는 것.</strong><br/>
+                <strong>교육을 최적화하는 것</strong><br/>
                 학습자의 상태와 학습 목표를 바탕으로 최적의 학습 경험을 설계하여 <strong>효율적인 성장</strong>을 만듭니다.
               </p>
             </motion.div>
@@ -188,7 +188,7 @@ export default function CompanyPage() {
               </div>
               <h3 className="text-xl font-bold text-slate-900 mb-3">Identity</h3>
               <p className="text-slate-600 leading-relaxed break-keep">
-                <strong>New Standard of Education.</strong><br/>
+                <strong>New Standard of Education</strong><br/>
                 RuleMakers는 모두의 성장을 추구하고, 가치를 만들어 나가 새로운 세상을 설계합니다.
               </p>
             </motion.div>
@@ -387,7 +387,7 @@ export default function CompanyPage() {
                 </div>
                 <h3 className="text-xl font-bold text-slate-900 mb-3">컨텐츠팀</h3>
                 <p className="text-base text-slate-600 leading-relaxed break-keep mb-6">
-                  시대인재 컨텐츠팀 RuleBreakers 및 서울대학교 출신으로 구성된
+                  시대인재 컨텐츠팀 RuleBreakers 대표 및 서울대학교 출신으로 구성된
                   <br />RuleMakers 컨텐츠팀이
                   <br /> 직접 제작 및 검수하여 압도적인 퀄리티의 문항을 생산합니다.
                 </p>
@@ -505,7 +505,9 @@ export default function CompanyPage() {
                   </div>
                   <h3 className="text-2xl font-bold text-white mb-3">Curriculum Knowledge Graph</h3>
                   <p className="text-slate-400 leading-relaxed break-keep max-w-lg">
-                    15개정 및 22개정 교육과정을 초미세 단위(Micro-concept)로 분해하여 체계적인 <strong>개념 구조</strong>를 구축했습니다. 단순 단원 분류를 넘어 개념 간의 위계와 연계성을 완벽하게 구조화했습니다.
+                    15개정 및 22개정 교육과정을 초미세 단위(Micro-concept)로 분해하여
+                    <br />체계적인 <strong>개념 구조</strong>를 구축했습니다.
+                    <br />단순 단원 분류를 넘어 개념 간의 위계와 연계성을 완벽하게 구조화했습니다.
                   </p>
                 </div>
              </div>
@@ -528,7 +530,8 @@ export default function CompanyPage() {
                 </div>
                 <h3 className="text-xl font-bold text-white mb-3">Human-in-the-loop</h3>
                 <p className="text-sm text-slate-400 leading-relaxed break-keep">
-                  AI의 추천 결과는 서울대 연구진의 <strong>이중 검수(Double-Check)</strong>를 거쳐 최종 확정됩니다. 이 데이터는 다시 AI 모델을 학습시키는 선순환 구조를 만듭니다.
+                  AI의 추천 결과는 서울대 연구진의 <strong>이중 검수(Double-Check)</strong>를 거쳐 최종 확정됩니다.
+                  <br />이 데이터는 다시 AI 모델을 학습시키는 선순환 구조를 만듭니다.
                 </p>
              </div>
 
@@ -540,7 +543,8 @@ export default function CompanyPage() {
                  <div className="relative z-10">
                     <h3 className="text-xl font-bold text-white mb-2">Cloud Native Infrastructure</h3>
                     <p className="text-sm text-slate-400 break-keep">
-                      Google Cloud Platform(GCP) 기반의 Serverless 아키텍처로 대규모 트래픽에도 안정적인 서비스를 제공하며, 데이터 보안과 백업을 철저히 관리합니다.
+                      Google Cloud Platform(GCP) 기반의 Serverless 아키텍처로
+                      <br />대규모 트래픽에도 안정적인 서비스를 제공하며, 데이터 보안과 백업을 철저히 관리합니다.
                     </p>
                  </div>
              </div>
@@ -742,7 +746,7 @@ export default function CompanyPage() {
             <li>
               <div className="flex items-start gap-2">
                 <span className="text-blue-500 mt-1.5 h-1.5 w-1.5 rounded-full bg-blue-500 flex-shrink-0"></span>
-                <span className="font-medium text-slate-700">서울 소재 자사 보유 학원 컨텐츠 강화</span>
+                <span className="font-medium text-slate-700">서울 소재 자사 직영 학원 컨텐츠 강화</span>
               </div>
               <ul className="mt-1 space-y-1">
                 <li className="flex items-start gap-2 pl-5 text-slate-500 text-sm">
@@ -769,7 +773,7 @@ export default function CompanyPage() {
               <ul className="mt-1 space-y-1">
                 <li className="flex items-start gap-2 pl-5 text-slate-500 text-sm">
                   <span className="text-slate-300 mt-2 h-px w-2 bg-slate-300 flex-shrink-0"></span>
-                  서울 소재 자사 소유 학원을 위한 자체 제작 맞춤형 통합과학 및 수능 I과목 컨텐츠 공급
+                  서울 소재 자사 직영 학원을 위한 자체 제작 맞춤형 통합과학 및 수능 I과목 컨텐츠 공급
                 </li>
                 <li className="flex items-start gap-2 pl-5 text-slate-500 text-sm">
                   <span className="text-slate-300 mt-2 h-px w-2 bg-slate-300 flex-shrink-0"></span>
@@ -787,7 +791,7 @@ export default function CompanyPage() {
               <ul className="mt-1 space-y-1">
                 <li className="flex items-start gap-2 pl-5 text-slate-500 text-sm">
                   <span className="text-slate-300 mt-2 h-px w-2 bg-slate-300 flex-shrink-0"></span>
-                  상세한 매뉴얼과 체계적인 컨텐츠 기반, 학생 수준별 멘토링 서비스 개발 및 자사 소유 학원 대상 시범 운영
+                  상세한 매뉴얼과 체계적인 컨텐츠 기반, 학생 수준별 멘토링 서비스 개발 및 자사 직영 학원 대상 시범 운영
                 </li>
               </ul>
             </li>
@@ -833,7 +837,7 @@ export default function CompanyPage() {
         <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 mb-4">
           <h3 className="text-3xl font-bold text-slate-300">2023</h3>
           <span className="hidden sm:block text-slate-300">|</span>
-          <span className="text-xl font-bold text-slate-600">(주) RuleMakers 설립</span>
+          <span className="text-xl font-bold text-slate-600">RuleMakers 설립</span>
         </div>
 
         <div className="bg-slate-50/50 p-5 rounded-xl border border-slate-100">
@@ -865,7 +869,7 @@ export default function CompanyPage() {
              <span className="absolute -left-[31px] top-2 h-2.5 w-2.5 rounded-full bg-slate-300 border-2 border-white group-hover:bg-blue-400 transition-colors"></span>
              <div className="flex flex-col sm:flex-row sm:items-baseline gap-1 sm:gap-4">
                <span className="font-bold text-slate-700 text-lg w-12">2021</span>
-               <span className="text-slate-600 font-medium">(주) RuleBreakersBooks 법인 설립</span>
+               <span className="text-slate-600 font-medium">RuleBreakersBooks 법인 설립</span>
              </div>
           </div>
           <div className="relative group">

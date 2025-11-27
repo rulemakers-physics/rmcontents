@@ -1,104 +1,135 @@
 // components/ExamPaperLayout.tsx
 import React, { forwardRef } from "react";
 
-interface Problem {
+// --- 타입 정의 ---
+export type ExamTemplateStyle = {
   id: string;
-  content: string;
-  answer: number;
-  // images, choices etc.
+  name: string;
+  headerHeight: string;
+  columnGap: string;
+  fontFamily: string;
+  borderColor: string;
+  headerStyle: "simple" | "box" | "detail";
+};
+
+export interface ExamProblem {
+  id: string;
+  number: number;
+  content?: string;     // 텍스트 (없으면 이미지 사용)
+  imageUrl?: string;    // 문제 이미지 URL
+  heightEstimate?: number; // 높이 추정치 (페이지 분할 계산용)
+  difficulty?: string;
 }
 
-interface ExamPaperProps {
+interface ExamPaperLayoutProps {
+  pages: ExamProblem[][]; // [페이지1[문제들], 페이지2[문제들]...] 2차원 배열
   title: string;
   instructor: string;
-  problems: Problem[];
-  layout: "1col" | "2col-top" | "2col-split" | "3col" | "masonry";
-  padding: "small" | "medium" | "large";
-  logoUrl: string | null;
+  template: ExamTemplateStyle;
 }
 
-const ExamPaperLayout = forwardRef<HTMLDivElement, ExamPaperProps>(
-  ({ title, instructor, problems, layout, padding, logoUrl }, ref) => {
+const ExamPaperLayout = forwardRef<HTMLDivElement, ExamPaperLayoutProps>(
+  ({ pages, title, instructor, template }, ref) => {
     
-    // 여백 설정
-    const paddingClass = 
-      padding === 'small' ? 'p-4 gap-4' : 
-      padding === 'large' ? 'p-12 gap-10' : 'p-8 gap-6';
-
-    // 레이아웃 그리드 설정
-    const getGridClass = () => {
-      switch(layout) {
-        case '1col': return 'grid-cols-1';
-        case '2col-top': return 'grid-cols-2 items-start'; // 위쪽 정렬
-        case '2col-split': return 'grid-cols-2 grid-rows-[auto_auto]'; // 4분할 느낌 (엄밀히는 페이지네이션 필요)
-        case '3col': return 'grid-cols-3';
-        case 'masonry': return 'columns-2 space-y-4 block'; // Masonry like (Tailwind columns)
-        default: return 'grid-cols-2';
+    // --- 내부 컴포넌트: 헤더 ---
+    const renderHeader = (pageNum: number) => {
+      // 2페이지부터는 헤더를 간소화하거나 생략할 수도 있음 (여기선 매 페이지 표시)
+      if (template.headerStyle === "box") {
+        return (
+          <div className="border-2 border-black p-2 mb-4 flex justify-between items-center select-none" style={{ height: template.headerHeight }}>
+            <div className="text-center flex-1">
+              <h1 className="text-xl font-extrabold tracking-widest">{title}</h1>
+              <p className="text-xs mt-1">{instructor} 선생님</p>
+            </div>
+            <div className="border-l-2 border-black pl-4 h-full flex flex-col justify-center w-24">
+              <span className="text-[10px] font-bold">점수</span>
+              <div className="w-full h-6 border border-gray-400 mt-1"></div>
+            </div>
+          </div>
+        );
       }
+      // Simple Style
+      return (
+        <div className="border-b-2 mb-6 pb-2 flex justify-between items-end select-none" 
+             style={{ borderColor: template.borderColor, height: template.headerHeight }}>
+          <div>
+            <h1 className="text-2xl font-bold text-slate-900">{title}</h1>
+            <p className="text-sm text-gray-500 font-bold mt-1">
+              {instructor} | 제 {pageNum + 1} 면
+            </p>
+          </div>
+          <div className="text-xs text-gray-400 font-mono">RuleMakers</div>
+        </div>
+      );
     };
 
     return (
-      // A4 사이즈 고정 (Print 시에만 적용되거나 화면에선 스케일링)
-      <div ref={ref} className="w-[210mm] min-h-[297mm] bg-white text-black relative mx-auto print:w-full print:h-auto">
-        
-        {/* === Header === */}
-        <header className="flex justify-between items-end border-b-2 border-black pb-2 mx-8 mt-8 mb-4">
-           <div className="flex flex-col">
-             {logoUrl && (
-               <img src={logoUrl} alt="Academy Logo" className="h-10 object-contain mb-2 w-fit" />
-             )}
-             <h1 className="text-2xl font-extrabold tracking-tight">{title}</h1>
-           </div>
-           <div className="text-right">
-             <p className="text-sm font-bold text-gray-600 mb-1">{instructor} 선생님</p>
-             {/* 학생 이름란 (밑줄) */}
-             <div className="flex items-center gap-2">
-                <span className="text-sm font-bold">성명 :</span>
-                <div className="w-24 border-b border-black h-4"></div>
-             </div>
-           </div>
-        </header>
+      <div ref={ref} className="w-full bg-gray-100 flex flex-col items-center gap-8 py-10 print:p-0 print:bg-white">
+        {pages.map((pageProblems, pageIndex) => (
+          // === A4 Page Container ===
+          <div
+            key={pageIndex}
+            className="bg-white shadow-lg print:shadow-none relative overflow-hidden"
+            style={{
+              width: "210mm",
+              height: "297mm", // 고정 높이 (내용 넘치면 잘림 - 페이지 분할 로직 중요)
+              padding: "15mm",
+              fontFamily: template.fontFamily,
+              pageBreakAfter: "always" // 인쇄 시 다음 페이지로 강제 넘김
+            }}
+          >
+            {/* Header */}
+            {renderHeader(pageIndex)}
 
-        {/* === Problems Grid === */}
-        <div className={`grid ${getGridClass()} ${paddingClass} mx-4`}>
-          {problems.map((prob, idx) => (
-            <div 
-              key={prob.id} 
-              className={`break-inside-avoid ${layout === '2col-split' ? 'border-b border-dashed border-gray-200 pb-4 mb-4' : ''}`}
+            {/* Body: 2-Column Layout */}
+            <div
+              className="w-full h-full"
+              style={{
+                columnCount: 2,
+                columnGap: template.columnGap,
+                columnFill: "auto", // auto: 1열 다 채우고 2열로 (신문식), balance: 높이 맞춤
+                height: `calc(100% - ${template.headerHeight} - 40px)`, // 헤더, 푸터 제외한 높이
+              }}
             >
-              <div className="flex gap-2">
-                <span className="text-lg font-extrabold font-serif text-blue-900">{idx + 1}.</span>
-                <div className="flex-1">
-                   <p className="text-sm font-medium leading-relaxed whitespace-pre-wrap">
-                     {prob.content}
-                   </p>
-                   {/* 문제 이미지 Placeholder */}
-                   <div className="mt-4 w-full h-32 bg-gray-50 border border-gray-100 flex items-center justify-center text-gray-300 text-xs">
-                      [문제 이미지 영역]
-                   </div>
-                   {/* 객관식 선지 Placeholder */}
-                   <div className="mt-4 grid grid-cols-5 gap-1 text-xs">
-                      <span>① 답안</span>
-                      <span>② 답안</span>
-                      <span>③ 답안</span>
-                      <span>④ 답안</span>
-                      <span>⑤ 답안</span>
-                   </div>
+              {pageProblems.map((prob) => (
+                <div
+                  key={prob.id}
+                  className="mb-6 break-inside-avoid relative group"
+                  style={{ pageBreakInside: "avoid" }} // 인쇄/컬럼 분리 시 잘림 방지
+                >
+                  <div className="flex items-start gap-2">
+                    <span 
+                      className="text-lg font-extrabold w-6 flex-shrink-0 leading-none"
+                      style={{ color: template.borderColor }}
+                    >
+                      {prob.number}.
+                    </span>
+                    <div className="flex-1">
+                      {prob.imageUrl ? (
+                        /* eslint-disable-next-line @next/next/no-img-element */
+                        <img 
+                          src={prob.imageUrl} 
+                          alt={`Problem ${prob.number}`}
+                          className="w-full object-contain"
+                          style={{ maxHeight: "400px" }} // 너무 큰 이미지 제한
+                        />
+                      ) : (
+                        <p className="text-sm whitespace-pre-wrap leading-relaxed">{prob.content}</p>
+                      )}
+                    </div>
+                  </div>
+                  {/* 문제 사이 여백 (서술형 공간 등) */}
+                  <div className="h-10 w-full"></div>
                 </div>
-              </div>
+              ))}
             </div>
-          ))}
-        </div>
 
-        {/* === Footer === */}
-        <footer className="absolute bottom-0 left-0 right-0 h-16 flex items-center justify-center border-t border-gray-200 mx-8">
-          <div className="flex items-center gap-2 opacity-50 grayscale">
-            {/* 회사 로고 (Next.js Image 대신 img 태그 사용 - print 호환성) */}
-            <img src="/images/logo.png" alt="RuleMakers" className="h-4" />
-            <span className="text-xs font-bold tracking-widest">R&D by RuleMakers</span>
+            {/* Footer */}
+            <div className="absolute bottom-4 left-0 w-full text-center text-xs text-gray-400 font-light">
+              - {pageIndex + 1} -
+            </div>
           </div>
-        </footer>
-
+        ))}
       </div>
     );
   }

@@ -2,26 +2,38 @@
 
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { useAuth } from "@/context/AuthContext"; 
+import { useAuth } from "@/context/AuthContext";
 import { db } from "@/lib/firebase";
 import {
   collection,
   query,
   where,
-  getDocs,
-  Timestamp,
   orderBy,
-  doc, 
-  updateDoc, 
+  doc,
+  updateDoc,
   serverTimestamp,
-  onSnapshot // [수정] 실시간 배지 업데이트를 위해 onSnapshot 사용 권장 (여기선 간단히 getDocs 유지하되 모달 오픈시 업데이트)
+  onSnapshot,
+  Timestamp
 } from "firebase/firestore";
-import RequestDetailModal from "@/components/RequestDetailModal"; 
 
-interface ReferenceFile {
+// --- 신규 컴포넌트 Import ---
+import UserStatsWidget from "@/components/UserStatsWidget";
+import { TableSkeleton } from "@/components/SkeletonLoader";
+import EmptyState from "@/components/EmptyState";
+import RequestDetailModal from "@/components/RequestDetailModal";
+
+// 아이콘
+import { 
+  BeakerIcon, 
+  DocumentTextIcon, 
+  ChevronRightIcon 
+} from "@heroicons/react/24/outline";
+
+// --- 타입 정의 (types/request.ts가 있다면 거기서 import 권장) ---
+export interface ReferenceFile {
   name: string;
   url: string;
   path: string;
@@ -44,27 +56,27 @@ export interface RequestData {
   referenceFiles?: ReferenceFile[];
   instructorId: string;
   rejectReason?: string;
-
-  // [신규] 강사용 안 읽은 메시지 카운트
   unreadCountInstructor?: number;
 }
 
-
 export default function DashboardPage() {
-  const { user, loading, isFirstLogin } = useAuth(); 
+  const { user, userData, loading, isFirstLogin } = useAuth();
   const router = useRouter();
   
-  const [requests, setRequests] = useState<RequestData[]>([]); 
+  const [requests, setRequests] = useState<RequestData[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
+  // 모달 상태
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedRequest, setSelectedRequest] = useState<RequestData | null>(null);
 
+  // 진행 중인 작업 수 계산 (위젯용)
+  const activeRequestsCount = useMemo(() => {
+    return requests.filter(r => r.status === 'requested' || r.status === 'in_progress').length;
+  }, [requests]);
+
   useEffect(() => {
-    if (loading) {
-      setIsLoading(true);
-      return;
-    }
+    if (loading) return; // AuthContext 로딩 중이면 대기
     
     if (!user) {
       router.push("/login");
@@ -78,7 +90,7 @@ export default function DashboardPage() {
     }
     
     if (user && isFirstLogin === false) {
-      // [수정] 실시간 업데이트(배지 표시)를 위해 onSnapshot 사용
+      // 실시간 리스너 연결
       const q = query(
         collection(db, "requests"),
         where("instructorId", "==", user.uid),
@@ -99,24 +111,20 @@ export default function DashboardPage() {
 
       return () => unsubscribe();
     }
-  }, [user, loading, isFirstLogin, router]); 
+  }, [user, loading, isFirstLogin, router]);
 
   
-  // --- 모달 핸들러 ---
-  
-  // 리스트 항목 클릭 시 모달 열기 + 읽음 처리
+  // --- 핸들러 ---
   const handleRequestClick = async (request: RequestData) => {
     setSelectedRequest(request);
     setIsModalOpen(true);
 
-    // [신규] 안 읽은 메시지가 있으면 0으로 초기화 (읽음 처리)
+    // 안 읽은 메시지 초기화
     if (request.unreadCountInstructor && request.unreadCountInstructor > 0) {
       try {
         const docRef = doc(db, "requests", request.id);
-        await updateDoc(docRef, {
-          unreadCountInstructor: 0
-        });
-        // 로컬 상태 업데이트 (UI 즉시 반영)
+        await updateDoc(docRef, { unreadCountInstructor: 0 });
+        // 로컬 상태 즉시 반영 (깜빡임 방지)
         setRequests(prev => 
           prev.map(r => r.id === request.id ? { ...r, unreadCountInstructor: 0 } : r)
         );
@@ -133,7 +141,7 @@ export default function DashboardPage() {
 
   const handleSaveChanges = async (updatedData: Partial<RequestData>) => {
     if (!selectedRequest) return;
-    setIsLoading(true);
+    setIsLoading(true); // 저장 중 로딩 표시 (선택 사항)
     try {
       const docRef = doc(db, "requests", selectedRequest.id);
       await updateDoc(docRef, {
@@ -149,10 +157,19 @@ export default function DashboardPage() {
     setIsLoading(false);
   };
 
-  if (loading || isLoading || isFirstLogin === null) {
+  // 로딩 화면 처리
+  if (loading || isFirstLogin === null) {
     return (
-      <div className="flex min-h-screen items-center justify-center">
-        요청 목록을 불러오는 중...
+      <div className="container mx-auto max-w-5xl px-6 py-12">
+         <div className="animate-pulse space-y-8">
+            <div className="h-8 bg-slate-200 rounded w-1/4"></div>
+            <div className="h-32 bg-slate-200 rounded-xl"></div>
+            <div className="space-y-4">
+               <div className="h-12 bg-slate-200 rounded"></div>
+               <div className="h-12 bg-slate-200 rounded"></div>
+               <div className="h-12 bg-slate-200 rounded"></div>
+            </div>
+         </div>
       </div>
     );
   }
@@ -160,85 +177,149 @@ export default function DashboardPage() {
   if (!user) return null; 
 
   return (
-    <div className="flex min-h-screen flex-col">
-      <main className="flex-grow bg-gray-50 py-12">
+    <div className="flex min-h-screen flex-col bg-slate-50">
+      <main className="flex-grow py-12">
         <div className="container mx-auto max-w-5xl px-6">
           
-          <div className="flex flex-col items-start justify-between gap-4 md:flex-row md:items-center">
-            <h1 className="text-3xl font-bold text-gray-900">
-              요청한 작업 목록
+          {/* 1. 헤더 및 인사말 */}
+          <div className="mb-8">
+            <h1 className="text-2xl font-bold text-slate-900">
+              안녕하세요, {userData?.name || "선생님"}! 👋
             </h1>
+            <p className="text-slate-500 mt-1">
+              오늘도 학생들을 위한 최고의 컨텐츠를 준비해보세요.
+            </p>
+          </div>
+
+          {/* 2. 통계 위젯 (컴포넌트 적용) */}
+          {userData && (
+            <UserStatsWidget 
+              userData={userData} 
+              activeRequestsCount={activeRequestsCount} 
+            />
+          )}
+
+          {/* 3. Quick Actions (서비스 연결 카드) */}
+          <div className="grid md:grid-cols-2 gap-6 mb-10">
+            {/* A. 문제은행 바로가기 */}
+            <Link 
+              href="/service/maker"
+              className="group relative flex items-center justify-between p-6 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-2xl shadow-lg hover:shadow-xl transition-all hover:-translate-y-1 overflow-hidden"
+            >
+               <div className="relative z-10">
+                 <div className="flex items-center gap-2 mb-2">
+                   <BeakerIcon className="w-6 h-6 text-blue-200" />
+                   <span className="text-xs font-bold text-blue-100 bg-white/20 px-2 py-0.5 rounded-full">BETA</span>
+                 </div>
+                 <h3 className="text-xl font-bold text-white mb-1">자체 제작 문제은행</h3>
+                 <p className="text-blue-100 text-sm">원하는 문제를 골라 시험지를 직접 만드세요.</p>
+               </div>
+               <div className="relative z-10 bg-white/10 p-2 rounded-full group-hover:bg-white/20 transition-colors">
+                 <ChevronRightIcon className="w-6 h-6 text-white" />
+               </div>
+               {/* 데코레이션 */}
+               <div className="absolute right-[-20px] bottom-[-20px] w-32 h-32 bg-white/10 rounded-full blur-2xl group-hover:scale-150 transition-transform duration-500" />
+            </Link>
+
+            {/* B. 맞춤 제작 요청하기 */}
             <Link 
               href="/request"
-              className="rounded-md bg-indigo-600 px-5 py-2.5 text-sm font-medium text-white shadow-sm transition-colors hover:bg-indigo-700"
+              className="group relative flex items-center justify-between p-6 bg-white border border-slate-200 rounded-2xl shadow-sm hover:shadow-md hover:border-blue-300 transition-all hover:-translate-y-1"
             >
-              + 새 작업 요청하기
+               <div>
+                 <div className="flex items-center gap-2 mb-2">
+                   <DocumentTextIcon className="w-6 h-6 text-slate-400 group-hover:text-blue-500 transition-colors" />
+                 </div>
+                 <h3 className="text-xl font-bold text-slate-900 mb-1">맞춤 제작 요청</h3>
+                 <p className="text-slate-500 text-sm">기출 분석 및 변형 문제를 전문가에게 맡기세요.</p>
+               </div>
+               <div className="bg-slate-50 p-2 rounded-full group-hover:bg-blue-50 transition-colors">
+                 <ChevronRightIcon className="w-6 h-6 text-slate-400 group-hover:text-blue-500" />
+               </div>
             </Link>
           </div>
           
-          <div className="mt-8 overflow-x-auto rounded-lg bg-white shadow">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">상태</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">요청 제목</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">요청일</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">완료/다운로드</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-200">
-                {requests.length === 0 ? (
-                  <tr>
-                    <td colSpan={4} className="px-6 py-12 text-center text-gray-500">
-                      아직 요청한 작업이 없습니다.
-                    </td>
-                  </tr>
-                ) : (
-                  requests.map((req) => (
-                    <tr 
-                      key={req.id} 
-                      onClick={() => handleRequestClick(req)}
-                      className="hover:bg-gray-50 cursor-pointer"
-                    >
-                      <td className="px-6 py-4">
-                        {req.status === 'requested' && <span className="rounded-full bg-yellow-100 px-2 py-1 text-xs font-semibold text-yellow-800">요청됨</span>}
-                        {req.status === 'in_progress' && <span className="rounded-full bg-blue-100 px-2 py-1 text-xs font-semibold text-blue-800">작업중</span>}
-                        {req.status === 'completed' && <span className="rounded-full bg-green-100 px-2 py-1 text-xs font-semibold text-green-800">완료됨</span>}
-                        {req.status === 'rejected' && <span className="rounded-full bg-gray-100 px-2 py-1 text-xs font-semibold text-gray-700">반려됨</span>}
-                      </td>
-                      <td className="px-6 py-4 font-medium text-gray-900 flex items-center gap-2">
-                        {req.title}
-                        {/* [신규] 새 메시지 알림 배지 */}
-                        {req.unreadCountInstructor && req.unreadCountInstructor > 0 ? (
-                           <span className="inline-flex items-center rounded-md bg-red-50 px-2 py-1 text-xs font-medium text-red-700 ring-1 ring-inset ring-red-600/10">
-                             New Message
-                           </span>
-                        ) : null}
-                      </td>
-                      <td className="px-6 py-4 text-gray-500">{req.requestedAt.toDate().toLocaleDateString('ko-KR')}</td>
-                      <td className="px-6 py-4">
-                        {req.status === 'completed' && req.completedFileUrl ? (
-                          <a
-                            href={req.completedFileUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            onClick={(e) => e.stopPropagation()} 
-                            className="rounded-md bg-indigo-100 px-3 py-2 text-sm font-medium text-indigo-700 hover:bg-indigo-200"
-                          >
-                            다운로드
-                          </a>
-                        ) : (
-                          <span className="text-sm text-gray-400">
-                            {req.status === 'in_progress' ? '작업 진행 중' :
-                             req.status === 'rejected' ? '반려됨' : '—'}
-                          </span>
-                        )}
-                      </td>
+          {/* 4. 요청 내역 리스트 */}
+          <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+            <div className="px-6 py-5 border-b border-slate-100 flex justify-between items-center">
+              <h2 className="text-lg font-bold text-slate-800">최근 요청 내역</h2>
+              <span className="text-xs text-slate-400">최근 3개월 내역</span>
+            </div>
+
+            {isLoading ? (
+              <div className="p-6">
+                <TableSkeleton />
+              </div>
+            ) : requests.length === 0 ? (
+              <div className="p-6">
+                <EmptyState 
+                  title="아직 요청한 작업이 없습니다." 
+                  desc="새로운 맞춤 교재 제작을 요청해보세요." 
+                  actionLink="/request"
+                  actionText="첫 작업 요청하기"
+                />
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-slate-100">
+                  <thead className="bg-slate-50">
+                    <tr>
+                      <th className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">상태</th>
+                      <th className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">요청 제목</th>
+                      <th className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">요청일</th>
+                      <th className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">완료 파일</th>
                     </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 bg-white">
+                    {requests.map((req) => (
+                      <tr 
+                        key={req.id} 
+                        onClick={() => handleRequestClick(req)}
+                        className="hover:bg-blue-50/50 cursor-pointer transition-colors"
+                      >
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <StatusBadge status={req.status} />
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="flex items-center gap-2">
+                            <span className="font-medium text-slate-700 truncate max-w-[200px] sm:max-w-xs">
+                              {req.title}
+                            </span>
+                            {/* 새 메시지 배지 */}
+                            {req.unreadCountInstructor && req.unreadCountInstructor > 0 ? (
+                               <span className="inline-flex items-center rounded-md bg-red-50 px-2 py-1 text-xs font-medium text-red-600 ring-1 ring-inset ring-red-500/20 animate-pulse">
+                                 New Msg
+                               </span>
+                            ) : null}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500">
+                          {req.requestedAt.toDate().toLocaleDateString('ko-KR')}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          {req.status === 'completed' && req.completedFileUrl ? (
+                            <a
+                              href={req.completedFileUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              onClick={(e) => e.stopPropagation()} 
+                              className="inline-flex items-center justify-center rounded-lg bg-indigo-50 px-3 py-1.5 text-sm font-medium text-indigo-600 hover:bg-indigo-100 transition-colors border border-indigo-100"
+                            >
+                              다운로드
+                            </a>
+                          ) : (
+                            <span className="text-xs text-slate-400 font-medium">
+                              {req.status === 'in_progress' ? '제작 진행 중' :
+                               req.status === 'rejected' ? '반려됨' : '대기 중'}
+                            </span>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </div>
         </div>
       </main>
@@ -251,5 +332,30 @@ export default function DashboardPage() {
         />
       )}
     </div>
+  );
+}
+
+// 상태 배지 컴포넌트 (내부용)
+function StatusBadge({ status }: { status: string }) {
+  const styles = {
+    requested: "bg-yellow-50 text-yellow-700 ring-yellow-600/20",
+    in_progress: "bg-blue-50 text-blue-700 ring-blue-600/20",
+    completed: "bg-green-50 text-green-700 ring-green-600/20",
+    rejected: "bg-slate-50 text-slate-600 ring-slate-500/20",
+  };
+  
+  const labels = {
+    requested: "요청됨",
+    in_progress: "작업중",
+    completed: "완료됨",
+    rejected: "반려됨",
+  };
+
+  const key = status as keyof typeof styles;
+
+  return (
+    <span className={`inline-flex items-center rounded-md px-2 py-1 text-xs font-medium ring-1 ring-inset ${styles[key]}`}>
+      {labels[key]}
+    </span>
   );
 }
