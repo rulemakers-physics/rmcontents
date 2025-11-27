@@ -1,23 +1,55 @@
+// components/Header.tsx
+
 "use client";
 
 import { useEffect, useState, useRef } from "react";
 import Link from "next/link";
 import Image from "next/image";
+import { usePathname, useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
-import { useRouter, usePathname } from "next/navigation";
 import { auth, db } from "@/lib/firebase";
 import { signOut } from "firebase/auth";
 import { collection, query, where, onSnapshot } from "firebase/firestore";
+import { motion, AnimatePresence } from "framer-motion";
 import { 
   Bars3Icon, 
   XMarkIcon, 
   ChevronDownIcon,
   UserCircleIcon,
-  ArrowRightOnRectangleIcon
+  ArrowRightOnRectangleIcon,
+  Squares2X2Icon,
+  PencilSquareIcon,
+  Cog6ToothIcon
 } from "@heroicons/react/24/outline";
 
-// 새로 만든 알림 벨 컴포넌트 (파일이 있다면 import)
 import NotificationBell from "./NotificationBell";
+
+// 네비게이션 메뉴 구조 정의
+const NAV_ITEMS = [
+  { name: "About Us", href: "/company" },
+  { name: "문제은행", href: "/service/maker" },
+  { name: "전국 모의고사", href: "/mock-exam" },
+  {
+    name: "Service Plans",
+    href: "#", // 드롭다운 트리거용
+    children: [
+      { name: "Basic Plan", href: "/basic-service" },
+      { name: "Maker's Plan", href: "/premium-service" },
+      { name: "Pricing", href: "/pricing" },
+    ]
+  },
+  {
+    name: "Contents",
+    href: "/showcase",
+    children: [
+      { name: "전체 보기", href: "/showcase" },
+      { name: "학교별 실전 모의고사", href: "/showcase/mock-exam" },
+      { name: "학교별 내신 대비 N제", href: "/showcase/n-set" },
+      { name: "고난이도 문항모음zip", href: "/showcase/high-difficulty" },
+    ]
+  },
+  { name: "Contact", href: "/contact" },
+];
 
 export default function Header() {
   const { user, loading } = useAuth();
@@ -27,13 +59,16 @@ export default function Header() {
   // UI 상태
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
+  
+  // 드롭다운 상태 (데스크탑)
+  const [hoveredMenu, setHoveredMenu] = useState<string | null>(null);
   const [isProfileDropdownOpen, setIsProfileDropdownOpen] = useState(false);
-  const dropdownRef = useRef<HTMLDivElement>(null);
+  const profileDropdownRef = useRef<HTMLDivElement>(null);
 
-  // --- [보존] 기존 알림 배지 로직 ---
-  const [unreadDashboard, setUnreadDashboard] = useState(0); // 강사용
-  const [unreadActive, setUnreadActive] = useState(0);       // 관리자용 (접수/진행)
-  const [unreadCompleted, setUnreadCompleted] = useState(0); // 관리자용 (완료/반려)
+  // 알림 배지 상태
+  const [unreadDashboard, setUnreadDashboard] = useState(0);
+  const [unreadActive, setUnreadActive] = useState(0);
+  const [unreadCompleted, setUnreadCompleted] = useState(0);
 
   // 스크롤 감지
   useEffect(() => {
@@ -42,10 +77,10 @@ export default function Header() {
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
-  // 외부 클릭 시 드롭다운 닫기
+  // 외부 클릭 닫기 (프로필 드롭다운)
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+      if (profileDropdownRef.current && !profileDropdownRef.current.contains(event.target as Node)) {
         setIsProfileDropdownOpen(false);
       }
     }
@@ -53,65 +88,24 @@ export default function Header() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  // --- [보존] Firestore 실시간 리스너 ---
+  // Firestore 리스너
   useEffect(() => {
     if (!user) return;
-
-    // 1. 관리자용: 전체 요청 상태 감시
     if (user.isAdmin) {
-      // (1) 접수됨 + 진행중
-      const qActive = query(
-        collection(db, "requests"),
-        where("status", "in", ["requested", "in_progress"])
-      );
+      const qActive = query(collection(db, "requests"), where("status", "in", ["requested", "in_progress"]));
       const unsubActive = onSnapshot(qActive, (snapshot) => {
-        let count = 0;
-        snapshot.docs.forEach(doc => {
-          const data = doc.data();
-          if (data.unreadCountAdmin && data.unreadCountAdmin > 0) {
-            count += data.unreadCountAdmin;
-          }
-        });
-        setUnreadActive(count);
+        setUnreadActive(snapshot.docs.reduce((acc, doc) => acc + (doc.data().unreadCountAdmin || 0), 0));
       });
-
-      // (2) 완료됨 + 반려됨
-      const qCompleted = query(
-        collection(db, "requests"),
-        where("status", "in", ["completed", "rejected"])
-      );
+      const qCompleted = query(collection(db, "requests"), where("status", "in", ["completed", "rejected"]));
       const unsubCompleted = onSnapshot(qCompleted, (snapshot) => {
-        let count = 0;
-        snapshot.docs.forEach(doc => {
-          const data = doc.data();
-          if (data.unreadCountAdmin && data.unreadCountAdmin > 0) {
-            count += data.unreadCountAdmin;
-          }
-        });
-        setUnreadCompleted(count);
+        setUnreadCompleted(snapshot.docs.reduce((acc, doc) => acc + (doc.data().unreadCountAdmin || 0), 0));
       });
-
-      return () => {
-        unsubActive();
-        unsubCompleted();
-      };
+      return () => { unsubActive(); unsubCompleted(); };
     } else {
-      // 2. 강사용: 내 요청의 안 읽은 메시지
-      const qInstructor = query(
-        collection(db, "requests"),
-        where("instructorId", "==", user.uid)
-      );
-      const unsubscribe = onSnapshot(qInstructor, (snapshot) => {
-        let count = 0;
-        snapshot.docs.forEach(doc => {
-          const data = doc.data();
-          if (data.unreadCountInstructor && data.unreadCountInstructor > 0) {
-            count += data.unreadCountInstructor;
-          }
-        });
-        setUnreadDashboard(count);
+      const qInstructor = query(collection(db, "requests"), where("instructorId", "==", user.uid));
+      return onSnapshot(qInstructor, (snapshot) => {
+        setUnreadDashboard(snapshot.docs.reduce((acc, doc) => acc + (doc.data().unreadCountInstructor || 0), 0));
       });
-      return () => unsubscribe();
     }
   }, [user]);
 
@@ -125,172 +119,173 @@ export default function Header() {
     }
   };
 
-  // --- [보존] 네비게이션 항목 정의 ---
-  const publicLinks = [
-    { name: "회사 소개", href: "/company" },
-    { name: "베이직 서비스", href: "/basic-service" },
-    { name: "프리미엄 서비스", href: "/premium-service" },
-    { name: "쇼케이스", href: "/showcase" },
-    { name: "문의하기", href: "/contact" },
-    { name: "이용요금", href: "/pricing" },
-  ];
-
-  const isActive = (path: string) => pathname === path;
-
   return (
     <>
+      {/* sticky로 변경하여 컨텐츠 가림 현상 해결 */}
       <header 
-        className={`sticky top-0 z-40 w-full transition-all duration-300 border-b ${
+        className={`sticky top-0 z-50 w-full transition-all duration-300 border-b ${
           isScrolled 
-            ? "bg-white/95 backdrop-blur-md border-slate-200 shadow-sm" 
-            : "bg-white border-transparent"
+            ? "bg-white/95 backdrop-blur-md border-slate-200 shadow-sm h-16" 
+            : "bg-white border-transparent h-20"
         }`}
       >
-        <div className="container mx-auto px-4 md:px-6 h-16 flex items-center justify-between">
+        <div className="container mx-auto px-4 md:px-6 h-full flex items-center justify-between">
           
           {/* 1. 로고 */}
-          <Link href="/" className="flex items-center gap-2 flex-shrink-0">
-             <div className="relative w-8 h-8">
+          <Link href="/" className="flex items-center gap-2.5 flex-shrink-0 group">
+             <div className="relative w-8 h-8 transition-transform group-hover:scale-110 duration-300">
                <Image src="/images/logo.png" alt="RuleMakers Logo" fill className="object-contain" />
              </div>
-             <span className="text-xl font-extrabold text-slate-900 tracking-tighter hidden sm:block">
+             <span className="text-xl font-extrabold tracking-tight text-slate-900">
                RuleMakers
              </span>
           </Link>
 
-          {/* 2. 데스크탑 메인 메뉴 (공개 링크) */}
-          <nav className="hidden xl:flex items-center gap-1">
-            {publicLinks.map((link) => (
-              <Link
-                key={link.href}
-                href={link.href}
-                className={`px-3 py-2 rounded-lg text-sm font-bold transition-colors ${
-                  isActive(link.href)
-                    ? "text-blue-600 bg-blue-50"
-                    : "text-slate-500 hover:text-slate-900 hover:bg-slate-50"
-                }`}
+          {/* 2. 데스크탑 메인 메뉴 */}
+          <nav className="hidden xl:flex items-center gap-1 h-full">
+            {NAV_ITEMS.map((item) => (
+              <div 
+                key={item.name}
+                className="relative h-full flex items-center"
+                onMouseEnter={() => setHoveredMenu(item.name)}
+                onMouseLeave={() => setHoveredMenu(null)}
               >
-                {link.name}
-              </Link>
+                <Link
+                  href={item.href}
+                  className={`px-4 py-2 text-sm font-bold transition-colors rounded-full flex items-center gap-1 ${
+                    pathname === item.href || (item.children && item.children.some(sub => pathname === sub.href))
+                      ? "text-blue-600 bg-blue-50" 
+                      : "text-slate-600 hover:text-slate-900 hover:bg-slate-50"
+                  }`}
+                >
+                  {item.name}
+                  {item.children && <ChevronDownIcon className="w-3 h-3 mt-0.5" />}
+                </Link>
+
+                {/* 드롭다운 메뉴 */}
+                {item.children && (
+                  <AnimatePresence>
+                    {hoveredMenu === item.name && (
+                      <motion.div
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: 10 }}
+                        transition={{ duration: 0.2 }}
+                        className="absolute top-full left-0 mt-1 w-56 bg-white rounded-xl border border-slate-100 shadow-xl p-2 z-50"
+                      >
+                        {item.children.map((subItem) => (
+                          <Link
+                            key={subItem.name}
+                            href={subItem.href}
+                            className={`block px-4 py-3 rounded-lg text-sm font-medium transition-colors ${
+                              pathname === subItem.href
+                                ? "bg-blue-50 text-blue-700"
+                                : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
+                            }`}
+                          >
+                            {subItem.name}
+                          </Link>
+                        ))}
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                )}
+              </div>
             ))}
           </nav>
 
-          {/* 3. 우측 액션 버튼 (로그인/유저메뉴) */}
-          <div className="flex items-center gap-2 md:gap-4">
+          {/* 3. 우측 액션 (알림, 프로필) */}
+          <div className="flex items-center gap-3">
             
             {loading ? (
-              <div className="w-20 h-8 bg-slate-100 animate-pulse rounded"></div>
+              <div className="w-24 h-9 bg-slate-100 animate-pulse rounded-lg"></div>
             ) : user ? (
-              <>
-                {/* (1) 시스템 알림 벨 (신규 기능) */}
+              <div className="flex items-center gap-3">
+                {/* 실제 기능하는 알림 벨 */}
                 <NotificationBell />
 
-                {/* (2) 유저 프로필 드롭다운 */}
-                <div className="relative" ref={dropdownRef}>
+                {/* 프로필 드롭다운 */}
+                <div className="relative" ref={profileDropdownRef}>
                   <button
                     onClick={() => setIsProfileDropdownOpen(!isProfileDropdownOpen)}
-                    className="flex items-center gap-2 px-2 py-1.5 rounded-full border border-slate-200 hover:bg-slate-50 transition-all"
+                    className={`flex items-center gap-2 pl-1 pr-2 py-1 rounded-full border transition-all duration-200 ${
+                      isProfileDropdownOpen 
+                        ? 'border-blue-300 bg-blue-50 ring-2 ring-blue-100' 
+                        : 'border-slate-200 hover:border-slate-300 bg-white'
+                    }`}
                   >
-                    <UserCircleIcon className="w-6 h-6 text-slate-400" />
-                    <span className="text-xs font-bold text-slate-700 hidden md:block max-w-[100px] truncate">
-                      {user.email?.split('@')[0]} T
+                    <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 border border-slate-200 overflow-hidden">
+                      {/* 로고 대신 유저 아이콘 사용 (깔끔함 유지) */}
+                      <UserCircleIcon className="w-6 h-6" />
+                    </div>
+                    <span className="text-xs font-bold text-slate-700 hidden md:block max-w-[80px] truncate">
+                      {user.email?.split('@')[0]}
                     </span>
-                    <ChevronDownIcon className={`w-3 h-3 text-slate-400 transition-transform ${isProfileDropdownOpen ? 'rotate-180' : ''}`} />
+                    <ChevronDownIcon className={`w-3 h-3 text-slate-400 transition-transform duration-200 ${isProfileDropdownOpen ? 'rotate-180' : ''}`} />
                   </button>
 
-                  {/* 드롭다운 메뉴 */}
-                  {isProfileDropdownOpen && (
-                    <div className="absolute right-0 mt-2 w-64 bg-white rounded-xl border border-slate-100 shadow-xl py-2 animate-in fade-in zoom-in duration-200 origin-top-right">
-                      <div className="px-4 py-3 border-b border-slate-50 mb-1 bg-slate-50/50">
-                        <p className="text-xs text-slate-400 font-bold">Signed in as</p>
-                        <p className="text-sm font-bold text-slate-900 truncate">{user.email}</p>
-                      </div>
-
-                      {/* [보존] 강사용 메뉴 */}
-                      <Link 
-                        href="/dashboard" 
-                        onClick={() => setIsProfileDropdownOpen(false)}
-                        className="flex items-center justify-between px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50 hover:text-blue-600 font-medium"
+                  {/* 프로필 메뉴 */}
+                  <AnimatePresence>
+                    {isProfileDropdownOpen && (
+                      <motion.div
+                        initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                        transition={{ duration: 0.2 }}
+                        className="absolute right-0 mt-2 w-64 bg-white rounded-2xl border border-slate-100 shadow-xl shadow-slate-200/50 py-2 overflow-hidden origin-top-right z-50"
                       >
-                        대시보드
-                        {unreadDashboard > 0 && (
-                          <span className="bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full">
-                            {unreadDashboard}
-                          </span>
+                        <div className="px-5 py-4 bg-slate-50/50 border-b border-slate-100">
+                          <p className="text-xs text-slate-400 font-bold uppercase tracking-wider mb-1">My Account</p>
+                          <p className="text-sm font-bold text-slate-900 truncate">{user.email}</p>
+                        </div>
+
+                        <div className="p-2 space-y-1">
+                          <DropdownLink href="/dashboard" icon={Squares2X2Icon} label="대시보드" badge={unreadDashboard} onClick={() => setIsProfileDropdownOpen(false)} />
+                          <DropdownLink href="/request" icon={PencilSquareIcon} label="작업 요청하기" onClick={() => setIsProfileDropdownOpen(false)} />
+                          <DropdownLink href="/profile/settings" icon={Cog6ToothIcon} label="프로필 설정" onClick={() => setIsProfileDropdownOpen(false)} />
+                        </div>
+
+                        {user.isAdmin && (
+                          <>
+                            <div className="h-px bg-slate-100 my-1 mx-2" />
+                            <div className="px-4 py-2 text-[10px] font-bold text-slate-400 uppercase">Admin Zone</div>
+                            <div className="p-2 pt-0 space-y-1">
+                               <DropdownLink href="/admin" icon={null} label="접수된 작업" badge={unreadActive} badgeColor="bg-red-500" onClick={() => setIsProfileDropdownOpen(false)} />
+                               <DropdownLink href="/admin/completed" icon={null} label="완료된 작업" badge={unreadCompleted} badgeColor="bg-green-500" onClick={() => setIsProfileDropdownOpen(false)} />
+                            </div>
+                          </>
                         )}
-                      </Link>
-                      <Link 
-                        href="/request" 
-                        onClick={() => setIsProfileDropdownOpen(false)}
-                        className="block px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50 hover:text-blue-600 font-medium"
-                      >
-                        작업 요청하기
-                      </Link>
-                      <Link 
-                        href="/profile/settings" 
-                        onClick={() => setIsProfileDropdownOpen(false)}
-                        className="block px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50 hover:text-blue-600 font-medium"
-                      >
-                        프로필 설정
-                      </Link>
 
-                      {/* [보존] 관리자용 메뉴 */}
-                      {user.isAdmin && (
-                        <>
-                          <div className="my-2 border-t border-slate-100"></div>
-                          <div className="px-4 py-1 text-[10px] font-bold text-slate-400 uppercase">Admin</div>
-                          
-                          <Link 
-                            href="/admin" 
-                            onClick={() => setIsProfileDropdownOpen(false)}
-                            className="flex items-center justify-between px-4 py-2 text-sm text-red-600 hover:bg-red-50 font-bold"
+                        <div className="h-px bg-slate-100 my-1 mx-2" />
+                        <div className="p-2">
+                          <button 
+                            onClick={handleLogout} 
+                            className="w-full flex items-center gap-3 px-3 py-2 text-sm font-medium text-slate-500 hover:bg-red-50 hover:text-red-600 rounded-lg transition-colors"
                           >
-                            접수된 작업
-                            {unreadActive > 0 && (
-                              <span className="bg-red-500 text-white text-[10px] px-1.5 py-0.5 rounded-full">
-                                {unreadActive}
-                              </span>
-                            )}
-                          </Link>
-                          <Link 
-                            href="/admin/completed" 
-                            onClick={() => setIsProfileDropdownOpen(false)}
-                            className="flex items-center justify-between px-4 py-2 text-sm text-green-600 hover:bg-green-50 font-bold"
-                          >
-                            완료된 작업
-                            {unreadCompleted > 0 && (
-                              <span className="bg-red-500 text-white text-[10px] px-1.5 py-0.5 rounded-full">
-                                {unreadCompleted}
-                              </span>
-                            )}
-                          </Link>
-                        </>
-                      )}
-
-                      <div className="my-2 border-t border-slate-100"></div>
-                      <button 
-                        onClick={handleLogout} 
-                        className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-slate-500 hover:bg-slate-50 hover:text-red-600 text-left"
-                      >
-                        <ArrowRightOnRectangleIcon className="w-4 h-4" /> 로그아웃
-                      </button>
-                    </div>
-                  )}
+                            <ArrowRightOnRectangleIcon className="w-4 h-4" /> 로그아웃
+                          </button>
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
                 </div>
-              </>
+              </div>
             ) : (
-              <Link 
-                href="/login" 
-                className="px-5 py-2 bg-slate-900 text-white text-sm font-bold rounded-lg hover:bg-slate-800 transition-colors shadow-lg shadow-slate-200"
-              >
-                로그인
-              </Link>
+              <div className="hidden md:flex items-center gap-2">
+                 <Link href="/login" className="text-sm font-bold text-slate-500 hover:text-slate-900 px-3 py-2 transition-colors">로그인</Link>
+                 <Link 
+                  href="/login" 
+                  className="px-5 py-2.5 bg-slate-900 text-white text-sm font-bold rounded-lg hover:bg-slate-800 hover:shadow-lg hover:-translate-y-0.5 transition-all"
+                >
+                  시작하기
+                </Link>
+              </div>
             )}
 
             {/* 모바일 메뉴 버튼 */}
             <button 
               onClick={() => setIsMobileMenuOpen(true)}
-              className="xl:hidden p-2 text-slate-600 hover:bg-slate-100 rounded-lg transition-colors"
+              className="xl:hidden p-2 -mr-2 text-slate-600 hover:bg-slate-100 rounded-lg transition-colors"
             >
               <Bars3Icon className="w-6 h-6" />
             </button>
@@ -298,99 +293,97 @@ export default function Header() {
         </div>
       </header>
 
-      {/* --- [보존] 모바일 메뉴 Overlay (모든 링크 포함) --- */}
-      {isMobileMenuOpen && (
-        <div className="fixed inset-0 z-50 xl:hidden">
-          <div 
-            className="absolute inset-0 bg-black/50 backdrop-blur-sm transition-opacity"
-            onClick={() => setIsMobileMenuOpen(false)}
-          />
-          <div className="absolute right-0 top-0 bottom-0 w-[80%] max-w-sm bg-white shadow-2xl p-6 flex flex-col animate-in slide-in-from-right duration-300 overflow-y-auto">
-            
-            <div className="flex justify-between items-center mb-8">
-              <span className="text-xl font-extrabold text-slate-900">Menu</span>
-              <button onClick={() => setIsMobileMenuOpen(false)} className="p-2 hover:bg-slate-100 rounded-full">
-                <XMarkIcon className="w-6 h-6 text-slate-500" />
-              </button>
-            </div>
-
-            <nav className="flex-1 space-y-1">
-              {/* 공개 링크 모바일 렌더링 */}
-              {publicLinks.map((link) => (
-                <Link
-                  key={link.href}
-                  href={link.href}
-                  onClick={() => setIsMobileMenuOpen(false)}
-                  className={`block px-4 py-3 rounded-xl text-base font-bold transition-colors ${
-                    isActive(link.href) ? "bg-blue-50 text-blue-600" : "text-slate-600 hover:bg-slate-50"
-                  }`}
-                >
-                  {link.name}
-                </Link>
-              ))}
-
-              <div className="my-4 border-t border-slate-100"></div>
-
-              {/* 유저 전용 링크 모바일 렌더링 */}
-              {user && (
-                <>
-                  <Link 
-                    href="/dashboard" 
-                    onClick={() => setIsMobileMenuOpen(false)} 
-                    className="flex justify-between items-center px-4 py-3 rounded-xl text-base font-bold text-slate-700 hover:bg-slate-50"
-                  >
-                    대시보드
-                    {unreadDashboard > 0 && <span className="bg-red-500 text-white text-xs px-2 py-0.5 rounded-full">{unreadDashboard}</span>}
-                  </Link>
-                  <Link href="/request" onClick={() => setIsMobileMenuOpen(false)} className="block px-4 py-3 rounded-xl text-base font-bold text-slate-700 hover:bg-slate-50">
-                    작업 요청하기
-                  </Link>
-                  <Link href="/profile/settings" onClick={() => setIsMobileMenuOpen(false)} className="block px-4 py-3 rounded-xl text-base font-bold text-slate-700 hover:bg-slate-50">
-                    프로필 설정
-                  </Link>
-
-                  {user.isAdmin && (
-                    <div className="mt-2 bg-slate-50 rounded-xl p-2">
-                       <p className="px-2 py-1 text-xs font-bold text-slate-400 uppercase">Admin Zone</p>
-                       <Link 
-                         href="/admin" 
-                         onClick={() => setIsMobileMenuOpen(false)} 
-                         className="flex justify-between px-2 py-2 text-sm text-red-600 font-bold hover:bg-slate-100 rounded-lg"
-                       >
-                         접수된 작업
-                         {unreadActive > 0 && <span className="bg-red-500 text-white text-xs px-2 py-0.5 rounded-full">{unreadActive}</span>}
-                       </Link>
-                       <Link 
-                         href="/admin/completed" 
-                         onClick={() => setIsMobileMenuOpen(false)} 
-                         className="flex justify-between px-2 py-2 text-sm text-green-600 font-bold hover:bg-slate-100 rounded-lg"
-                       >
-                         완료된 작업
-                         {unreadCompleted > 0 && <span className="bg-red-500 text-white text-xs px-2 py-0.5 rounded-full">{unreadCompleted}</span>}
-                       </Link>
-                    </div>
-                  )}
-                </>
-              )}
-            </nav>
-
-            <div className="pt-6 mt-4 border-t border-slate-100">
-              {user ? (
-                <button 
-                  onClick={handleLogout} 
-                  className="w-full py-3 bg-slate-100 text-slate-600 font-bold rounded-xl hover:bg-slate-200 flex items-center justify-center gap-2"
-                >
-                  <ArrowRightOnRectangleIcon className="w-5 h-5" /> 로그아웃
+      {/* 모바일 메뉴 (Slide Over) */}
+      <AnimatePresence>
+        {isMobileMenuOpen && (
+          <>
+            <motion.div 
+              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              className="fixed inset-0 bg-black/20 backdrop-blur-sm z-50 xl:hidden"
+              onClick={() => setIsMobileMenuOpen(false)}
+            />
+            <motion.div 
+              initial={{ x: "100%" }} animate={{ x: 0 }} exit={{ x: "100%" }}
+              transition={{ type: "spring", damping: 25, stiffness: 200 }}
+              className="fixed inset-y-0 right-0 w-full max-w-xs bg-white shadow-2xl z-50 flex flex-col xl:hidden"
+            >
+              <div className="p-5 flex items-center justify-between border-b border-slate-100">
+                <span className="text-lg font-extrabold text-slate-900">Menu</span>
+                <button onClick={() => setIsMobileMenuOpen(false)} className="p-2 hover:bg-slate-100 rounded-full">
+                  <XMarkIcon className="w-6 h-6 text-slate-500" />
                 </button>
-              ) : (
-                <Link href="/login" onClick={() => setIsMobileMenuOpen(false)} className="block w-full py-3 bg-slate-900 text-white text-center font-bold rounded-xl shadow-lg">
-                  로그인 / 회원가입
-                </Link>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
+              </div>
+              
+              <div className="flex-1 overflow-y-auto p-4 space-y-1">
+                {NAV_ITEMS.map((item) => (
+                  <div key={item.name}>
+                    {item.children ? (
+                      <div className="py-2">
+                         <div className="px-4 py-2 text-base font-bold text-slate-800">{item.name}</div>
+                         <div className="pl-4 border-l-2 border-slate-100 ml-4 space-y-1">
+                           {item.children.map((sub) => (
+                             <Link 
+                               key={sub.name} 
+                               href={sub.href}
+                               onClick={() => setIsMobileMenuOpen(false)}
+                               className="block px-4 py-2 text-sm text-slate-600 hover:text-blue-600"
+                             >
+                               {sub.name}
+                             </Link>
+                           ))}
+                         </div>
+                      </div>
+                    ) : (
+                      <Link
+                        href={item.href}
+                        onClick={() => setIsMobileMenuOpen(false)}
+                        className={`block px-4 py-3 rounded-xl text-base font-bold transition-all ${
+                          pathname === item.href ? "bg-blue-50 text-blue-600" : "text-slate-600 hover:bg-slate-50"
+                        }`}
+                      >
+                        {item.name}
+                      </Link>
+                    )}
+                  </div>
+                ))}
+                
+                <div className="mt-6 pt-6 border-t border-slate-100">
+                   {!user ? (
+                      <Link href="/login" onClick={() => setIsMobileMenuOpen(false)} className="flex w-full items-center justify-center px-4 py-3 bg-slate-900 text-white font-bold rounded-xl shadow-md active:scale-95 transition-transform">
+                        로그인 / 회원가입
+                      </Link>
+                   ) : (
+                      <button onClick={handleLogout} className="flex w-full items-center justify-center gap-2 px-4 py-3 bg-slate-100 text-slate-600 font-bold rounded-xl hover:bg-slate-200">
+                        <ArrowRightOnRectangleIcon className="w-5 h-5" /> 로그아웃
+                      </button>
+                   )}
+                </div>
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
     </>
+  );
+}
+
+// 드롭다운 링크 컴포넌트
+function DropdownLink({ href, icon: Icon, label, badge, badgeColor = "bg-red-500", onClick }: any) {
+  return (
+    <Link 
+      href={href} 
+      onClick={onClick}
+      className="flex items-center justify-between px-3 py-2 text-sm text-slate-600 font-medium hover:bg-slate-50 hover:text-slate-900 rounded-lg transition-colors group"
+    >
+      <div className="flex items-center gap-3">
+        {Icon && <Icon className="w-4 h-4 text-slate-400 group-hover:text-blue-500 transition-colors" />}
+        <span>{label}</span>
+      </div>
+      {badge > 0 && (
+        <span className={`${badgeColor} text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full shadow-sm min-w-[20px] text-center`}>
+          {badge}
+        </span>
+      )}
+    </Link>
   );
 }

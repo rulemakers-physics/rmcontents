@@ -27,7 +27,9 @@ const RESEARCHER_SLACK_IDS: Record<string, string> = {
  * 이메일 도메인을 확인하여 '@rulemakers.co.kr'로 끝나면
  * 해당 사용자에게 'admin: true'라는 커스텀 권한(Claim)을 부여합니다.
  */
-export const setAdminClaimOnUserCreate = functions.auth
+export const setAdminClaimOnUserCreate = functions
+  .runWith({ timeoutSeconds: 60 }) // [수정] 실행 시간 60초로 연장
+  .auth
   .user()
   .onCreate(async (user) => {
     // v1에서는 'user' 객체를 직접 받습니다.
@@ -57,7 +59,9 @@ export const setAdminClaimOnUserCreate = functions.auth
 
 
 // --- [신규] 새 작업 요청 시 슬랙 알림 전송 (v1 구문) ---
-export const sendSlackNotificationOnNewRequest = functions.firestore
+export const sendSlackNotificationOnNewRequest = functions
+  .runWith({ timeoutSeconds: 60 }) // [수정] 실행 시간 60초로 연장
+  .firestore
   .document("requests/{requestId}")
   .onCreate(async (snap, context) => {
     const requestId = context.params.requestId;
@@ -137,7 +141,8 @@ export const sendSlackNotificationOnNewRequest = functions.firestore
 
     // 3. 슬랙으로 POST 요청 전송
     try {
-      await axios.post(webhookUrl, slackMessage);
+      // [수정] timeout 옵션 추가 (5초)
+      await axios.post(webhookUrl, slackMessage, { timeout: 5000 });
       functions.logger.info(`[Slack] 알림 전송 성공: ${requestId}`);
       return null;
     } catch (error) {
@@ -152,7 +157,9 @@ export const sendSlackNotificationOnNewRequest = functions.firestore
 /**
  * [수정된 트리거] 피드백 메시지 알림 (별도 채널 지원)
  */
-export const sendSlackNotificationOnNewFeedback = functions.firestore
+export const sendSlackNotificationOnNewFeedback = functions
+  .runWith({ timeoutSeconds: 60 }) // [수정] 실행 시간 60초로 연장
+  .firestore
   .document("requests/{requestId}/feedback/{messageId}")
   .onCreate(async (snap, context) => {
     const feedbackData = snap.data();
@@ -251,11 +258,110 @@ export const sendSlackNotificationOnNewFeedback = functions.firestore
 
     // 5. 전송
     try {
-      await axios.post(webhookUrl, slackMessage);
+      // [수정] timeout 옵션 추가 (5초)
+      await axios.post(webhookUrl, slackMessage, { timeout: 5000 });
       functions.logger.info(`[Slack] 피드백 알림 전송 성공: ${requestId}`);
     } catch (error) {
       functions.logger.error(`[Slack] 피드백 알림 전송 실패`, error);
     }
+    
+    return null;
+  });
+
+/**
+ * [신규 트리거] 작업 상태 변경 시 알림 생성 (DB에 저장)
+ * - 강사가 요청한 작업의 상태가 (접수됨 -> 작업중 -> 완료/반려)로 바뀔 때 알림을 보냅니다.
+ */
+export const createNotificationOnStatusChange = functions
+  .runWith({ timeoutSeconds: 60 }) // [수정] 실행 시간 60초로 연장
+  .firestore
+  .document("requests/{requestId}")
+  .onUpdate(async (change, context) => {
+    const before = change.before.data();
+    const after = change.after.data();
+    const requestId = context.params.requestId;
+
+    // 상태가 바뀌지 않았으면 무시
+    if (before.status === after.status) return null;
+
+    const instructorId = after.instructorId; // 알림 받을 강사 ID
+    const title = after.title;
+    let notiTitle = "";
+    let notiMessage = "";
+    let notiType = "info";
+
+    // 상태별 메시지 설정
+    switch (after.status) {
+      case "in_progress":
+        notiTitle = "작업 시작";
+        notiMessage = `'${title}' 작업이 시작되었습니다. 담당자가 배정되었습니다.`;
+        notiType = "info";
+        break;
+      case "completed":
+        notiTitle = "제작 완료";
+        notiMessage = `'${title}' 작업이 완료되었습니다! 결과물을 확인해보세요.`;
+        notiType = "success";
+        break;
+      case "rejected":
+        notiTitle = "요청 반려";
+        notiMessage = `'${title}' 요청이 반려되었습니다. 사유를 확인해주세요.`;
+        notiType = "error";
+        break;
+      default:
+        return null;
+    }
+
+    // notifications 컬렉션에 알림 추가 (이게 추가되면 프론트엔드 종이 울림)
+    try {
+      await admin.firestore().collection("notifications").add({
+        userId: instructorId, // 받는 사람
+        type: notiType,       // success, info, error
+        title: notiTitle,
+        message: notiMessage,
+        link: `/dashboard`,   // 클릭 시 이동할 곳 (대시보드에서 확인하므로)
+        isRead: false,        // 안 읽음 상태로 시작
+        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+        requestId: requestId
+      });
+      functions.logger.info(`[Notification] 알림 생성 성공: ${requestId} -> ${after.status}`);
+    } catch (error) {
+      functions.logger.error("[Notification] 알림 생성 실패", error);
+    }
+    return null;
+  });
+
+/**
+ * [신규 트리거] 새 피드백 메시지 수신 시 알림 생성
+ * - 관리자가 댓글을 달면 -> 강사에게 알림
+ * - 강사가 댓글을 달면 -> 관리자에게 알림 (관리자는 알림벨 대신 대시보드 카운트로 확인하므로 생략 가능하나, 필요 시 추가)
+ */
+export const createNotificationOnNewFeedback = functions
+  .runWith({ timeoutSeconds: 60 }) // [수정] 실행 시간 60초로 연장
+  .firestore
+  .document("requests/{requestId}/feedback/{messageId}")
+  .onCreate(async (snap, context) => {
+    const feedback = snap.data();
+    const requestId = context.params.requestId;
+
+    // 관리자가 쓴 글만 강사에게 알림 (강사가 쓴 글은 본인이 쓴 거니 알림 X)
+    if (feedback.authorType !== "admin") return null;
+
+    // 해당 요청 문서에서 강사 ID 찾기
+    const requestDoc = await admin.firestore().collection("requests").doc(requestId).get();
+    const requestData = requestDoc.data();
+    
+    if (!requestData) return null;
+
+    await admin.firestore().collection("notifications").add({
+      userId: requestData.instructorId,
+      type: "info",
+      title: "새 메시지 도착",
+      message: `관리자님이 메시지를 남겼습니다: "${feedback.text.substring(0, 20)}..."`,
+      link: `/dashboard`, // 클릭 시 모달을 띄워야 하므로 일단 대시보드로
+      isRead: false,
+      createdAt: admin.firestore.FieldValue.serverTimestamp(),
+      requestId: requestId
+    });
     
     return null;
   });
