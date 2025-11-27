@@ -178,7 +178,7 @@ export default function RequestDetailModal({ request, onClose, onSave }: Request
       setCurrentFiles((prev) => [...prev, ...uploadedFiles]);
     } catch (error) {
       console.error("파일 업로드 실패:", error);
-      alert("파일 업로드 중 오류가 발생했습니다.");
+      toast.error("파일 업로드 중 오류가 발생했습니다.");
     }
     setIsUploading(false);
   };
@@ -199,7 +199,7 @@ export default function RequestDetailModal({ request, onClose, onSave }: Request
       if (!title || !contentKind || !quantity || !questionCount || !deadline || 
           Object.keys(selectedScope).length === 0) 
       {
-        alert("필수 항목(*)을 모두 입력해주세요. (단원 범위 포함)");
+        toast.error("필수 항목(*)을 모두 입력해주세요. (단원 범위 포함)");
         return;
       }
     }

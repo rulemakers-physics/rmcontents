@@ -12,6 +12,7 @@ import { ref, uploadBytes, getDownloadURL, deleteObject } from "firebase/storage
 import { v4 as uuidv4 } from "uuid";
 import { PaperClipIcon, XCircleIcon } from "@heroicons/react/24/solid";
 import FeedbackThread from "@/components/FeedbackThread";
+import { toast } from "react-hot-toast";
 
 // [신규] 연구원 목록
 const RESEARCHERS = ["김성배", "김호권", "김희경", "노유민", "이민지", "이정한", "이호열", "최명수"];
@@ -107,7 +108,7 @@ export default function RequestDetailPage() {
   // [수정] '작업 중'으로 상태 변경 핸들러 (담당자 지정 로직 포함)
   const handleStatusInProgress = async () => {
     if (!selectedResearcher) {
-      alert("작업 담당자를 선택해주세요.");
+      toast.error("작업 담당자를 선택해주세요.");
       return;
     }
 
@@ -120,7 +121,8 @@ export default function RequestDetailPage() {
       });
       setRequest((prev) => prev ? { ...prev, status: "in_progress", assignedResearcher: selectedResearcher } : null);
     } catch (err) {
-      setError("상태 변경 중 오류 발생");
+      console.error(err);
+      toast.error("상태 변경 중 오류 발생");
     }
     setIsUpdating(false);
   };
@@ -128,7 +130,7 @@ export default function RequestDetailPage() {
   const handleReject = async () => {
     const reason = prompt("요청을 반려하는 사유를 입력해주세요.");
     if (!reason || reason.trim() === "") {
-      alert("반려 사유를 입력해야 합니다.");
+      toast.error("반려 사유를 입력해야 합니다.");
       return;
     }
 
@@ -140,9 +142,10 @@ export default function RequestDetailPage() {
         rejectReason: reason,
       });
       setRequest((prev) => prev ? { ...prev, status: "rejected", rejectReason: reason } : null);
-      alert("요청이 반려 처리되었습니다.");
+      toast.success("요청이 반려 처리되었습니다.");
     } catch (err) {
-      setError("반려 처리 중 오류 발생");
+      console.error(err);
+      toast.error("반려 처리 중 오류 발생");
     }
     setIsUpdating(false);
   };
@@ -188,7 +191,7 @@ export default function RequestDetailPage() {
         }
       }
 
-      alert("작업 완료 처리 및 파일 업로드에 성공했습니다.");
+      toast.success("작업 완료 처리 및 파일 업로드에 성공했습니다.");
       setRequest((prev) => prev ? { 
         ...prev, 
         status: "completed", 

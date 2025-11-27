@@ -13,6 +13,7 @@ import {
   QuestionMarkCircleIcon, 
   SparklesIcon 
 } from "@heroicons/react/24/outline";
+import { toast } from "react-hot-toast";
 
 // --- 데이터 정의 ---
 const PLANS = [
@@ -83,7 +84,7 @@ export default function PricingPage() {
   const { user, userData } = useAuth();
 
   const handleUpgrade = async (planId: string) => {
-    if (!user) return alert("로그인이 필요합니다.");
+    if (!user) return toast.error("로그인이 필요합니다.");
     
     const confirmMsg = planId === 'MAKERS' 
       ? "Maker's Plan 도입 상담을 신청하시겠습니까? (테스트: 즉시 업그레이드)" 
@@ -96,11 +97,11 @@ export default function PricingPage() {
           updatedAt: new Date(),
           coins: planId === 'MAKERS' ? 3 : 0 
         });
-        alert(`${planId} 플랜이 적용되었습니다!`);
+        toast.success(`${planId} 플랜이 적용되었습니다!`);
         window.location.reload();
       } catch (e) {
         console.error(e);
-        alert("처리 중 오류가 발생했습니다.");
+        toast.error("처리 중 오류가 발생했습니다.");
       }
     }
   };

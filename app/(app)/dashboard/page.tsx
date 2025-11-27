@@ -18,6 +18,7 @@ import {
   onSnapshot,
   Timestamp
 } from "firebase/firestore";
+import { toast } from "react-hot-toast";
 
 // --- 신규 컴포넌트 Import ---
 import UserStatsWidget from "@/components/UserStatsWidget";
@@ -84,7 +85,7 @@ export default function DashboardPage() {
     }
 
     if (isFirstLogin === true) {
-      alert("서비스 이용을 위해 프로필을 먼저 설정해주세요.");
+      toast.error("서비스 이용을 위해 프로필을 먼저 설정해주세요.");
       router.push("/profile/setup");
       return;
     }
@@ -148,11 +149,11 @@ export default function DashboardPage() {
         ...updatedData,
         updatedAt: serverTimestamp(),
       });
-      alert("요청이 성공적으로 수정되었습니다.");
+      toast.success("요청이 성공적으로 수정되었습니다.");
       handleCloseModal();
     } catch (error) {
       console.error("Error updating request: ", error);
-      alert("수정 중 오류가 발생했습니다.");
+      toast.error("수정 중 오류가 발생했습니다.");
     }
     setIsLoading(false);
   };
@@ -184,7 +185,7 @@ export default function DashboardPage() {
           {/* 1. 헤더 및 인사말 */}
           <div className="mb-8">
             <h1 className="text-2xl font-bold text-slate-900">
-              안녕하세요, {userData?.name || "선생님"}! 👋
+              안녕하세요, {userData?.name ? `${userData.name} 선생님` : "선생님"}! 👋
             </h1>
             <p className="text-slate-500 mt-1">
               오늘도 학생들을 위한 최고의 컨텐츠를 준비해보세요.
@@ -288,7 +289,7 @@ export default function DashboardPage() {
                             {/* 새 메시지 배지 */}
                             {req.unreadCountInstructor && req.unreadCountInstructor > 0 ? (
                                <span className="inline-flex items-center rounded-md bg-red-50 px-2 py-1 text-xs font-medium text-red-600 ring-1 ring-inset ring-red-500/20 animate-pulse">
-                                 New Msg
+                                 New Message
                                </span>
                             ) : null}
                           </div>

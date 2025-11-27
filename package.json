@@ -9,6 +9,7 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@hello-pangea/dnd": "^18.0.1",
     "@heroicons/react": "^2.2.0",
     "firebase": "^12.5.0",
     "framer-motion": "^12.23.24",
@@ -16,6 +17,7 @@
     "next": "16.0.1",
     "react": "19.2.0",
     "react-dom": "19.2.0",
+    "react-hot-toast": "^2.6.0",
     "react-to-print": "^3.2.0",
     "uuid": "^13.0.0"
   },

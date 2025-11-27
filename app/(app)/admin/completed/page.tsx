@@ -15,7 +15,7 @@ import {
   orderBy,
   onSnapshot // [수정] 실시간 업데이트를 위해 추가
 } from "firebase/firestore";
-
+import { toast } from "react-hot-toast";
 // Firestore에서 가져올 요청 데이터의 타입 정의
 interface RequestData {
   id: string;
@@ -42,7 +42,7 @@ export default function AdminCompletedDashboard() {
     if (loading) return;
 
     if (!user || !isAdmin) {
-      alert("접근 권한이 없습니다.");
+      toast.error("접근 권한이 없습니다.");
       router.push("/dashboard");
       return;
     }

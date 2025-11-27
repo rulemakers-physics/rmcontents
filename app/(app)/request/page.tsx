@@ -9,6 +9,7 @@ import { db, storage } from "@/lib/firebase";
 import { collection, addDoc, serverTimestamp, doc, getDoc } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { v4 as uuidv4 } from "uuid";
+import { toast } from "react-hot-toast";
 
 // --- [신규] 아이콘 추가 (BookOpenIcon) ---
 import { 
@@ -88,7 +89,7 @@ export default function RequestPage() {
   useEffect(() => {
     if (loading) return;
     if (!user) {
-      alert("로그인이 필요한 서비스입니다.");
+      toast.error("로그인이 필요한 서비스입니다.");
       router.push("/login");
     }
   }, [user, loading, router]);
@@ -242,12 +243,12 @@ export default function RequestPage() {
         requestedAt: serverTimestamp(),
       });
 
-      alert("작업 요청이 성공적으로 제출되었습니다.");
+      toast.success("작업 요청이 성공적으로 제출되었습니다.");
       router.push("/dashboard");
 
     } catch (err) {
       console.error("요청 제출 중 에러:", err);
-      setError("제출 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.");
+      toast.error("제출 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.");
       setIsSubmitting(false);
     }
   };

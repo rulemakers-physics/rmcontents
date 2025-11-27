@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import { db } from "@/lib/firebase";
 import { doc, getDoc, updateDoc } from "firebase/firestore";
+import { toast } from "react-hot-toast";
 
 export default function ProfileSettingsPage() {
   const { user, loading } = useAuth();
@@ -50,11 +51,11 @@ export default function ProfileSettingsPage() {
         academy,
         school
       });
-      alert("프로필이 수정되었습니다.");
+      toast.success("프로필이 수정되었습니다.");
       router.push("/dashboard");
     } catch (error) {
       console.error("수정 실패", error);
-      alert("저장에 실패했습니다.");
+      toast.error("저장에 실패했습니다.");
     }
     setIsSubmitting(false);
   };
