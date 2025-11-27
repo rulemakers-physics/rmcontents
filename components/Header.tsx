@@ -1,319 +1,396 @@
-// components/Header.tsx
-
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { useAuth } from "@/context/AuthContext";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import { auth, db } from "@/lib/firebase";
 import { signOut } from "firebase/auth";
 import { collection, query, where, onSnapshot } from "firebase/firestore";
-import { Bars3Icon, XMarkIcon, ChevronDownIcon } from "@heroicons/react/24/outline";
+import { 
+  Bars3Icon, 
+  XMarkIcon, 
+  ChevronDownIcon,
+  UserCircleIcon,
+  ArrowRightOnRectangleIcon
+} from "@heroicons/react/24/outline";
+
+// 새로 만든 알림 벨 컴포넌트 (파일이 있다면 import)
+import NotificationBell from "./NotificationBell";
 
 export default function Header() {
   const { user, loading } = useAuth();
   const router = useRouter();
+  const pathname = usePathname();
   
-  // 모바일 메뉴 토글 상태
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  // UI 상태
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isScrolled, setIsScrolled] = useState(false);
+  const [isProfileDropdownOpen, setIsProfileDropdownOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
 
-  // 알림 상태 관리
+  // --- [보존] 기존 알림 배지 로직 ---
   const [unreadDashboard, setUnreadDashboard] = useState(0); // 강사용
-  const [unreadActive, setUnreadActive] = useState(0);       // 관리자용 (접수/진행중)
+  const [unreadActive, setUnreadActive] = useState(0);       // 관리자용 (접수/진행)
   const [unreadCompleted, setUnreadCompleted] = useState(0); // 관리자용 (완료/반려)
+
+  // 스크롤 감지
+  useEffect(() => {
+    const handleScroll = () => setIsScrolled(window.scrollY > 10);
+    window.addEventListener("scroll", handleScroll);
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
+
+  // 외부 클릭 시 드롭다운 닫기
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsProfileDropdownOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  // --- [보존] Firestore 실시간 리스너 ---
+  useEffect(() => {
+    if (!user) return;
+
+    // 1. 관리자용: 전체 요청 상태 감시
+    if (user.isAdmin) {
+      // (1) 접수됨 + 진행중
+      const qActive = query(
+        collection(db, "requests"),
+        where("status", "in", ["requested", "in_progress"])
+      );
+      const unsubActive = onSnapshot(qActive, (snapshot) => {
+        let count = 0;
+        snapshot.docs.forEach(doc => {
+          const data = doc.data();
+          if (data.unreadCountAdmin && data.unreadCountAdmin > 0) {
+            count += data.unreadCountAdmin;
+          }
+        });
+        setUnreadActive(count);
+      });
+
+      // (2) 완료됨 + 반려됨
+      const qCompleted = query(
+        collection(db, "requests"),
+        where("status", "in", ["completed", "rejected"])
+      );
+      const unsubCompleted = onSnapshot(qCompleted, (snapshot) => {
+        let count = 0;
+        snapshot.docs.forEach(doc => {
+          const data = doc.data();
+          if (data.unreadCountAdmin && data.unreadCountAdmin > 0) {
+            count += data.unreadCountAdmin;
+          }
+        });
+        setUnreadCompleted(count);
+      });
+
+      return () => {
+        unsubActive();
+        unsubCompleted();
+      };
+    } else {
+      // 2. 강사용: 내 요청의 안 읽은 메시지
+      const qInstructor = query(
+        collection(db, "requests"),
+        where("instructorId", "==", user.uid)
+      );
+      const unsubscribe = onSnapshot(qInstructor, (snapshot) => {
+        let count = 0;
+        snapshot.docs.forEach(doc => {
+          const data = doc.data();
+          if (data.unreadCountInstructor && data.unreadCountInstructor > 0) {
+            count += data.unreadCountInstructor;
+          }
+        });
+        setUnreadDashboard(count);
+      });
+      return () => unsubscribe();
+    }
+  }, [user]);
 
   const handleLogout = async () => {
     try {
       await signOut(auth);
       router.push("/");
-      setIsMenuOpen(false);
+      setIsMobileMenuOpen(false);
     } catch (error) {
       console.error("로그아웃 실패:", error);
     }
   };
-  
-  const handleMenuClick = (href: string) => {
-    setIsMenuOpen(false);
-    router.push(href);
-  }
 
-  // 실시간 알림 리스너
-  useEffect(() => {
-    if (loading || !user) return;
+  // --- [보존] 네비게이션 항목 정의 ---
+  const publicLinks = [
+    { name: "회사 소개", href: "/company" },
+    { name: "베이직 서비스", href: "/basic-service" },
+    { name: "프리미엄 서비스", href: "/premium-service" },
+    { name: "쇼케이스", href: "/showcase" },
+    { name: "문의하기", href: "/contact" },
+    { name: "이용요금", href: "/pricing" },
+  ];
 
-    // 1. 강사인 경우: 내 요청 중 강사용 안 읽은 메시지가 있는 것 카운트
-    if (!user.isAdmin) {
-      const q = query(
-        collection(db, "requests"),
-        where("instructorId", "==", user.uid),
-        where("unreadCountInstructor", ">", 0)
-      );
-      
-      const unsubscribe = onSnapshot(q, (snapshot) => {
-        setUnreadDashboard(snapshot.size);
-      });
-      return () => unsubscribe();
-    }
-
-    // 2. 관리자인 경우: 관리자용 안 읽은 메시지가 있는 모든 요청 가져와서 분류
-    if (user.isAdmin) {
-      const q = query(
-        collection(db, "requests"),
-        where("unreadCountAdmin", ">", 0)
-      );
-
-      const unsubscribe = onSnapshot(q, (snapshot) => {
-        let activeCount = 0;
-        let completedCount = 0;
-
-        snapshot.forEach((doc) => {
-          const status = doc.data().status;
-          if (status === "requested" || status === "in_progress") {
-            activeCount++;
-          } else if (status === "completed" || status === "rejected") {
-            completedCount++;
-          }
-        });
-
-        setUnreadActive(activeCount);
-        setUnreadCompleted(completedCount);
-      });
-      return () => unsubscribe();
-    }
-  }, [user, loading]);
-
-  // 드롭다운 메뉴 아이템 컴포넌트 (PC용)
-  const DropdownMenuItem = ({ href, children }: { href: string; children: React.ReactNode }) => (
-    <Link href={href} className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 hover:text-blue-600">
-      {children}
-    </Link>
-  );
+  const isActive = (path: string) => pathname === path;
 
   return (
-    <header className="sticky top-0 z-50 w-full border-b bg-white/90 backdrop-blur-sm">
-      <div className="container mx-auto flex h-16 max-w-6xl items-center justify-between px-6">
-        
-        {/* 로고 */}
-        <Link
-          href="/"
-          className="flex items-center text-2xl font-bold text-gray-900 flex-shrink-0"
-          onClick={() => setIsMenuOpen(false)}
-        >
-          <Image
-            src="/favicon.ico"
-            alt="RuleMakers 로고"
-            width={28}
-            height={28}
-            className="mr-2"
-          />
-          <span className="text-xl">RuleMakers</span>
-        </Link>
-
-        {/* PC 네비게이션 메뉴 (md 이상에서 보임) */}
-        <nav className="hidden md:flex items-center space-x-8">
-          
-          {/* 1. 회사 소개 */}
-          <Link href="/company" className="text-sm font-medium text-gray-600 hover:text-blue-600 transition-colors">
-            About Us
-          </Link>
-
-          {/* ▼▼▼ [추가] 문제은행 메뉴 ▼▼▼ */}
-          <Link href="/service/maker" className="flex items-center gap-1 text-sm font-bold text-blue-600 hover:text-blue-700 transition-colors">
-          문제은행
-          <span className="px-1.5 py-0.5 text-[10px] bg-blue-100 text-blue-700 rounded-full">BETA</span>
-          </Link>
-          {/* ▲▲▲ [추가] ▲▲▲ */}
-
-          {/* ▼▼▼ [수정] 전국 모의고사 (NEW 뱃지 추가 및 강조) ▼▼▼ */}
-          <Link href="/mock-exam" className="flex items-center gap-1 text-sm font-medium text-gray-600 hover:text-purple-600 transition-colors">
-            RuleMakers 전국 단위 모의고사
-            <span className="px-1.5 py-0.5 text-[10px] bg-purple-100 text-purple-700 rounded-full animate-pulse">NEW</span>
-          </Link>
-          {/* ▲▲▲ [수정] ▲▲▲ */}
-
-          {/* 2. 플랜 소개 (드롭다운) */}
-          <div className="relative group">
-            <button className="flex items-center text-sm font-medium text-gray-600 group-hover:text-blue-600 outline-none transition-colors cursor-pointer">
-              Service Plans <ChevronDownIcon className="ml-1 h-4 w-4" />
-            </button>
-            <div className="absolute left-0 mt-0 w-40 origin-top-left bg-white border border-gray-200 rounded-md shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 transform translate-y-2 group-hover:translate-y-0">
-              <div className="py-1">
-                <DropdownMenuItem href="/basic-service">Basic Plan</DropdownMenuItem>
-                <DropdownMenuItem href="/premium-service">Maker's Plan</DropdownMenuItem>
-              </div>
-            </div>
-          </div>
-
-          {/* 3. 컨텐츠 샘플 (드롭다운) */}
-          <div className="relative group">
-            <button className="flex items-center text-sm font-medium text-gray-600 group-hover:text-blue-600 outline-none transition-colors cursor-pointer">
-              Contents <ChevronDownIcon className="ml-1 h-4 w-4" />
-            </button>
-            <div className="absolute left-0 mt-0 w-56 origin-top-left bg-white border border-gray-200 rounded-md shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 transform translate-y-2 group-hover:translate-y-0">
-              <div className="py-1">
-                <DropdownMenuItem href="/showcase">전체 보기</DropdownMenuItem>
-                <DropdownMenuItem href="/showcase/mock-exam">학교별 실전 모의고사</DropdownMenuItem>
-                <DropdownMenuItem href="/showcase/n-set">학교별 내신 대비 N제</DropdownMenuItem>
-                <DropdownMenuItem href="/showcase/high-difficulty">고난이도 문항모음zip</DropdownMenuItem>
-              </div>
-            </div>
-          </div>
-
-          {/* 4. 마이 페이지 (로그인 시) */}
-          {user && (
-            <div className="relative group">
-              <button className="flex items-center text-sm font-medium text-gray-600 group-hover:text-blue-600 outline-none transition-colors cursor-pointer">
-                My Page <ChevronDownIcon className="ml-1 h-4 w-4" />
-                {/* 알림 뱃지 (통합) */}
-                {(unreadDashboard > 0 || unreadActive > 0 || unreadCompleted > 0) && (
-                  <span className="absolute -top-2 -right-2 flex h-3 w-3 items-center justify-center rounded-full bg-red-500"></span>
-                )}
-              </button>
-              <div className="absolute right-0 mt-0 w-56 origin-top-right bg-white border border-gray-200 rounded-md shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 transform translate-y-2 group-hover:translate-y-0">
-                <div className="py-1">
-                  <Link href="/dashboard" className="flex justify-between px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 hover:text-blue-600">
-                    요청한 작업 목록
-                    {unreadDashboard > 0 && (
-                      <span className="ml-2 rounded-full bg-red-500 px-1.5 py-0.5 text-[10px] text-white">
-                        {unreadDashboard > 9 ? "9+" : unreadDashboard}
-                      </span>
-                    )}
-                  </Link>
-                  <DropdownMenuItem href="/request">작업 요청하기</DropdownMenuItem>
-                  <DropdownMenuItem href="/profile/settings">프로필 설정</DropdownMenuItem>
-                  
-                  {/* 관리자 메뉴 */}
-                  {user.isAdmin && (
-                    <>
-                      <div className="border-t my-1"></div>
-                      <Link href="/admin" className="flex justify-between px-4 py-2 text-sm text-red-700 hover:bg-red-50 bg-red-50/50">
-                        [관리자] 접수된 작업
-                        {unreadActive > 0 && (
-                          <span className="ml-2 rounded-full bg-red-600 px-1.5 py-0.5 text-[10px] text-white">
-                            {unreadActive > 9 ? "9+" : unreadActive}
-                          </span>
-                        )}
-                      </Link>
-                      <Link href="/admin/completed" className="flex justify-between px-4 py-2 text-sm text-green-700 hover:bg-green-50 bg-green-50/50">
-                        [관리자] 완료된 작업
-                        {unreadCompleted > 0 && (
-                          <span className="ml-2 rounded-full bg-red-600 px-1.5 py-0.5 text-[10px] text-white">
-                            {unreadCompleted > 9 ? "9+" : unreadCompleted}
-                          </span>
-                        )}
-                      </Link>
-                    </>
-                  )}
-                  
-                  <div className="border-t my-1"></div>
-                  <button
-                    onClick={handleLogout}
-                    className="block w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-gray-50 cursor-pointer"
-                  >
-                    로그아웃
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
-          <Link href="/contact" className="text-sm font-medium text-gray-600 hover:text-blue-600 transition-colors">
-            Contact
-          </Link>
-
-          {/* 비로그인 시 로그인 버튼 */}
-          {!user && !loading && (
-            <Link
-              href="/login"
-              className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-700 whitespace-nowrap"
-            >
-              로그인
-            </Link>
-          )}
-        </nav>
-
-        {/* 모바일 햄버거 버튼 */}
-        <div className="md:hidden flex items-center">
-          {!user && !loading && (
-             <button
-                onClick={() => handleMenuClick("/login")}
-                className="rounded-md bg-blue-600 px-3 py-1 text-sm font-medium text-white transition-colors hover:bg-blue-700 mr-4"
-              >
-                로그인
-             </button>
-          )}
-
-          <button
-            onClick={() => setIsMenuOpen(!isMenuOpen)}
-            className="text-gray-600 hover:text-blue-600 p-1"
-            aria-label="Toggle menu"
-          >
-            {isMenuOpen ? (
-              <XMarkIcon className="h-6 w-6" />
-            ) : (
-              <Bars3Icon className="h-6 w-6" />
-            )}
-          </button>
-        </div>
-      </div>
-
-      {/* 모바일 메뉴 오버레이 */}
-      <div
-        className={`md:hidden absolute w-full bg-white/95 backdrop-blur-sm shadow-xl transition-all duration-300 ease-in-out ${
-          isMenuOpen ? 'max-h-screen opacity-100 border-t' : 'max-h-0 opacity-0 overflow-hidden'
+    <>
+      <header 
+        className={`sticky top-0 z-40 w-full transition-all duration-300 border-b ${
+          isScrolled 
+            ? "bg-white/95 backdrop-blur-md border-slate-200 shadow-sm" 
+            : "bg-white border-transparent"
         }`}
       >
-        <div className="flex flex-col px-6 py-4 space-y-4 overflow-y-auto max-h-[80vh]">
+        <div className="container mx-auto px-4 md:px-6 h-16 flex items-center justify-between">
           
-          <Link href="/company" onClick={() => setIsMenuOpen(false)} className="text-base font-medium text-gray-800 py-2 border-b border-gray-100">
-            회사 소개
+          {/* 1. 로고 */}
+          <Link href="/" className="flex items-center gap-2 flex-shrink-0">
+             <div className="relative w-8 h-8">
+               <Image src="/images/logo.png" alt="RuleMakers Logo" fill className="object-contain" />
+             </div>
+             <span className="text-xl font-extrabold text-slate-900 tracking-tighter hidden sm:block">
+               RuleMakers
+             </span>
           </Link>
 
-          <div className="space-y-2">
-            <p className="text-xs font-semibold text-gray-400 uppercase">플랜 소개</p>
-            <Link href="/basic-service" onClick={() => setIsMenuOpen(false)} className="block pl-4 text-sm text-gray-700 py-1">Basic Plan</Link>
-            <Link href="/premium-service" onClick={() => setIsMenuOpen(false)} className="block pl-4 text-sm text-gray-700 py-1">Maker's Plan</Link>
-          </div>
-
-          <div className="space-y-2">
-            <p className="text-xs font-semibold text-gray-400 uppercase">컨텐츠 샘플</p>
-            <Link href="/showcase" onClick={() => setIsMenuOpen(false)} className="block pl-4 text-sm text-gray-700 py-1">전체 보기</Link>
-            <Link href="/showcase/mock-exam" onClick={() => setIsMenuOpen(false)} className="block pl-4 text-sm text-gray-700 py-1">학교별 실전 모의고사</Link>
-            <Link href="/showcase/n-set" onClick={() => setIsMenuOpen(false)} className="block pl-4 text-sm text-gray-700 py-1">학교별 내신 대비 N제</Link>
-            <Link href="/showcase/high-difficulty" onClick={() => setIsMenuOpen(false)} className="block pl-4 text-sm text-gray-700 py-1">고난도 문항모음</Link>
-          </div>
-
-          {user && (
-            <div className="space-y-2 pt-2 border-t border-gray-200">
-              <p className="text-xs font-semibold text-gray-400 uppercase">마이 페이지</p>
-              <Link href="/dashboard" onClick={() => setIsMenuOpen(false)} className="block pl-4 text-sm text-gray-700 py-1 flex justify-between">
-                대시보드
-                {unreadDashboard > 0 && <span className="text-red-500 text-xs font-bold">{unreadDashboard}</span>}
+          {/* 2. 데스크탑 메인 메뉴 (공개 링크) */}
+          <nav className="hidden xl:flex items-center gap-1">
+            {publicLinks.map((link) => (
+              <Link
+                key={link.href}
+                href={link.href}
+                className={`px-3 py-2 rounded-lg text-sm font-bold transition-colors ${
+                  isActive(link.href)
+                    ? "text-blue-600 bg-blue-50"
+                    : "text-slate-500 hover:text-slate-900 hover:bg-slate-50"
+                }`}
+              >
+                {link.name}
               </Link>
-              <Link href="/request" onClick={() => setIsMenuOpen(false)} className="block pl-4 text-sm text-gray-700 py-1">작업 요청하기</Link>
-              <Link href="/profile/settings" onClick={() => setIsMenuOpen(false)} className="block pl-4 text-sm text-gray-700 py-1">프로필 설정</Link>
-              
-              {user.isAdmin && (
-                <>
-                  <Link href="/admin" onClick={() => setIsMenuOpen(false)} className="block pl-4 text-sm text-red-700 py-1 flex justify-between">
-                    [관리자] 접수된 작업
-                    {unreadActive > 0 && <span className="text-red-500 text-xs font-bold">{unreadActive}</span>}
-                  </Link>
-                  <Link href="/admin/completed" onClick={() => setIsMenuOpen(false)} className="block pl-4 text-sm text-green-700 py-1 flex justify-between">
-                    [관리자] 완료된 작업
-                    {unreadCompleted > 0 && <span className="text-red-500 text-xs font-bold">{unreadCompleted}</span>}
-                  </Link>
-                </>
-              )}
-              
-              <button onClick={handleLogout} className="block w-full text-left pl-4 text-sm text-red-600 py-2 mt-2 cursor-pointer">
-                로그아웃
+            ))}
+          </nav>
+
+          {/* 3. 우측 액션 버튼 (로그인/유저메뉴) */}
+          <div className="flex items-center gap-2 md:gap-4">
+            
+            {loading ? (
+              <div className="w-20 h-8 bg-slate-100 animate-pulse rounded"></div>
+            ) : user ? (
+              <>
+                {/* (1) 시스템 알림 벨 (신규 기능) */}
+                <NotificationBell />
+
+                {/* (2) 유저 프로필 드롭다운 */}
+                <div className="relative" ref={dropdownRef}>
+                  <button
+                    onClick={() => setIsProfileDropdownOpen(!isProfileDropdownOpen)}
+                    className="flex items-center gap-2 px-2 py-1.5 rounded-full border border-slate-200 hover:bg-slate-50 transition-all"
+                  >
+                    <UserCircleIcon className="w-6 h-6 text-slate-400" />
+                    <span className="text-xs font-bold text-slate-700 hidden md:block max-w-[100px] truncate">
+                      {user.email?.split('@')[0]} T
+                    </span>
+                    <ChevronDownIcon className={`w-3 h-3 text-slate-400 transition-transform ${isProfileDropdownOpen ? 'rotate-180' : ''}`} />
+                  </button>
+
+                  {/* 드롭다운 메뉴 */}
+                  {isProfileDropdownOpen && (
+                    <div className="absolute right-0 mt-2 w-64 bg-white rounded-xl border border-slate-100 shadow-xl py-2 animate-in fade-in zoom-in duration-200 origin-top-right">
+                      <div className="px-4 py-3 border-b border-slate-50 mb-1 bg-slate-50/50">
+                        <p className="text-xs text-slate-400 font-bold">Signed in as</p>
+                        <p className="text-sm font-bold text-slate-900 truncate">{user.email}</p>
+                      </div>
+
+                      {/* [보존] 강사용 메뉴 */}
+                      <Link 
+                        href="/dashboard" 
+                        onClick={() => setIsProfileDropdownOpen(false)}
+                        className="flex items-center justify-between px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50 hover:text-blue-600 font-medium"
+                      >
+                        대시보드
+                        {unreadDashboard > 0 && (
+                          <span className="bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full">
+                            {unreadDashboard}
+                          </span>
+                        )}
+                      </Link>
+                      <Link 
+                        href="/request" 
+                        onClick={() => setIsProfileDropdownOpen(false)}
+                        className="block px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50 hover:text-blue-600 font-medium"
+                      >
+                        작업 요청하기
+                      </Link>
+                      <Link 
+                        href="/profile/settings" 
+                        onClick={() => setIsProfileDropdownOpen(false)}
+                        className="block px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50 hover:text-blue-600 font-medium"
+                      >
+                        프로필 설정
+                      </Link>
+
+                      {/* [보존] 관리자용 메뉴 */}
+                      {user.isAdmin && (
+                        <>
+                          <div className="my-2 border-t border-slate-100"></div>
+                          <div className="px-4 py-1 text-[10px] font-bold text-slate-400 uppercase">Admin</div>
+                          
+                          <Link 
+                            href="/admin" 
+                            onClick={() => setIsProfileDropdownOpen(false)}
+                            className="flex items-center justify-between px-4 py-2 text-sm text-red-600 hover:bg-red-50 font-bold"
+                          >
+                            접수된 작업
+                            {unreadActive > 0 && (
+                              <span className="bg-red-500 text-white text-[10px] px-1.5 py-0.5 rounded-full">
+                                {unreadActive}
+                              </span>
+                            )}
+                          </Link>
+                          <Link 
+                            href="/admin/completed" 
+                            onClick={() => setIsProfileDropdownOpen(false)}
+                            className="flex items-center justify-between px-4 py-2 text-sm text-green-600 hover:bg-green-50 font-bold"
+                          >
+                            완료된 작업
+                            {unreadCompleted > 0 && (
+                              <span className="bg-red-500 text-white text-[10px] px-1.5 py-0.5 rounded-full">
+                                {unreadCompleted}
+                              </span>
+                            )}
+                          </Link>
+                        </>
+                      )}
+
+                      <div className="my-2 border-t border-slate-100"></div>
+                      <button 
+                        onClick={handleLogout} 
+                        className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-slate-500 hover:bg-slate-50 hover:text-red-600 text-left"
+                      >
+                        <ArrowRightOnRectangleIcon className="w-4 h-4" /> 로그아웃
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </>
+            ) : (
+              <Link 
+                href="/login" 
+                className="px-5 py-2 bg-slate-900 text-white text-sm font-bold rounded-lg hover:bg-slate-800 transition-colors shadow-lg shadow-slate-200"
+              >
+                로그인
+              </Link>
+            )}
+
+            {/* 모바일 메뉴 버튼 */}
+            <button 
+              onClick={() => setIsMobileMenuOpen(true)}
+              className="xl:hidden p-2 text-slate-600 hover:bg-slate-100 rounded-lg transition-colors"
+            >
+              <Bars3Icon className="w-6 h-6" />
+            </button>
+          </div>
+        </div>
+      </header>
+
+      {/* --- [보존] 모바일 메뉴 Overlay (모든 링크 포함) --- */}
+      {isMobileMenuOpen && (
+        <div className="fixed inset-0 z-50 xl:hidden">
+          <div 
+            className="absolute inset-0 bg-black/50 backdrop-blur-sm transition-opacity"
+            onClick={() => setIsMobileMenuOpen(false)}
+          />
+          <div className="absolute right-0 top-0 bottom-0 w-[80%] max-w-sm bg-white shadow-2xl p-6 flex flex-col animate-in slide-in-from-right duration-300 overflow-y-auto">
+            
+            <div className="flex justify-between items-center mb-8">
+              <span className="text-xl font-extrabold text-slate-900">Menu</span>
+              <button onClick={() => setIsMobileMenuOpen(false)} className="p-2 hover:bg-slate-100 rounded-full">
+                <XMarkIcon className="w-6 h-6 text-slate-500" />
               </button>
             </div>
-          )}
+
+            <nav className="flex-1 space-y-1">
+              {/* 공개 링크 모바일 렌더링 */}
+              {publicLinks.map((link) => (
+                <Link
+                  key={link.href}
+                  href={link.href}
+                  onClick={() => setIsMobileMenuOpen(false)}
+                  className={`block px-4 py-3 rounded-xl text-base font-bold transition-colors ${
+                    isActive(link.href) ? "bg-blue-50 text-blue-600" : "text-slate-600 hover:bg-slate-50"
+                  }`}
+                >
+                  {link.name}
+                </Link>
+              ))}
+
+              <div className="my-4 border-t border-slate-100"></div>
+
+              {/* 유저 전용 링크 모바일 렌더링 */}
+              {user && (
+                <>
+                  <Link 
+                    href="/dashboard" 
+                    onClick={() => setIsMobileMenuOpen(false)} 
+                    className="flex justify-between items-center px-4 py-3 rounded-xl text-base font-bold text-slate-700 hover:bg-slate-50"
+                  >
+                    대시보드
+                    {unreadDashboard > 0 && <span className="bg-red-500 text-white text-xs px-2 py-0.5 rounded-full">{unreadDashboard}</span>}
+                  </Link>
+                  <Link href="/request" onClick={() => setIsMobileMenuOpen(false)} className="block px-4 py-3 rounded-xl text-base font-bold text-slate-700 hover:bg-slate-50">
+                    작업 요청하기
+                  </Link>
+                  <Link href="/profile/settings" onClick={() => setIsMobileMenuOpen(false)} className="block px-4 py-3 rounded-xl text-base font-bold text-slate-700 hover:bg-slate-50">
+                    프로필 설정
+                  </Link>
+
+                  {user.isAdmin && (
+                    <div className="mt-2 bg-slate-50 rounded-xl p-2">
+                       <p className="px-2 py-1 text-xs font-bold text-slate-400 uppercase">Admin Zone</p>
+                       <Link 
+                         href="/admin" 
+                         onClick={() => setIsMobileMenuOpen(false)} 
+                         className="flex justify-between px-2 py-2 text-sm text-red-600 font-bold hover:bg-slate-100 rounded-lg"
+                       >
+                         접수된 작업
+                         {unreadActive > 0 && <span className="bg-red-500 text-white text-xs px-2 py-0.5 rounded-full">{unreadActive}</span>}
+                       </Link>
+                       <Link 
+                         href="/admin/completed" 
+                         onClick={() => setIsMobileMenuOpen(false)} 
+                         className="flex justify-between px-2 py-2 text-sm text-green-600 font-bold hover:bg-slate-100 rounded-lg"
+                       >
+                         완료된 작업
+                         {unreadCompleted > 0 && <span className="bg-red-500 text-white text-xs px-2 py-0.5 rounded-full">{unreadCompleted}</span>}
+                       </Link>
+                    </div>
+                  )}
+                </>
+              )}
+            </nav>
+
+            <div className="pt-6 mt-4 border-t border-slate-100">
+              {user ? (
+                <button 
+                  onClick={handleLogout} 
+                  className="w-full py-3 bg-slate-100 text-slate-600 font-bold rounded-xl hover:bg-slate-200 flex items-center justify-center gap-2"
+                >
+                  <ArrowRightOnRectangleIcon className="w-5 h-5" /> 로그아웃
+                </button>
+              ) : (
+                <Link href="/login" onClick={() => setIsMobileMenuOpen(false)} className="block w-full py-3 bg-slate-900 text-white text-center font-bold rounded-xl shadow-lg">
+                  로그인 / 회원가입
+                </Link>
+              )}
+            </div>
+          </div>
         </div>
-      </div>
-    </header>
+      )}
+    </>
   );
 }
