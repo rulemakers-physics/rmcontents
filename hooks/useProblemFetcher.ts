@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { db } from '@/lib/firebase';
-import { collection, query, where, getDocs, limit, orderBy } from 'firebase/firestore';
+import { collection, query, where, getDocs, limit, orderBy, DocumentData } from 'firebase/firestore';
 import { DBProblem, Difficulty } from '@/types/problem';
 
 interface FilterProps {
@@ -17,7 +17,7 @@ export function useProblemFetcher({ selectedMajorTopics, selectedMinorTopics, di
 
   useEffect(() => {
     const fetchProblems = async () => {
-      // 대주제가 하나도 선택되지 않았으면 검색하지 않음 (비용 절약)
+      // 대주제가 선택되지 않았으면 패스
       if (selectedMajorTopics.length === 0) {
         setProblems([]);
         return;
@@ -26,44 +26,52 @@ export function useProblemFetcher({ selectedMajorTopics, selectedMinorTopics, di
       setLoading(true);
       try {
         const problemsRef = collection(db, 'problems');
+        const results: DBProblem[] = [];
+
+        // [최적화 전략]
+        // Firestore의 'in' 쿼리 제약(최대 10개)과 '서로 다른 필드의 in/array-contains 동시 사용 불가' 제약을 우회하기 위해,
+        // 선택된 Major Topic 각각에 대해 별도의 쿼리를 병렬로 날려서 합칩니다.
+        // 이렇게 하면 각 쿼리 내에서 where('difficulty', 'in', difficulties)를 안전하게 사용할 수 있습니다.
         
-        // Firestore 'in' 쿼리는 최대 10개까지만 가능하므로, 10개씩 잘라서 요청하거나
-        // 여기서는 안전하게 상위 10개만 쿼리하고 나머지는 무시하는 형태로 구현 (실제론 10개 넘기 힘듦)
-        const safeMajorTopics = selectedMajorTopics.slice(0, 10);
+        // 1. 과부하 방지를 위해 상위 5개의 대단원만 처리 (필요시 조정)
+        const targetTopics = selectedMajorTopics.slice(0, 5);
 
-        const q = query(
-          problemsRef,
-          where('majorTopic', 'in', safeMajorTopics),
-          limit(200) // 성능을 위해 최대 200문제로 제한
-        );
+        // 2. 병렬 쿼리 실행
+        const promises = targetTopics.map(async (topic) => {
+          // 난이도 필터가 있으면 쿼리에 포함 (복합 인덱스 필요: majorTopic ASC + difficulty ASC)
+          const constraints = [
+            where('majorTopic', '==', topic),
+            limit(50) // 단원별 최대 50문제 (총 250문제)
+          ];
 
-        const snapshot = await getDocs(q);
-        const fetchedData = snapshot.docs.map(doc => ({ 
-          id: doc.id, 
-          ...doc.data() 
-        } as DBProblem));
+          if (difficulties.length > 0) {
+             constraints.push(where('difficulty', 'in', difficulties));
+          }
 
-        // [Client-side Filtering] : Firestore 쿼리의 한계를 JS로 보완
-        let filtered = fetchedData;
+          const q = query(problemsRef, ...constraints);
+          const snapshot = await getDocs(q);
+          return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as DBProblem));
+        });
 
-        // 1. 소단원 필터 (선택된 소단원이 있는 경우에만 해당 소단원만 남김)
-        // 로직: 대단원을 선택하면 기본적으로 다 보여주되, 사용자가 소단원을 '콕 집어' 선택하면 그것만 보여줌
+        const chunkedResults = await Promise.all(promises);
+        
+        // 3. 결과 병합
+        let allFetched = chunkedResults.flat();
+
+        // 4. 소단원(Minor Topic) 필터링 (클라이언트 사이드)
+        // 소단원 필터가 있다면, 해당 소단원이 아닌 것은 제거
         if (selectedMinorTopics.length > 0) {
-           // 선택된 소단원이 하나라도 있으면, 그 소단원에 해당하는 문제만 필터링
-           // (주의: 대단원만 체크하고 소단원은 체크 안 한 경우는 "전체"로 간주할지 결정 필요. 
-           //  여기서는 '소단원 체크박스가 하나라도 눌렸으면 그것만 본다'는 로직)
-           filtered = filtered.filter(p => selectedMinorTopics.includes(p.minorTopic));
+           allFetched = allFetched.filter(p => selectedMinorTopics.includes(p.minorTopic));
         }
 
-        // 2. 난이도 필터
-        if (difficulties.length > 0) {
-          filtered = filtered.filter(p => difficulties.includes(p.difficulty));
+        // 5. 랜덤 셔플 (매번 다른 문제 나오도록)
+        // Fisher-Yates Shuffle
+        for (let i = allFetched.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [allFetched[i], allFetched[j]] = [allFetched[j], allFetched[i]];
         }
 
-        // 3. 정렬 (난이도 점수 오름차순 등 필요시 추가)
-        filtered.sort((a, b) => a.difficultyScore - b.difficultyScore);
-
-        setProblems(filtered);
+        setProblems(allFetched);
       } catch (error) {
         console.error("Error fetching problems:", error);
       } finally {
@@ -72,7 +80,7 @@ export function useProblemFetcher({ selectedMajorTopics, selectedMinorTopics, di
     };
 
     fetchProblems();
-  }, [selectedMajorTopics, selectedMinorTopics, difficulties]);
+  }, [selectedMajorTopics, selectedMinorTopics, difficulties]); // 의존성 배열
 
   return { problems, loading };
 }

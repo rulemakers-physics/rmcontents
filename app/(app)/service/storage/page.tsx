@@ -85,6 +85,7 @@ export default function StoragePage() {
         </div>
         <Link 
           href="/service/maker"
+          onClick={() => localStorage.removeItem("exam_draft")}
           className="px-5 py-2.5 bg-slate-900 text-white font-bold rounded-xl hover:bg-slate-800 transition-colors shadow-lg"
         >
           + 새 시험지 만들기
