@@ -16,7 +16,7 @@ export interface ExamProblem {
   id: string;
   number: number;
   content?: string;     // 텍스트 (없으면 이미지 사용)
-  imageUrl?: string;    // 문제 이미지 URL
+  imageUrl?: string | null;    // 문제 이미지 URL
   heightEstimate?: number; // 높이 추정치 (페이지 분할 계산용)
   difficulty?: string;
 }

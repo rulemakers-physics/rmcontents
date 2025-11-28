@@ -2,7 +2,7 @@
 
 "use client";
 
-import React, { useState, useRef, useEffect, useMemo } from "react";
+import React, { useState, useRef, useEffect, useMemo, Suspense } from "react";
 import { useReactToPrint } from "react-to-print";
 import { SCIENCE_UNITS, MOCK_PROBLEMS, Difficulty, QuestionType } from "@/data/mockData";
 import { 
@@ -12,6 +12,12 @@ import {
 import ExamPaperLayout, { ExamTemplateStyle, ExamProblem } from "@/components/ExamPaperLayout";
 import { useAuth } from "@/context/AuthContext";
 import { DragDropContext, Droppable, Draggable, DropResult } from "@hello-pangea/dnd"; // [추가]
+import { toast } from "react-hot-toast"; // [추가]
+import { db } from "@/lib/firebase"; // [추가]
+import { collection, addDoc, serverTimestamp } from "firebase/firestore"; // [추가]
+import { useRouter, useSearchParams } from "next/navigation"; // [추가]
+import { SaveIcon } from "lucide-react"; // [추가] 아이콘
+import { doc, getDoc } from "firebase/firestore";
 
 // 템플릿 데이터 (기존과 동일)
 const TEMPLATES: ExamTemplateStyle[] = [
@@ -20,9 +26,12 @@ const TEMPLATES: ExamTemplateStyle[] = [
   { id: 'clean', name: '미니멀 (깔끔)', headerHeight: '60px', columnGap: '15mm', fontFamily: 'Pretendard, AppleSDGothicNeo, sans-serif', borderColor: '#475569', headerStyle: 'detail' }
 ];
 
-export default function ExamBuilderPage() {
-  const { userData } = useAuth();
-  const userPlan = userData?.plan || "BASIC"; 
+function ExamBuilderContent() {
+  const { userData, user } = useAuth();
+  const router = useRouter();
+  const userPlan = userData?.plan || "BASIC";
+  const searchParams = useSearchParams(); // [신규] URL 파라미터 훅
+  const examId = searchParams.get("id");  // [신규] ?id=... 가져오기
 
   // --- State ---
   // [신규] 사이드바 탭 상태 ('filter' | 'order')
@@ -45,9 +54,53 @@ export default function ExamBuilderPage() {
 
   // [중요] 선택된 문제 목록 (순서 변경 가능하도록 State로 관리)
   const [examProblems, setExamProblems] = useState<ExamProblem[]>([]);
+  
+  // [신규] 저장 중 상태
+  const [isSaving, setIsSaving] = useState(false);
 
-  // 1. 필터 변경 시 문제 목록 업데이트 (초기화)
+  const [isLoaded, setIsLoaded] = useState(false); // [신규] 로딩 완료 여부
+
+  // [신규] 저장된 시험지 불러오기 (마운트 시 1회 실행)
   useEffect(() => {
+    if (!examId) {
+      setIsLoaded(true); // id가 없으면 바로 '로딩됨' 처리 (기본 모드)
+      return;
+    }
+
+    const loadExam = async () => {
+      try {
+        const docRef = doc(db, "saved_exams", examId);
+        const docSnap = await getDoc(docRef);
+        
+        if (docSnap.exists()) {
+          const data = docSnap.data();
+          setExamTitle(data.title);
+          setExamProblems(data.problems || []);
+          setInstructorName(data.instructorName);
+          // 템플릿 복원 로직이 필요하다면 여기에 추가 (예: data.templateId로 찾기)
+          const savedTemplate = TEMPLATES.find(t => t.id === data.templateId);
+          if (savedTemplate) setCurrentTemplate(savedTemplate);
+          
+          toast.success("저장된 시험지를 불러왔습니다.");
+        } else {
+          toast.error("시험지를 찾을 수 없습니다.");
+        }
+      } catch (error) {
+        console.error("로드 실패:", error);
+        toast.error("불러오기 중 오류가 발생했습니다.");
+      } finally {
+        setIsLoaded(true); // 로딩 끝
+      }
+    };
+
+    loadExam();
+  }, [examId]);
+
+  // [수정] 1. 필터 변경 시 문제 목록 업데이트
+  // -> 저장된 시험지를 수정 중일 때는 필터가 맘대로 덮어쓰면 안 됨!
+  useEffect(() => {
+    if (!isLoaded) return; // 로딩 중이면 대기
+    if (examId && examProblems.length > 0) return; // [중요] 수정 모드이고, 이미 문제가 있다면 자동 생성 방지
     let result = MOCK_PROBLEMS.filter(p => difficulties.includes(p.difficulty as Difficulty));
     // result = result.filter(p => qTypes.includes(p.type)); // 실제 데이터 구조에 맞게 주석 해제
     if (userPlan !== "MAKERS") {
@@ -59,14 +112,14 @@ export default function ExamBuilderPage() {
     const formatted = sliced.map((p, idx) => ({
       id: p.id,
       number: idx + 1,
-      imageUrl: idx % 2 === 0 ? "/images/123.png" : undefined, // 예시 이미지
+      imageUrl: idx % 2 === 0 ? "/images/123.png" : null, // 예시 이미지
       content: p.content,
       difficulty: p.difficulty
     }));
 
     setExamProblems(formatted);
-  }, [difficulties, qTypes, excludeRecent, questionCount, userPlan]);
-
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [difficulties, qTypes, excludeRecent, questionCount, userPlan, isLoaded]); // 의존성 배열 주의
   // 2. 드래그 앤 드롭 핸들러
   const onDragEnd = (result: DropResult) => {
     if (!result.destination) return;
@@ -83,6 +136,54 @@ export default function ExamBuilderPage() {
 
     setExamProblems(renumberedItems);
   };
+
+  // [신규] 시험지 저장 핸들러
+  const handleSaveExam = async () => {
+    if (!user) {
+      toast.error("로그인이 필요합니다.");
+      return;
+    }
+    if (examProblems.length === 0) {
+      toast.error("시험지에 담긴 문제가 없습니다.");
+      return;
+    }
+    if (!examTitle.trim()) {
+      toast.error("시험지 제목을 입력해주세요.");
+      return;
+    }
+
+    setIsSaving(true);
+    try {
+      // [수정] 저장 전 데이터 정제 (undefined 제거)
+      const cleanProblems = examProblems.map(p => ({
+        ...p,
+        imageUrl: p.imageUrl || null,   // undefined 방지
+        content: p.content || null,     // undefined 방지
+        difficulty: p.difficulty || null // undefined 방지
+      }));
+
+      await addDoc(collection(db, "saved_exams"), {
+        userId: user.uid,
+        instructorName: instructorName || "선생님", // 혹시 모를 undefined 방지
+        title: examTitle || "제목 없음",
+        problems: cleanProblems, // 정제된 데이터 저장
+        templateId: currentTemplate.id,
+        createdAt: serverTimestamp(),
+        problemCount: cleanProblems.length,
+      });
+
+      toast.success("시험지가 보관함에 저장되었습니다!");
+      if (confirm("저장이 완료되었습니다. 보관함으로 이동하시겠습니까?")) {
+        router.push("/service/storage");
+      }
+    } catch (error) {
+      console.error("저장 실패:", error);
+      toast.error("저장 중 오류가 발생했습니다.");
+    }
+    setIsSaving(false);
+  };
+  // [팁] 저장 함수(handleSaveExam)에서 '수정 모드'일 때는 addDoc 대신 updateDoc을 쓰면 더 완벽합니다.
+  // 현재는 addDoc만 있어서 '새로운 복사본'이 저장되는 방식입니다. (일단 유지해도 무방)
 
   // 3. 페이지네이션 (화면 표시용)
   const pagedProblems = useMemo(() => {
@@ -102,7 +203,7 @@ export default function ExamBuilderPage() {
 
   const toggleDifficulty = (d: Difficulty) => {
     if (d === '킬러' && userPlan !== 'MAKERS') {
-      alert("🔒 킬러 문항은 Maker's Plan 전용입니다.");
+      toast.error("🔒 킬러 문항은 Maker's Plan 전용입니다.");
       return;
     }
     setDifficulties(prev => prev.includes(d) ? prev.filter(x => x !== d) : [...prev, d]);
@@ -115,6 +216,17 @@ export default function ExamBuilderPage() {
       reader.readAsDataURL(e.target.files[0]);
     }
   };
+
+  if (!isLoaded) {
+    return (
+      <div className="flex h-screen items-center justify-center bg-gray-50">
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-8 h-8 border-4 border-slate-200 border-t-blue-600 rounded-full animate-spin"></div>
+          <p className="text-sm text-slate-500 font-medium">시험지를 불러오고 있습니다...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex h-screen bg-gray-50 overflow-hidden font-sans">
@@ -318,8 +430,18 @@ export default function ExamBuilderPage() {
             </label>
           </div>
           <div className="flex gap-3">
+             {/* [신규] 저장 버튼 추가 */}
+             <button 
+               onClick={handleSaveExam}
+               disabled={isSaving}
+               className="flex items-center gap-2 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-bold shadow-md transition-all active:scale-95 disabled:opacity-50"
+             >
+               <SaveIcon className="w-4 h-4" />
+               {isSaving ? "저장 중..." : "보관함 저장"}
+             </button>
+
              <button onClick={() => triggerPrint()} className="flex items-center gap-2 px-5 py-2.5 bg-slate-900 hover:bg-slate-800 text-white rounded-lg font-bold shadow-lg shadow-slate-200 transition-all active:scale-95">
-               <Printer className="w-4 h-4" /> PDF 저장
+               <Printer className="w-4 h-4" /> PDF 출력
              </button>
           </div>
         </header>
@@ -339,5 +461,14 @@ export default function ExamBuilderPage() {
         </div>
       </main>
     </div>
+  );
+}
+
+// [신규] Suspense로 감싸서 내보내기 (이게 진짜 페이지 컴포넌트가 됨)
+export default function ExamBuilderPage() {
+  return (
+    <Suspense fallback={<div className="flex h-screen items-center justify-center">로딩 중...</div>}>
+      <ExamBuilderContent />
+    </Suspense>
   );
 }

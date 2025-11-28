@@ -25,6 +25,7 @@ import UserStatsWidget from "@/components/UserStatsWidget";
 import { TableSkeleton } from "@/components/SkeletonLoader";
 import EmptyState from "@/components/EmptyState";
 import RequestDetailModal from "@/components/RequestDetailModal";
+import FeatureTour from "@/components/FeatureTour";
 
 // 아이콘
 import { 
@@ -88,7 +89,14 @@ export default function DashboardPage() {
     }
   }, [user, loading, isFirstLogin, router]);
 
-  
+  // [2. 추가] 투어 리셋 핸들러
+  const handleResetTour = () => {
+    // 로컬 스토리지에서 '봤음' 기록 삭제
+    localStorage.removeItem("hasSeenDashboardTour_v2");
+    // 페이지를 새로고침하여 투어 컴포넌트가 다시 마운트되도록 함
+    window.location.reload();
+  };
+
   // --- 핸들러 ---
   const handleRequestClick = async (request: RequestData) => {
     setSelectedRequest(request);
@@ -153,6 +161,7 @@ export default function DashboardPage() {
 
   return (
     <div className="flex min-h-screen flex-col bg-slate-50">
+      <FeatureTour />
       <main className="flex-grow py-12">
         <div className="container mx-auto max-w-5xl px-6">
           
@@ -296,6 +305,15 @@ export default function DashboardPage() {
               </div>
             )}
           </div>
+          {/* 이용 가이드 다시 보기 버튼 */}
+            <div className="flex justify-end p-4 border-t border-slate-100">
+              <button 
+                onClick={handleResetTour} // 이제 함수가 정의되어 정상 작동합니다.
+                className="text-xs text-slate-400 hover:text-blue-600 underline flex items-center gap-1"
+              >
+                💡 이용 가이드 다시 보기
+              </button>
+            </div>
         </div>
       </main>
 
