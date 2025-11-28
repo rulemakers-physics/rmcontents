@@ -2,13 +2,13 @@
 
 "use client";
 
-import React, { useState, useRef, useEffect, useMemo, Suspense } from "react";
+import React, { useState, useRef, useEffect, useMemo, Suspense, useCallback } from "react";
 import { useReactToPrint } from "react-to-print";
 import { SCIENCE_UNITS } from "@/types/scienceUnits"; 
 import { 
   Printer, Lock, ChevronDown, Filter, FileText, 
   LayoutTemplate, Image as ImageIcon, SaveIcon, ListOrdered, 
-  RotateCcw, FileCheck, CheckSquare // [추가] 아이콘
+  RotateCcw, FileCheck, CheckSquare
 } from "lucide-react";
 import ExamPaperLayout, { ExamProblem } from "@/components/ExamPaperLayout";
 import { useAuth } from "@/context/AuthContext";
@@ -19,16 +19,22 @@ import { collection, addDoc, serverTimestamp, doc, getDoc, query, where, getDocs
 import { useRouter, useSearchParams } from "next/navigation"; 
 
 import { useProblemFetcher } from "@/hooks/useProblemFetcher";
-import { Difficulty, QuestionType, DBProblem } from "@/types/problem";
+import { Difficulty, DBProblem } from "@/types/problem"; // DBProblem 타입 확인 필요
 import { TEMPLATES, ExamTemplateStyle } from "@/types/examTemplates";
 
+// [수정 1] PrintOptions 인터페이스 정의 추가
+export interface PrintOptions {
+  questions: boolean;
+  answers: boolean;
+  solutions: boolean;
+}
 
 function ExamBuilderContent() {
   const { userData, user } = useAuth();
   const router = useRouter();
-  const userPlan = userData?.plan || "BASIC";
   const searchParams = useSearchParams(); 
   const examId = searchParams.get("id");
+  const userPlan = userData?.plan || "BASIC";
 
   const [activeTab, setActiveTab] = useState<'filter' | 'order'>('filter');
 
@@ -42,6 +48,8 @@ function ExamBuilderContent() {
   const [examTitle, setExamTitle] = useState("2025 1학기 중간고사 대비");
   const [instructorName, setInstructorName] = useState(userData?.name || "김룰메 선생님");
   const [academyLogo, setAcademyLogo] = useState<string | null>(null);
+  
+  // [수정 1 관련] PrintOptions 상태 타입 지정
   const [printOptions, setPrintOptions] = useState<PrintOptions>({
     questions: true,
     answers: true,
@@ -55,6 +63,13 @@ function ExamBuilderContent() {
   const [examProblems, setExamProblems] = useState<ExamProblem[]>([]);
   const [isSaving, setIsSaving] = useState(false);
   const [isLoaded, setIsLoaded] = useState(false); 
+  
+  // [수정 2] DnD Hydration 이슈 방지를 위한 마운트 상태
+  const [isMounted, setIsMounted] = useState(false);
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
 
   const { problems: fetchedProblems, loading: isFetching } = useProblemFetcher({
     selectedMajorTopics,
@@ -62,25 +77,23 @@ function ExamBuilderContent() {
     difficulties
   });
 
-  // [신규] 문제 교체 기능
-  const handleReplaceProblem = async (problemId: string, currentMajor: string, currentDifficulty: string) => {
+  // [수정 3] 문제 교체 기능 안정화 (useCallback)
+  const handleReplaceProblem = useCallback(async (problemId: string, currentMajor: string, currentDifficulty: string) => {
     if(!currentMajor) return;
     
     const toastId = toast.loading("유사 문제를 찾는 중...");
     try {
-      // 1. 유사 조건(같은 대단원, 같은 난이도)으로 문제 검색
-      // 실제로는 minorTopic까지 맞추는게 좋음
       const q = query(
         collection(db, "problems"),
         where("majorTopic", "==", currentMajor),
         where("difficulty", "==", currentDifficulty),
-        limit(20) // 랜덤성을 위해 조금 넉넉히 가져옴
+        limit(20)
       );
       
       const snapshot = await getDocs(q);
       const candidates = snapshot.docs.map(d => ({id: d.id, ...d.data()} as DBProblem));
       
-      // 2. 현재 시험지에 없는 문제만 필터링
+      // 현재 시험지에 없는 문제만 필터링
       const currentIds = examProblems.map(p => p.id);
       const validCandidates = candidates.filter(p => !currentIds.includes(p.id));
 
@@ -89,7 +102,6 @@ function ExamBuilderContent() {
         return;
       }
 
-      // 3. 랜덤 선택 및 교체
       const newProblem = validCandidates[Math.floor(Math.random() * validCandidates.length)];
       
       setExamProblems(prev => prev.map(p => {
@@ -99,8 +111,8 @@ function ExamBuilderContent() {
             id: newProblem.id,
             imageUrl: newProblem.imgUrl,
             content: newProblem.content,
-            answer: newProblem.answer, // 정답 업데이트
-            solutionUrl: newProblem.solutionUrl // 해설 업데이트
+            answer: newProblem.answer,
+            solutionUrl: newProblem.solutionUrl
           };
         }
         return p;
@@ -111,12 +123,11 @@ function ExamBuilderContent() {
       console.error(e);
       toast.error("오류가 발생했습니다.", { id: toastId });
     }
-  };
+  }, [examProblems]); // examProblems가 바뀔 때 최신 상태를 참조해야 중복 체크가 정확함
 
-  // [신규] 임시 저장 및 복구 로직 (Draft)
+  // 임시 저장 및 복구 로직
   useEffect(() => {
-    // 1. 자동 저장
-    if (examProblems.length > 0 && !examId) {
+    if (examProblems.length > 0 && !examId && isMounted) {
       const draft = {
         title: examTitle,
         problems: examProblems,
@@ -124,19 +135,15 @@ function ExamBuilderContent() {
       };
       localStorage.setItem("exam_draft", JSON.stringify(draft));
     }
-  }, [examProblems, examTitle, examId]);
+  }, [examProblems, examTitle, examId, isMounted]);
 
   useEffect(() => {
-    // 2. 초기 로드 시 복구 확인
-    if (!examId) {
+    if (!examId && isMounted) {
       const savedDraft = localStorage.getItem("exam_draft");
       if (savedDraft) {
         try {
           const { title, problems, updatedAt } = JSON.parse(savedDraft);
-          // 24시간 이내 데이터만 복구 제안
           if (Date.now() - updatedAt < 24 * 60 * 60 * 1000) {
-            // 사용자 경험을 위해 confirm 대신 Toast로 알리거나 그냥 로드 할 수도 있음
-            // 여기서는 심플하게 자동 로드 후 알림
             setExamTitle(title);
             setExamProblems(problems);
             toast("임시 저장된 시험지를 불러왔습니다.", { icon: '📂' });
@@ -147,10 +154,9 @@ function ExamBuilderContent() {
       }
       setIsLoaded(true);
     }
-  }, [examId]);
+  }, [examId, isMounted]);
 
-
-  // 기존 DB 로드 로직
+  // DB 로드 로직
   useEffect(() => {
     if (!examId) return;
     const loadExam = async () => {
@@ -177,17 +183,9 @@ function ExamBuilderContent() {
 
   // 자동 생성 로직 (초기)
   useEffect(() => {
-    // 로딩 전이거나 패칭 중이면 대기
     if (!isLoaded || isFetching) return;
 
-    // [수정 포인트]
-    // 저장된 시험지(examId 있음)를 '처음' 불러왔을 때는 덮어쓰면 안 되지만,
-    // 사용자가 필터를 조작해서 fetchedProblems가 변했다면 "수정 의도"가 있는 것이므로 업데이트해야 합니다.
-    // 따라서 기존의 'examProblems.length > 0' 체크를 제거합니다.
-    
-    // (단, 저장된 시험지를 불러온 직후 필터 기본값 때문에 덮어씌워지는 것을 방지하려면
-    //  isLoaded 체크가 중요하며, 현재 구조상 필터를 건드리지 않으면 fetchedProblems가 변하지 않으므로 안전합니다.)
-
+    // 패칭된 데이터를 기반으로 포맷팅
     const formatted: ExamProblem[] = fetchedProblems
       .slice(0, questionCount)
       .map((p, idx) => ({
@@ -202,21 +200,34 @@ function ExamBuilderContent() {
         solutionUrl: p.solutionUrl || null
       }));
 
-    // 받아온 문제가 있을 때만 업데이트 (원치 않는 빈 화면 방지)
+    // [수정 4] 상태 업데이트 조건 강화
+    // 기존 문제가 없고, 새로 받아온 문제가 있을 때 -> 초기화
+    // 혹은 사용자가 필터를 적극적으로 변경하여 fetchedProblems가 변경되었을 때
+    
+    // 주의: 사용자가 순서를 바꾼 뒤에 이 로직이 돌면 순서가 초기화 될 수 있음.
+    // 하지만 현재 구조상 필터 변경 -> refetch -> overwrite 구조이므로 
+    // 필터를 건드리지 않으면 fetchedProblems가 변하지 않아 안전함.
+    
     if (formatted.length > 0) {
+      // 무한 루프 방지를 위해 현재 examProblems와 다른 경우에만 업데이트하는 것이 좋으나,
+      // 객체 비교가 어려우므로 길이 체크 등을 활용하거나, 
+      // 필터 변경 시에만 이 effect가 트리거되도록 의존성을 신뢰함.
       setExamProblems(formatted);
     } else if (fetchedProblems.length === 0 && selectedMajorTopics.length > 0) {
-      // 필터는 걸었는데 결과가 0개인 경우 (조건에 맞는 문제 없음) -> 빈 화면으로 갱신
       setExamProblems([]);
     }
 
-  }, [fetchedProblems, questionCount, isLoaded, examId, isFetching]);
+    // 의존성 배열에서 questionCount가 변경될 때도 재적용
+  }, [fetchedProblems, questionCount, isLoaded]); // examId 제거 (초기 로드 완료 후엔 필터 기반 동작)
 
   const onDragEnd = (result: DropResult) => {
     if (!result.destination) return;
+    
     const items = Array.from(examProblems);
     const [reorderedItem] = items.splice(result.source.index, 1);
     items.splice(result.destination.index, 0, reorderedItem);
+    
+    // 순서 변경 후 번호 재할당
     const renumberedItems = items.map((item, index) => ({ ...item, number: index + 1 }));
     setExamProblems(renumberedItems);
   };
@@ -229,7 +240,6 @@ function ExamBuilderContent() {
     try {
       const cleanProblems = examProblems.map(p => ({
         ...p,
-        // undefined 방지
         imageUrl: p.imageUrl || null,
         content: p.content || null,
         difficulty: p.difficulty || null,
@@ -247,10 +257,11 @@ function ExamBuilderContent() {
         problemCount: cleanProblems.length,
       });
 
-      localStorage.removeItem("exam_draft"); // 저장 성공 시 임시 데이터 삭제
+      localStorage.removeItem("exam_draft");
       toast.success("저장 완료");
-      if (confirm("보관함으로 이동?")) router.push("/service/storage");
+      if (confirm("보관함으로 이동하시겠습니까?")) router.push("/service/storage");
     } catch (e) {
+      console.error(e);
       toast.error("저장 실패");
     }
     setIsSaving(false);
@@ -265,13 +276,15 @@ function ExamBuilderContent() {
   }, [examProblems, itemsPerPage]);
 
   const printRef = useRef<HTMLDivElement>(null);
-  const triggerPrint = useReactToPrint({
+  
+  // [수정 5] useReactToPrint 사용 시 contentRef가 null일 경우 방어
+  const handlePrint = useReactToPrint({
     contentRef: printRef,
     documentTitle: examTitle,
   });
 
   const toggleDifficulty = (d: Difficulty) => {
-    if (d === '킬러' && userPlan !== 'MAKERS') { toast.error("Maker's Plan 전용"); return; }
+    if (d === '킬러' && userPlan !== 'MAKERS') { toast.error("Maker's Plan 전용 기능입니다."); return; }
     setDifficulties(prev => prev.includes(d) ? prev.filter(x => x !== d) : [...prev, d]);
   };
   
@@ -283,7 +296,8 @@ function ExamBuilderContent() {
     }
   };
 
-  if (!isLoaded) return <div className="flex h-screen items-center justify-center">로딩 중...</div>;
+  // 로딩 상태 처리
+  if (!isLoaded || !isMounted) return <div className="flex h-screen items-center justify-center">로딩 중...</div>;
 
   return (
     <div className="flex w-full h-[calc(100vh-64px)] bg-gray-50 font-sans overflow-hidden">
@@ -300,7 +314,7 @@ function ExamBuilderContent() {
           {activeTab === 'filter' && (
             <div className="space-y-8 animate-in fade-in slide-in-from-left-4 duration-300">
               
-              {/* [변경] 단원 선택 (DB 연동) */}
+              {/* 단원 선택 */}
               <div>
                 <h3 className="text-sm font-bold text-gray-900 mb-3 flex items-center gap-2">
                   <Filter className="w-4 h-4" /> 단원 선택
@@ -317,7 +331,6 @@ function ExamBuilderContent() {
                                 type="checkbox"
                                 checked={selectedMajorTopics.includes(major.name)}
                                 onChange={(e) => {
-                                  // e.preventDefault(); // summary 토글 방지하고 싶으면 사용
                                   setSelectedMajorTopics(prev => 
                                     prev.includes(major.name) ? prev.filter(t => t !== major.name) : [...prev, major.name]
                                   );
@@ -341,7 +354,6 @@ function ExamBuilderContent() {
                                     setSelectedMinorTopics(prev => 
                                       prev.includes(minor) ? prev.filter(t => t !== minor) : [...prev, minor]
                                     );
-                                    // 소단원 선택 시 대단원 자동 선택
                                     if (!selectedMajorTopics.includes(major.name)) {
                                       setSelectedMajorTopics(prev => [...prev, major.name]);
                                     }
@@ -388,7 +400,7 @@ function ExamBuilderContent() {
                 <input type="range" min="4" max="50" step="1" value={questionCount} onChange={(e) => setQuestionCount(Number(e.target.value))} className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600" />
               </div>
 
-              {/* [수정] 출력 옵션 섹션 */}
+              {/* 출력 옵션 설정 */}
               <div className="pt-4 border-t border-gray-100">
                 <h3 className="text-sm font-bold text-gray-900 mb-3 flex items-center gap-2">
                   <Printer className="w-4 h-4"/> 출력 옵션 설정
@@ -447,39 +459,41 @@ function ExamBuilderContent() {
           {activeTab === 'order' && (
             <div className="animate-in fade-in slide-in-from-right-4 duration-300">
               <h3 className="text-sm font-bold text-gray-900 mb-3 flex items-center gap-2"><ListOrdered className="w-4 h-4"/> 문항 순서 및 교체</h3>
-              <DragDropContext onDragEnd={onDragEnd}>
-                <Droppable droppableId="exam-problems">
-                  {(provided) => (
-                    <div {...provided.droppableProps} ref={provided.innerRef} className="space-y-2 pb-4">
-                      {examProblems.map((prob, index) => (
-                        <Draggable key={prob.id} draggableId={prob.id} index={index}>
-                          {(provided, snapshot) => (
-                            <div ref={provided.innerRef} {...provided.draggableProps} {...provided.dragHandleProps} className={`p-3 bg-white border rounded-lg flex items-center gap-3 shadow-sm group ${snapshot.isDragging ? 'shadow-lg border-blue-500 z-50' : 'border-gray-200'}`}>
-                              <span className="w-6 h-6 flex-shrink-0 flex items-center justify-center bg-slate-100 rounded-full text-xs font-bold text-slate-500">{prob.number}</span>
-                              <div className="flex-1 min-w-0">
-                                <p className="text-xs text-gray-900 font-medium truncate">{prob.content || "문제 이미지"}</p>
-                                <span className="text-[10px] text-gray-400 bg-gray-50 px-1 rounded">{prob.difficulty}</span>
+              {/* [수정 2] Droppable을 StrictMode 및 Hydration 에러 방지를 위해 렌더링 제어 */}
+              {isMounted && (
+                <DragDropContext onDragEnd={onDragEnd}>
+                  <Droppable droppableId="exam-problems">
+                    {(provided) => (
+                      <div {...provided.droppableProps} ref={provided.innerRef} className="space-y-2 pb-4">
+                        {examProblems.map((prob, index) => (
+                          <Draggable key={prob.id} draggableId={prob.id} index={index}>
+                            {(provided, snapshot) => (
+                              <div ref={provided.innerRef} {...provided.draggableProps} {...provided.dragHandleProps} className={`p-3 bg-white border rounded-lg flex items-center gap-3 shadow-sm group ${snapshot.isDragging ? 'shadow-lg border-blue-500 z-50' : 'border-gray-200'}`}>
+                                <span className="w-6 h-6 flex-shrink-0 flex items-center justify-center bg-slate-100 rounded-full text-xs font-bold text-slate-500">{prob.number}</span>
+                                <div className="flex-1 min-w-0">
+                                  <p className="text-xs text-gray-900 font-medium truncate">{prob.content || "문제 이미지"}</p>
+                                  <span className="text-[10px] text-gray-400 bg-gray-50 px-1 rounded">{prob.difficulty}</span>
+                                </div>
+                                
+                                <button 
+                                  onClick={() => handleReplaceProblem(prob.id, prob.majorTopic || "", prob.difficulty || "중")}
+                                  className="opacity-0 group-hover:opacity-100 p-1.5 hover:bg-blue-50 text-blue-600 rounded transition-all"
+                                  title="다른 문제로 교체"
+                                >
+                                  <RotateCcw className="w-3.5 h-3.5" />
+                                </button>
+                                
+                                <span className="text-gray-300">⠿</span>
                               </div>
-                              
-                              {/* [신규] 문제 교체 버튼 (호버 시 등장) */}
-                              <button 
-                                onClick={() => handleReplaceProblem(prob.id, prob.majorTopic || "", prob.difficulty || "중")}
-                                className="opacity-0 group-hover:opacity-100 p-1.5 hover:bg-blue-50 text-blue-600 rounded transition-all"
-                                title="다른 문제로 교체"
-                              >
-                                <RotateCcw className="w-3.5 h-3.5" />
-                              </button>
-                              
-                              <span className="text-gray-300">⠿</span>
-                            </div>
-                          )}
-                        </Draggable>
-                      ))}
-                      {provided.placeholder}
-                    </div>
-                  )}
-                </Droppable>
-              </DragDropContext>
+                            )}
+                          </Draggable>
+                        ))}
+                        {provided.placeholder}
+                      </div>
+                    )}
+                  </Droppable>
+                </DragDropContext>
+              )}
             </div>
           )}
         </div>
@@ -507,7 +521,7 @@ function ExamBuilderContent() {
              <button onClick={handleSaveExam} disabled={isSaving} className="flex items-center gap-2 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-bold shadow-md transition-all active:scale-95 disabled:opacity-50">
                <SaveIcon className="w-4 h-4" /> {isSaving ? "저장 중..." : "보관함 저장"}
              </button>
-             <button onClick={() => triggerPrint()} className="flex items-center gap-2 px-5 py-2.5 bg-slate-900 hover:bg-slate-800 text-white rounded-lg font-bold shadow-lg shadow-slate-200 transition-all active:scale-95">
+             <button onClick={() => handlePrint && handlePrint()} className="flex items-center gap-2 px-5 py-2.5 bg-slate-900 hover:bg-slate-800 text-white rounded-lg font-bold shadow-lg shadow-slate-200 transition-all active:scale-95">
                <Printer className="w-4 h-4" /> PDF 출력
              </button>
           </div>

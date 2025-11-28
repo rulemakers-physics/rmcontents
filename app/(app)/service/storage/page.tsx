@@ -2,7 +2,7 @@
 
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import { useAuth } from "@/context/AuthContext";
 import { db } from "@/lib/firebase";
@@ -31,7 +31,7 @@ export default function StoragePage() {
   const [isLoading, setIsLoading] = useState(true);
 
   // 목록 불러오기
-  const fetchExams = async () => {
+  const fetchExams = useCallback(async () => {
     if (!user) return;
     setIsLoading(true);
     try {
@@ -51,13 +51,14 @@ export default function StoragePage() {
       toast.error("목록을 불러오지 못했습니다.");
     }
     setIsLoading(false);
-  };
+  }, [user]); // user가 변경될 때만 함수 재생성
 
+  // 3. useEffect의 의존성 배열에 fetchExams를 안전하게 넣을 수 있습니다.
   useEffect(() => {
     if (!loading && user) {
       fetchExams();
     }
-  }, [user, loading]);
+  }, [loading, user, fetchExams]);
 
   // 삭제 핸들러
   const handleDelete = async (id: string) => {

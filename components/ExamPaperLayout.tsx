@@ -11,6 +11,8 @@ export interface ExamProblem {
   answer?: string | null;
   solutionUrl?: string | null;
   difficulty?: string;
+  majorTopic?: string;
+  minorTopic?: string;
 }
 
 export interface PrintOptions {
