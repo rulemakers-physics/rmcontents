@@ -4,7 +4,7 @@
 
 import React, { useState, useRef, useEffect, useMemo, Suspense } from "react";
 import { useReactToPrint } from "react-to-print";
-import { SCIENCE_UNITS } from "@/data/mockData"; // 경로 확인 필요 (types/scienceUnits.ts 내용을 mockData에 두셨다면)
+import { SCIENCE_UNITS } from "@/types/scienceUnits"; // 경로 확인 필요 (types/scienceUnits.ts 내용을 mockData에 두셨다면)
 import { 
   Printer, Lock, ChevronDown, Filter, FileText, 
   LayoutTemplate, Image as ImageIcon, SaveIcon, ListOrdered 
