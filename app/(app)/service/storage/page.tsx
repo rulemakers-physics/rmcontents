@@ -4,6 +4,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation"; // [추가] 라우터 사용
 import { useAuth } from "@/context/AuthContext";
 import { db } from "@/lib/firebase";
 import { collection, query, where, orderBy, getDocs, deleteDoc, doc, Timestamp } from "firebase/firestore";
@@ -27,6 +28,7 @@ interface SavedExam {
 
 export default function StoragePage() {
   const { user, loading } = useAuth();
+  const router = useRouter(); // [추가]
   const [savedExams, setSavedExams] = useState<SavedExam[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -60,6 +62,14 @@ export default function StoragePage() {
     }
   }, [loading, user, fetchExams]);
 
+  // [추가] 새 시험지 만들기 핸들러
+  const handleCreateNew = () => {
+    // 1. 임시 저장 데이터 삭제
+    localStorage.removeItem("exam_draft");
+    // 2. 삭제가 완료된 후 페이지 이동
+    router.push("/service/maker");
+  };
+
   // 삭제 핸들러
   const handleDelete = async (id: string) => {
     if (!confirm("정말 삭제하시겠습니까? 복구할 수 없습니다.")) return;
@@ -84,13 +94,14 @@ export default function StoragePage() {
           </h1>
           <p className="text-slate-500 mt-1">저장한 시험지를 관리하고 다시 편집하세요.</p>
         </div>
-        <Link 
-          href="/service/maker"
-          onClick={() => localStorage.removeItem("exam_draft")}
-          className="px-5 py-2.5 bg-slate-900 text-white font-bold rounded-xl hover:bg-slate-800 transition-colors shadow-lg"
+        
+        {/* [수정] Link 대신 button 사용 */}
+        <button 
+          onClick={handleCreateNew}
+          className="px-5 py-2.5 bg-slate-900 text-white font-bold rounded-xl hover:bg-slate-800 transition-colors shadow-lg cursor-pointer"
         >
           + 새 시험지 만들기
-        </Link>
+        </button>
       </div>
 
       {isLoading ? (
