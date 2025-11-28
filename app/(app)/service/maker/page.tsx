@@ -10,7 +10,7 @@ import {
   LayoutTemplate, Image as ImageIcon, SaveIcon, ListOrdered, 
   RotateCcw, FileCheck, CheckSquare // [추가] 아이콘
 } from "lucide-react";
-import ExamPaperLayout, { ExamTemplateStyle, ExamProblem } from "@/components/ExamPaperLayout";
+import ExamPaperLayout, { ExamProblem } from "@/components/ExamPaperLayout";
 import { useAuth } from "@/context/AuthContext";
 import { DragDropContext, Droppable, Draggable, DropResult } from "@hello-pangea/dnd"; 
 import { toast } from "react-hot-toast"; 
@@ -20,12 +20,8 @@ import { useRouter, useSearchParams } from "next/navigation";
 
 import { useProblemFetcher } from "@/hooks/useProblemFetcher";
 import { Difficulty, QuestionType, DBProblem } from "@/types/problem";
+import { TEMPLATES, ExamTemplateStyle } from "@/types/examTemplates";
 
-const TEMPLATES: ExamTemplateStyle[] = [
-  { id: 'classic', name: '클래식 (기본)', headerHeight: '80px', columnGap: '10mm', fontFamily: 'ui-sans-serif, system-ui, sans-serif', borderColor: '#2563eb', headerStyle: 'simple' },
-  { id: 'mock-exam', name: '실전 모의고사', headerHeight: '100px', columnGap: '8mm', fontFamily: '"Times New Roman", Batang, serif', borderColor: '#000000', headerStyle: 'box' },
-  { id: 'clean', name: '미니멀 (깔끔)', headerHeight: '60px', columnGap: '15mm', fontFamily: 'Pretendard, AppleSDGothicNeo, sans-serif', borderColor: '#475569', headerStyle: 'detail' }
-];
 
 function ExamBuilderContent() {
   const { userData, user } = useAuth();
