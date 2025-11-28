@@ -50,3 +50,15 @@ next-env.d.ts
 
 # Firebase
 .firebase/
+
+# --- [RM Contents] 데이터 관리 ---
+# 1. 대용량 데이터 제외 (저장소 용량 보호)
+data/
+data/*
+
+# 2. 보안 파일 제외 (해킹 방지)
+scripts/serviceAccountKey.json
+
+# 3. (혹시 모를) 임시 파일들
+*.log
+.DS_Store
