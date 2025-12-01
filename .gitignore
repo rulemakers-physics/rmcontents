@@ -65,3 +65,14 @@ scripts/serviceAccountKey.json
 
 #잡동사니
 .VSCodeCounter/
+
+# --- AI 소통 효율화를 위한 제외 목록 ---
+# 1. 이미지 파일 (용량 절약)
+public/images/
+
+# 2. 패키지 잠금 파일 (토큰 절약)
+package-lock.json
+functions/package-lock.json
+
+# 3. 데이터 파일 (보안 및 용량)
+data/
