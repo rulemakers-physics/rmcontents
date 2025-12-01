@@ -62,3 +62,6 @@ scripts/serviceAccountKey.json
 # 3. (혹시 모를) 임시 파일들
 *.log
 .DS_Store
+
+#잡동사니
+.VSCodeCounter/
