@@ -83,3 +83,11 @@ public/vercel.svg
 public/next.svg
 public/globe.svg
 public/file.svg
+
+# --- [Admin Scripts] 관리자용 스크립트 제외 ---
+# DB 대량 업로드 및 삭제 스크립트는 로컬에서만 관리
+scripts/upload_bulk.js
+scripts/delete_bulk.js
+
+# 혹시 모를 키 파일 누락 방지 (중복이어도 안전함)
+scripts/serviceAccountKey.json

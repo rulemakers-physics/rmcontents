@@ -75,52 +75,96 @@ function ExamBuilderContent() {
   });
 
   const handleReplaceProblem = useCallback(async (problemId: string, currentMajor: string, currentDifficulty: string) => {
-    if(!currentMajor) return;
+    if (!currentMajor) return;
     
-    const toastId = toast.loading("유사 문제를 찾는 중...");
+    const toastId = toast.loading("최적의 유사 문항을 탐색 중...");
+    
     try {
-      const q = query(
-        collection(db, "problems"),
-        where("majorTopic", "==", currentMajor),
-        where("difficulty", "==", currentDifficulty),
-        limit(20)
-      );
-      
-      const snapshot = await getDocs(q);
-      const candidates = snapshot.docs.map(d => ({id: d.id, ...d.data()} as DBProblem));
-      
-      // 현재 시험지에 없는 문제만 필터링
-      const currentIds = examProblems.map(p => p.id);
-      const validCandidates = candidates.filter(p => !currentIds.includes(p.id));
+      // 1. 현재 문제의 상세 정보(유사 문항 리스트)를 가져옴
+      const currentProblemRef = doc(db, "problems", problemId);
+      const currentProblemSnap = await getDoc(currentProblemRef);
+      const currentProblemData = currentProblemSnap.data() as DBProblem;
 
-      if (validCandidates.length === 0) {
-        toast.error("교체할 유사 문제가 없습니다.", { id: toastId });
-        return;
+      let newProblemData: DBProblem | null = null;
+
+      // [전략 A] DB에 지정된 '진짜 유사 문항'이 있는지 확인
+      if (currentProblemData?.similarProblems && currentProblemData.similarProblems.length > 0) {
+        
+        // 현재 시험지에 이미 있는 문제는 제외
+        const currentIds = examProblems.map(p => p.id);
+        
+        // 후보군 추출 (파일명으로 매칭되므로, 파일명 -> ID 조회가 필요할 수 있음. 
+        // 여기서는 편의상 similarProblems에 ID가 없으면 filename으로 쿼리한다고 가정하거나,
+        // upload_bulk.js에서 저장할 때 targetId도 같이 저장했다면 더 빠름.
+        // 현재 구조상 filename이 있으므로 filename으로 조회)
+        
+        // 랜덤으로 하나 뽑아서 시도 (최대 3번 시도)
+        const candidates = currentProblemData.similarProblems;
+        for (let i = 0; i < 3; i++) {
+          const randomSim = candidates[Math.floor(Math.random() * candidates.length)];
+          
+          // 파일명으로 해당 문제 문서 찾기
+          const q = query(collection(db, "problems"), where("filename", "==", randomSim.targetFilename));
+          const snap = await getDocs(q);
+          
+          if (!snap.empty) {
+            const candidateDoc = snap.docs[0];
+            // 현재 시험지에 없는 문제라면 선택
+            if (!currentIds.includes(candidateDoc.id)) {
+              newProblemData = { id: candidateDoc.id, ...candidateDoc.data() } as DBProblem;
+              break;
+            }
+          }
+        }
       }
 
-      const newProblem = validCandidates[Math.floor(Math.random() * validCandidates.length)];
-      
-      setExamProblems(prev => prev.map(p => {
-        if (p.id === problemId) {
-          return {
-            ...p,
-            id: newProblem.id,
-            imageUrl: newProblem.imgUrl,
-            content: newProblem.content,
-            answer: newProblem.answer,
-            solutionUrl: newProblem.solutionUrl,
-            minorTopic: newProblem.minorTopic // [중요] 소단원 정보 업데이트
-          };
+      // [전략 B] 유사 문항 데이터가 없거나 중복인 경우 -> 기존 방식(단원+난이도)으로 Fallback
+      if (!newProblemData) {
+        const q = query(
+          collection(db, "problems"),
+          where("majorTopic", "==", currentMajor),
+          where("difficulty", "==", currentDifficulty),
+          limit(30) // 풀을 좀 더 넓게 가져옴
+        );
+        
+        const snapshot = await getDocs(q);
+        const candidates = snapshot.docs.map(d => ({id: d.id, ...d.data()} as DBProblem));
+        
+        const currentIds = examProblems.map(p => p.id);
+        const validCandidates = candidates.filter(p => !currentIds.includes(p.id) && p.id !== problemId);
+
+        if (validCandidates.length > 0) {
+          newProblemData = validCandidates[Math.floor(Math.random() * validCandidates.length)];
         }
-        return p;
-      }));
-      
-      toast.success("문제가 교체되었습니다.", { id: toastId });
+      }
+
+      // 교체 실행
+      if (newProblemData) {
+        setExamProblems(prev => prev.map(p => {
+          if (p.id === problemId) {
+            return {
+              ...p,
+              id: newProblemData!.id,
+              imageUrl: newProblemData!.imgUrl,
+              content: newProblemData!.content, // 텍스트 미리보기용 (화면엔 안나오지만 데이터 유지)
+              answer: newProblemData!.answer,
+              solutionUrl: newProblemData!.solutionUrl,
+              minorTopic: newProblemData!.minorTopic,
+              difficulty: newProblemData!.difficulty
+            };
+          }
+          return p;
+        }));
+        toast.success("유사 문항으로 교체되었습니다.", { id: toastId });
+      } else {
+        toast.error("교체할 적절한 문항을 찾지 못했습니다.", { id: toastId });
+      }
+
     } catch (e) {
       console.error(e);
-      toast.error("오류가 발생했습니다.", { id: toastId });
+      toast.error("문항 교체 중 오류가 발생했습니다.", { id: toastId });
     }
-  }, [examProblems]); 
+  }, [examProblems]);
 
   // 임시 저장 및 복구 로직
   useEffect(() => {

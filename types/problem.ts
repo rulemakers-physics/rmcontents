@@ -3,23 +3,30 @@
 export type Difficulty = '기본' | '하' | '중' | '상' | '킬러';
 export type QuestionType = '객관식' | '서답형';
 
-// Firestore에 저장된 실제 데이터 모양
+// [신규] 유사 문항 정보 타입
+export interface SimilarProblemInfo {
+  targetFilename: string;
+  score: number;
+}
+
 export interface DBProblem {
   id: string;
   filename: string;
   content: string;
-  unit: string;        // 예: "통합과학 1"
-  majorTopic: string;  // 예: "1. 과학의 기초"
-  minorTopic: string;  // 예: "시간과 공간"
-  difficulty: Difficulty;      // "상", "킬러" 등 (화면 표시용)
-  difficultyScore: number;     // 0, 1.0, 1.5 등 (정렬/로직용)
+  unit: string;
+  majorTopic: string;
+  minorTopic: string;
+  difficulty: Difficulty;
+  difficultyScore: number;
   imgUrl: string;
   solutionUrl?: string;
   answer?: string;
+  // [신규] 유사 문항 리스트 필드 추가
+  similarProblems?: SimilarProblemInfo[]; 
   createdAt: any;
 }
 
-// 화면(ExamPaperLayout)에서 사용할 데이터 모양
+// 화면용 데이터 (변경 없음)
 export interface ExamProblem {
   id: string;
   number: number;
@@ -28,4 +35,6 @@ export interface ExamProblem {
   difficulty: string;
   majorTopic?: string;
   minorTopic?: string;
+  answer?: string | null;
+  solutionUrl?: string | null;
 }
