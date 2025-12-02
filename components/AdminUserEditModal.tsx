@@ -15,7 +15,7 @@ interface AdminUserEditModalProps {
 }
 
 export default function AdminUserEditModal({ userData, onClose }: AdminUserEditModalProps) {
-  const [plan, setPlan] = useState<UserPlan>(userData.plan);
+  const [plan, setPlan] = useState<UserPlan>(userData.plan || 'FREE');
   const [coins, setCoins] = useState(userData.coins || 0);
   const [name, setName] = useState(userData.name || "");
   const [academy, setAcademy] = useState(userData.academy || "");

@@ -172,9 +172,9 @@ export default function AdminUsersPage() {
                           <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${
                             u.plan === 'MAKERS' ? 'bg-indigo-100 text-indigo-700' :
                             u.plan === 'BASIC' ? 'bg-blue-100 text-blue-700' :
-                            'bg-slate-100 text-slate-600'
+                            'bg-slate-100 text-slate-600' // FREE 또는 기타(undefined)는 회색 스타일
                           }`}>
-                            {u.plan}
+                            {u.plan || 'FREE'} 
                           </span>
                         </div>
                         {u.plan === 'MAKERS' && (

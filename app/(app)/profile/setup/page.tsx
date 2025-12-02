@@ -50,7 +50,7 @@ export default function ProfileSetupPage() {
           school: school || "",
           createdAt: new Date(),
           role: user.isAdmin ? 'admin' : 'instructor',
-          plan: 'BASIC' // [신규] 초기 플랜 설정
+          plan: 'FREE' // [신규] 초기 플랜 설정
         },
         { merge: true }
       );
