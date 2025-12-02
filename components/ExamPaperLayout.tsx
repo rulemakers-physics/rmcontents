@@ -221,7 +221,7 @@ const ExamPaperLayout = forwardRef<HTMLDivElement, ExamPaperLayoutProps>(
 
               <div className="h-8 flex justify-center items-center relative border-t border-slate-200 mt-2 shrink-0">
                  <span className="font-serif text-sm text-slate-400 font-bold">- {pageIndex + 1} -</span>
-                 <span className="absolute right-0 text-[10px] text-slate-300">Created by RuleMakers</span>
+                 <span className="absolute right-0 text-[10px] text-slate-300">R&D by RuleMakers</span>
               </div>
             </div>
           ))}
