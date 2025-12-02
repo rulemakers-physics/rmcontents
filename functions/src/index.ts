@@ -356,7 +356,7 @@ export const createNotificationOnNewFeedback = functions
       userId: requestData.instructorId,
       type: "info",
       title: "새 메시지 도착",
-      message: `관리자님이 메시지를 남겼습니다: "${feedback.text.substring(0, 20)}..."`,
+      message: `관리자님이 메시지를 남겼습니다: "${feedback.text.substring(0, 20)}"`,
       link: `/dashboard`, // 클릭 시 모달을 띄워야 하므로 일단 대시보드로
       isRead: false,
       createdAt: admin.firestore.FieldValue.serverTimestamp(),

@@ -12,7 +12,8 @@ import {
   ShieldCheckIcon,
   ChevronLeftIcon, // [추가] 접기 아이콘
   ChevronRightIcon, // [추가] 펼치기 아이콘
-  FolderIcon
+  FolderIcon,
+  CreditCardIcon
 } from "@heroicons/react/24/outline";
 import { useAuth } from "@/context/AuthContext";
 import { signOut } from "firebase/auth";
@@ -23,6 +24,7 @@ const MENU_ITEMS = [
   { name: "문제은행", href: "/service/maker", icon: BeakerIcon },
   { name: "내 보관함", href: "/service/storage", icon: FolderIcon },
   { name: "작업 요청", href: "/request", icon: DocumentPlusIcon },
+  { name: "결제/세금", href: "/profile/billing", icon: CreditCardIcon },
   { name: "프로필", href: "/profile/settings", icon: UserCircleIcon },
 ];
 

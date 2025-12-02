@@ -38,6 +38,11 @@ body {
   font-family: var(--font-sans);
 }
 
+/* [추가] 모든 버튼 요소에 기본적으로 포인터 커서 적용 */
+button {
+  cursor: pointer;
+}
+
 
 /* 3D Transform 유틸리티 (Tailwind 기본에 없을 경우 대비) */
 .perspective-2000 {

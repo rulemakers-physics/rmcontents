@@ -76,3 +76,10 @@ functions/package-lock.json
 
 # 3. 데이터 파일 (보안 및 용량)
 data/
+
+# 4. 필요없는거
+public/window.svg
+public/vercel.svg
+public/next.svg
+public/globe.svg
+public/file.svg

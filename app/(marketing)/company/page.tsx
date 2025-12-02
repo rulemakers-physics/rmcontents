@@ -860,7 +860,7 @@ export default function CompanyPage() {
         
         <div className="mb-6">
           <h3 className="text-xl font-bold text-slate-400 uppercase tracking-wider">The Origin</h3>
-          <p className="text-sm text-slate-400">RuleMakers의 기반이 된 태동기 (2017 ~ 2021)</p>
+          <p className="text-sm text-slate-400">RuleMakers 설립 이전 (2017 ~ 2021)</p>
         </div>
         
         {/* Timeline style items */}
@@ -884,13 +884,6 @@ export default function CompanyPage() {
              <div className="flex flex-col sm:flex-row sm:items-baseline gap-1 sm:gap-4">
                <span className="font-bold text-slate-700 text-lg w-12">2018</span>
                <span className="text-slate-600">시대인재 컨텐츠팀 출제 위원 활동</span>
-             </div>
-          </div>
-          <div className="relative group">
-             <span className="absolute -left-[31px] top-2 h-2.5 w-2.5 rounded-full bg-slate-300 border-2 border-white group-hover:bg-blue-400 transition-colors"></span>
-             <div className="flex flex-col sm:flex-row sm:items-baseline gap-1 sm:gap-4">
-               <span className="font-bold text-slate-700 text-lg w-12">2017</span>
-               <span className="text-slate-600">서울대학교 화학교육과 입학</span>
              </div>
           </div>
         </div>

@@ -5,12 +5,15 @@ const fs = require("fs");
 const path = require("path");
 
 // --------------------------------------------------------
-// [설정] 경로 및 버킷 (반드시 본인 환경에 맞게 수정!)
+// [설정] 경로 및 버킷
 const serviceAccount = require("./serviceAccountKey.json");
 const DATA_FILE_PATH = path.join(__dirname, "../data/problem_data.json");
 const ANSWER_FILE_PATH = path.join(__dirname, "../data/answers.json");
 const IMAGE_FOLDER_PATH = path.join(__dirname, "../data/images");
-const BUCKET_NAME = "rmcontents1.firebasestorage.app"; 
+const BUCKET_NAME = "rmcontents1.firebasestorage.app";
+
+// [튜닝] 병렬 처리 개수 (너무 높으면 메모리/네트워크 에러 발생 가능)
+const CONCURRENCY_LIMIT = 20; 
 // --------------------------------------------------------
 
 admin.initializeApp({
@@ -22,8 +25,7 @@ const db = admin.firestore();
 const bucket = admin.storage().bucket();
 
 // --------------------------------------------------------
-// [중요] 단원 계층 구조 정의 (types/scienceUnits.ts 내용과 일치시킴)
-// JSON 파일의 "중주제"(=MinorTopic)를 통해 Unit과 MajorTopic을 찾기 위함입니다.
+// 단원 계층 구조 정의
 // --------------------------------------------------------
 const SCIENCE_UNITS = [
   {
@@ -49,7 +51,6 @@ const SCIENCE_UNITS = [
   }
 ];
 
-// 소단원(Minor Topic) 이름으로 상위 정보를 찾는 함수
 function findCategoryInfo(minorTopicName) {
   if (!minorTopicName) return null;
   
@@ -64,11 +65,9 @@ function findCategoryInfo(minorTopicName) {
       }
     }
   }
-  // 매칭되는 게 없으면 기본값 반환
   return { unit: "기타", majorTopic: "기타", minorTopic: minorTopicName };
 }
 
-// ✅ 난이도 매핑 함수 (0~3.0+ -> 텍스트)
 function mapDifficulty(rawScore) {
   const score = parseFloat(rawScore);
   if (isNaN(score)) return '중';
@@ -77,19 +76,22 @@ function mapDifficulty(rawScore) {
   if (score === 1.0) return '하';
   if (score === 1.5) return '중';
   if (score === 2.0 || score === 2.5) return '상';
-  if (score >= 3.0) return '킬러'; // 3.5 -> 킬러
+  if (score >= 3.0) return '킬러';
   
   return '중';
 }
 
+// [최적화] 파일 업로드 함수
 async function uploadFileToStorage(filename) {
   const localFilePath = path.join(IMAGE_FOLDER_PATH, filename);
   if (!fs.existsSync(localFilePath)) return null;
 
   const destination = `problems/${filename}`;
+  const file = bucket.file(destination);
+
   try {
-    const file = bucket.file(destination);
-    // 이미 존재하면 다시 올리지 않고 URL만 반환 (속도 최적화)
+    // [참고] exists 체크는 네트워크 비용이 발생하므로, 
+    // 확실히 덮어쓰기를 원한다면 이 체크를 제거하면 더 빨라집니다.
     const [exists] = await file.exists();
     if (exists) return file.publicUrl();
 
@@ -105,62 +107,44 @@ async function uploadFileToStorage(filename) {
   }
 }
 
-async function main() {
-  console.log("🚀 대량 업로드 시작...");
+async function processItem(item, indexToFilename, answerMap) {
+  const qFileName = item.filename;
+  const sFileName = item.filename.replace(".png", "_s.png"); 
 
-  const rawData = JSON.parse(fs.readFileSync(DATA_FILE_PATH, "utf8"));
-  
-  let answerMap = new Map();
-  if (fs.existsSync(ANSWER_FILE_PATH)) {
-    const answerData = JSON.parse(fs.readFileSync(ANSWER_FILE_PATH, "utf8"));
-    answerData.forEach(item => answerMap.set(item.filename, item.answer));
+  // [병렬 처리] 문항 이미지와 해설 이미지를 동시에 업로드
+  const [qUrl, sUrl] = await Promise.all([
+    uploadFileToStorage(qFileName),
+    uploadFileToStorage(sFileName)
+  ]);
+
+  if (!qUrl) {
+    console.log(`⚠️ 이미지 파일 없음 (스킵): ${qFileName}`);
+    return null;
   }
 
-  const indexToFilename = rawData.map(item => item.filename);
-  const batchSize = 400; 
-  let batch = db.batch();
-  let count = 0;
-  let totalUploaded = 0;
+  const resolvedSimilarProblems = (item.similar_problems || []).map(sim => ({
+    targetFilename: indexToFilename[sim.index],
+    score: sim.score
+  })).filter(sim => sim.targetFilename);
 
-  for (let i = 0; i < rawData.length; i++) {
-    const item = rawData[i];
-    const qFileName = item.filename;
-    const sFileName = item.filename.replace(".png", "_s.png"); 
+  const docId = qFileName.replace(/\./g, '_'); 
+  const jsonTopic = item["중주제"]?.[0];
+  const categoryInfo = findCategoryInfo(jsonTopic);
+  const difficultyScore = item["RM 난이도"] || 0;
+  const difficultyLabel = mapDifficulty(difficultyScore);
+  const answerValue = answerMap.get(qFileName) || null;
 
-    const answerValue = answerMap.get(qFileName) || null;
-    const qUrl = await uploadFileToStorage(qFileName);
-    const sUrl = await uploadFileToStorage(sFileName);
-
-    if (!qUrl) {
-      console.log(`⚠️ 이미지 파일 없음 (스킵): ${qFileName}`);
-      continue;
-    }
-
-    const resolvedSimilarProblems = (item.similar_problems || []).map(sim => ({
-      targetFilename: indexToFilename[sim.index],
-      score: sim.score
-    })).filter(sim => sim.targetFilename);
-
-    const docId = qFileName.replace(/\./g, '_'); 
-    const docRef = db.collection("problems").doc(docId);
-
-    // [수정됨] 단원 정보 매핑 로직
-    // JSON의 "중주제"를 가져와서 -> minorTopic으로 간주하고 -> 계층 구조에서 찾아냄
-    const jsonTopic = item["중주제"]?.[0]; // 예: "기후 변화와 지구 환경 변화"
-    const categoryInfo = findCategoryInfo(jsonTopic);
-
-    const difficultyScore = item["RM 난이도"] || 0;
-    const difficultyLabel = mapDifficulty(difficultyScore);
-
-    batch.set(docRef, {
+  // [수정] content 필드 제거됨
+  return {
+    docId: docId,
+    data: {
       id: docId,
       filename: qFileName,
-      content: item.q_text || "",
+      // content: item.q_text || "",  <-- 제거됨
       
-      // 검색용 계층 구조 (자동 매핑된 결과 사용)
-      unit: categoryInfo.unit,          // 예: "통합과학 2"
-      majorTopic: categoryInfo.majorTopic, // 예: "3. 생태계와 환경 변화"
-      minorTopic: categoryInfo.minorTopic, // 예: "기후 변화와 지구 환경 변화"
+      unit: categoryInfo.unit,
+      majorTopic: categoryInfo.majorTopic,
+      minorTopic: categoryInfo.minorTopic,
       
       difficultyScore: difficultyScore,
       difficulty: difficultyLabel,
@@ -171,23 +155,62 @@ async function main() {
       answer: answerValue, 
       similarProblems: resolvedSimilarProblems,
       createdAt: admin.firestore.FieldValue.serverTimestamp()
-    });
+    }
+  };
+}
 
-    count++;
-    totalUploaded++;
+async function main() {
+  console.log("🚀 대량 업로드 시작 (병렬 처리 모드)...");
 
-    if (i % 10 === 0) process.stdout.write(`\r🔄 진행 중: ${i + 1}/${rawData.length}`);
+  const rawData = JSON.parse(fs.readFileSync(DATA_FILE_PATH, "utf8"));
+  
+  let answerMap = new Map();
+  if (fs.existsSync(ANSWER_FILE_PATH)) {
+    const answerData = JSON.parse(fs.readFileSync(ANSWER_FILE_PATH, "utf8"));
+    answerData.forEach(item => answerMap.set(item.filename, item.answer));
+  }
 
-    if (count >= batchSize) {
+  const indexToFilename = rawData.map(item => item.filename);
+  
+  let batch = db.batch();
+  let batchCount = 0;
+  let totalUploaded = 0;
+
+  // [핵심] 데이터를 Chunk 단위로 잘라서 병렬 처리
+  for (let i = 0; i < rawData.length; i += CONCURRENCY_LIMIT) {
+    const chunk = rawData.slice(i, i + CONCURRENCY_LIMIT);
+    
+    // 1. 현재 Chunk 내의 아이템들을 동시에 스토리지 업로드 및 데이터 준비
+    const promises = chunk.map(item => processItem(item, indexToFilename, answerMap));
+    const results = await Promise.all(promises);
+
+    // 2. 준비된 데이터를 Firestore Batch에 추가
+    for (const result of results) {
+      if (result) {
+        const docRef = db.collection("problems").doc(result.docId);
+        batch.set(docRef, result.data);
+        batchCount++;
+        totalUploaded++;
+      }
+    }
+
+    // 3. 배치 사이즈(400) 도달 시 커밋
+    if (batchCount >= 400) {
       await batch.commit();
       batch = db.batch();
-      count = 0;
+      batchCount = 0;
+      process.stdout.write(`\r💾 Firestore 저장 중... 현재까지 ${totalUploaded}개 처리`);
+    } else {
+      process.stdout.write(`\r🔄 업로드 진행 중: ${Math.min(i + CONCURRENCY_LIMIT, rawData.length)}/${rawData.length}`);
     }
   }
 
-  if (count > 0) await batch.commit();
+  // 남은 배치 커밋
+  if (batchCount > 0) {
+    await batch.commit();
+  }
 
-  console.log(`\n🎉 업로드 완료! 총 ${totalUploaded}개 문항 처리됨.`);
+  console.log(`\n🎉 모든 작업 완료! 총 ${totalUploaded}개 문항 처리됨.`);
 }
 
 main().catch(console.error);
