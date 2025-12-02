@@ -14,7 +14,8 @@ import {
   TrashIcon, 
   DocumentTextIcon, 
   CalendarDaysIcon,
-  PencilSquareIcon
+  PencilSquareIcon,
+  ChartBarIcon
 } from "@heroicons/react/24/outline";
 
 // 저장된 시험지 타입 정의
@@ -70,6 +71,12 @@ export default function StoragePage() {
     router.push("/service/maker");
   };
 
+    // [신규] 성적 입력 페이지로 이동 핸들러
+  const handleGoToGrade = (examId: string) => {
+    // 쿼리 파라미터로 examId 전달
+    router.push(`/manage/reports?action=input&examId=${examId}`);
+  };
+  
   // 삭제 핸들러
   const handleDelete = async (id: string) => {
     if (!confirm("정말 삭제하시겠습니까? 복구할 수 없습니다.")) return;
@@ -123,7 +130,15 @@ export default function StoragePage() {
                   <DocumentTextIcon className="w-6 h-6" />
                 </div>
                 <div className="flex gap-2">
-                  {/* [수정] 편집 버튼 활성화 및 링크 연결 */}
+                  {/* [신규] 성적 입력 버튼 */}
+                  <button 
+                    onClick={() => handleGoToGrade(exam.id)}
+                    className="p-2 text-gray-400 hover:text-green-600 hover:bg-green-50 rounded-lg transition-colors"
+                    title="이 시험지로 성적 입력"
+                  >
+                    <ChartBarIcon className="w-4 h-4" />
+                  </button>
+                  
                   <Link href={`/service/maker?id=${exam.id}`}
                   className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
                   title="시험지 수정하기">

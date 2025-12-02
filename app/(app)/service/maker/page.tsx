@@ -19,10 +19,9 @@ import { collection, addDoc, serverTimestamp, doc, getDoc, query, where, getDocs
 import { useRouter, useSearchParams } from "next/navigation"; 
 
 import { useProblemFetcher } from "@/hooks/useProblemFetcher";
-import { Difficulty, DBProblem } from "@/types/problem"; // DBProblem 타입 확인 필요
+import { Difficulty, DBProblem } from "@/types/problem"; 
 import { TEMPLATES, ExamTemplateStyle } from "@/types/examTemplates";
 
-// [수정 1] PrintOptions 인터페이스 정의 추가
 export interface PrintOptions {
   questions: boolean;
   answers: boolean;
@@ -49,7 +48,6 @@ function ExamBuilderContent() {
   const [instructorName, setInstructorName] = useState(userData?.name || "김룰메 선생님");
   const [academyLogo, setAcademyLogo] = useState<string | null>(null);
   
-  // [수정 1 관련] PrintOptions 상태 타입 지정
   const [printOptions, setPrintOptions] = useState<PrintOptions>({
     questions: true,
     answers: true,
@@ -64,7 +62,6 @@ function ExamBuilderContent() {
   const [isSaving, setIsSaving] = useState(false);
   const [isLoaded, setIsLoaded] = useState(false); 
   
-  // [수정 2] DnD Hydration 이슈 방지를 위한 마운트 상태
   const [isMounted, setIsMounted] = useState(false);
 
   useEffect(() => {
@@ -77,7 +74,6 @@ function ExamBuilderContent() {
     difficulties
   });
 
-  // [수정 3] 문제 교체 기능 안정화 (useCallback)
   const handleReplaceProblem = useCallback(async (problemId: string, currentMajor: string, currentDifficulty: string) => {
     if(!currentMajor) return;
     
@@ -112,7 +108,8 @@ function ExamBuilderContent() {
             imageUrl: newProblem.imgUrl,
             content: newProblem.content,
             answer: newProblem.answer,
-            solutionUrl: newProblem.solutionUrl
+            solutionUrl: newProblem.solutionUrl,
+            minorTopic: newProblem.minorTopic // [중요] 소단원 정보 업데이트
           };
         }
         return p;
@@ -123,7 +120,7 @@ function ExamBuilderContent() {
       console.error(e);
       toast.error("오류가 발생했습니다.", { id: toastId });
     }
-  }, [examProblems]); // examProblems가 바뀔 때 최신 상태를 참조해야 중복 체크가 정확함
+  }, [examProblems]); 
 
   // 임시 저장 및 복구 로직
   useEffect(() => {
@@ -185,7 +182,6 @@ function ExamBuilderContent() {
   useEffect(() => {
     if (!isLoaded || isFetching) return;
 
-    // 패칭된 데이터를 기반으로 포맷팅
     const formatted: ExamProblem[] = fetchedProblems
       .slice(0, questionCount)
       .map((p, idx) => ({
@@ -200,25 +196,12 @@ function ExamBuilderContent() {
         solutionUrl: p.solutionUrl || null
       }));
 
-    // [수정 4] 상태 업데이트 조건 강화
-    // 기존 문제가 없고, 새로 받아온 문제가 있을 때 -> 초기화
-    // 혹은 사용자가 필터를 적극적으로 변경하여 fetchedProblems가 변경되었을 때
-    
-    // 주의: 사용자가 순서를 바꾼 뒤에 이 로직이 돌면 순서가 초기화 될 수 있음.
-    // 하지만 현재 구조상 필터 변경 -> refetch -> overwrite 구조이므로 
-    // 필터를 건드리지 않으면 fetchedProblems가 변하지 않아 안전함.
-    
     if (formatted.length > 0) {
-      // 무한 루프 방지를 위해 현재 examProblems와 다른 경우에만 업데이트하는 것이 좋으나,
-      // 객체 비교가 어려우므로 길이 체크 등을 활용하거나, 
-      // 필터 변경 시에만 이 effect가 트리거되도록 의존성을 신뢰함.
       setExamProblems(formatted);
     } else if (fetchedProblems.length === 0 && selectedMajorTopics.length > 0) {
       setExamProblems([]);
     }
-
-    // 의존성 배열에서 questionCount가 변경될 때도 재적용
-  }, [fetchedProblems, questionCount, isLoaded]); // examId 제거 (초기 로드 완료 후엔 필터 기반 동작)
+  }, [fetchedProblems, questionCount, isLoaded]);
 
   const onDragEnd = (result: DropResult) => {
     if (!result.destination) return;
@@ -277,7 +260,6 @@ function ExamBuilderContent() {
 
   const printRef = useRef<HTMLDivElement>(null);
   
-  // [수정 5] useReactToPrint 사용 시 contentRef가 null일 경우 방어
   const handlePrint = useReactToPrint({
     contentRef: printRef,
     documentTitle: examTitle,
@@ -296,7 +278,6 @@ function ExamBuilderContent() {
     }
   };
 
-  // 로딩 상태 처리
   if (!isLoaded || !isMounted) return <div className="flex h-screen items-center justify-center">로딩 중...</div>;
 
   return (
@@ -459,7 +440,7 @@ function ExamBuilderContent() {
           {activeTab === 'order' && (
             <div className="animate-in fade-in slide-in-from-right-4 duration-300">
               <h3 className="text-sm font-bold text-gray-900 mb-3 flex items-center gap-2"><ListOrdered className="w-4 h-4"/> 문항 순서 및 교체</h3>
-              {/* [수정 2] Droppable을 StrictMode 및 Hydration 에러 방지를 위해 렌더링 제어 */}
+              
               {isMounted && (
                 <DragDropContext onDragEnd={onDragEnd}>
                   <Droppable droppableId="exam-problems">
@@ -468,11 +449,33 @@ function ExamBuilderContent() {
                         {examProblems.map((prob, index) => (
                           <Draggable key={prob.id} draggableId={prob.id} index={index}>
                             {(provided, snapshot) => (
-                              <div ref={provided.innerRef} {...provided.draggableProps} {...provided.dragHandleProps} className={`p-3 bg-white border rounded-lg flex items-center gap-3 shadow-sm group ${snapshot.isDragging ? 'shadow-lg border-blue-500 z-50' : 'border-gray-200'}`}>
+                              <div ref={provided.innerRef} {...provided.draggableProps} {...provided.dragHandleProps} className={`p-2 bg-white border rounded-lg flex items-center gap-3 shadow-sm group ${snapshot.isDragging ? 'shadow-lg border-blue-500 z-50' : 'border-gray-200'}`}>
                                 <span className="w-6 h-6 flex-shrink-0 flex items-center justify-center bg-slate-100 rounded-full text-xs font-bold text-slate-500">{prob.number}</span>
-                                <div className="flex-1 min-w-0">
-                                  <p className="text-xs text-gray-900 font-medium truncate">{prob.content || "문제 이미지"}</p>
-                                  <span className="text-[10px] text-gray-400 bg-gray-50 px-1 rounded">{prob.difficulty}</span>
+                                
+                                {/* [수정] 이미지 썸네일 표시 */}
+                                <div className="relative w-12 h-12 bg-slate-50 rounded border border-slate-100 overflow-hidden flex-shrink-0">
+                                  {prob.imageUrl ? (
+                                    // eslint-disable-next-line @next/next/no-img-element
+                                    <img src={prob.imageUrl} alt="" className="w-full h-full object-contain" />
+                                  ) : (
+                                    <div className="flex items-center justify-center h-full text-[10px] text-slate-300">No img</div>
+                                  )}
+                                </div>
+
+                                <div className="flex-1 min-w-0 flex flex-col justify-center">
+                                  {/* [수정] Content 대신 소단원 표시 */}
+                                  <p className="text-xs font-bold text-slate-800 truncate" title={prob.minorTopic}>
+                                    {prob.minorTopic || "단원 정보 없음"}
+                                  </p>
+                                  <div className="flex items-center gap-1 mt-0.5">
+                                    <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium border ${
+                                      prob.difficulty === '킬러' ? 'bg-red-50 text-red-600 border-red-100' : 
+                                      prob.difficulty === '상' ? 'bg-orange-50 text-orange-600 border-orange-100' :
+                                      'bg-slate-50 text-slate-500 border-slate-100'
+                                    }`}>
+                                      {prob.difficulty}
+                                    </span>
+                                  </div>
                                 </div>
                                 
                                 <button 
@@ -483,7 +486,7 @@ function ExamBuilderContent() {
                                   <RotateCcw className="w-3.5 h-3.5" />
                                 </button>
                                 
-                                <span className="text-gray-300">⠿</span>
+                                <span className="text-gray-300 cursor-grab active:cursor-grabbing">⠿</span>
                               </div>
                             )}
                           </Draggable>

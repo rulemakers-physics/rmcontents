@@ -13,9 +13,7 @@ import { v4 as uuidv4 } from "uuid";
 import { PaperClipIcon, XCircleIcon } from "@heroicons/react/24/solid";
 import FeedbackThread from "@/components/FeedbackThread";
 import { toast } from "react-hot-toast";
-
-// [신규] 연구원 목록
-const RESEARCHERS = ["김성배", "김호권", "김희경", "노유민", "이민지", "이정한", "이호열", "최명수"];
+import { RESEARCHERS } from "@/constants/researchers";
 
 interface ReferenceFile {
   name: string;

@@ -19,7 +19,8 @@ import {
   ArrowRightOnRectangleIcon,
   Squares2X2Icon,
   PencilSquareIcon,
-  Cog6ToothIcon
+  Cog6ToothIcon,
+  CreditCardIcon
 } from "@heroicons/react/24/outline";
 
 import NotificationBell from "./NotificationBell";
@@ -27,6 +28,7 @@ import NotificationBell from "./NotificationBell";
 // 네비게이션 메뉴 구조 정의
 const NAV_ITEMS = [
   { name: "About Us", href: "/company" },
+  { name: "공지사항", href: "/board/notices" },
   { name: "문제은행", href: "/service/maker" },
   { name: "전국 모의고사", href: "/mock-exam" },
   {
@@ -242,6 +244,7 @@ export default function Header() {
                         <div className="p-2 space-y-1">
                           <DropdownLink href="/dashboard" icon={Squares2X2Icon} label="대시보드" badge={unreadDashboard} onClick={() => setIsProfileDropdownOpen(false)} />
                           <DropdownLink href="/request" icon={PencilSquareIcon} label="작업 요청하기" onClick={() => setIsProfileDropdownOpen(false)} />
+                          <DropdownLink href="/profile/billing" icon={CreditCardIcon} label="결제/세금 관리" onClick={() => setIsProfileDropdownOpen(false)} />
                           <DropdownLink href="/profile/settings" icon={Cog6ToothIcon} label="프로필 설정" onClick={() => setIsProfileDropdownOpen(false)} />
                         </div>
 
