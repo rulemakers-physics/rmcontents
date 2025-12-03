@@ -26,6 +26,9 @@ import { TableSkeleton } from "@/components/SkeletonLoader";
 import EmptyState from "@/components/EmptyState";
 import RequestDetailModal from "@/components/RequestDetailModal";
 import FeatureTour from "@/components/FeatureTour";
+// [신규] 대시보드 위젯 추가
+import DashboardActionCenter from "@/components/DashboardActionCenter";
+import DashboardAnalytics from "@/components/DashboardAnalytics";
 
 // 아이콘
 import { 
@@ -163,7 +166,7 @@ export default function DashboardPage() {
     <div className="flex min-h-screen flex-col bg-slate-50">
       <FeatureTour />
       <main className="flex-grow py-12">
-        <div className="container mx-auto max-w-5xl px-6">
+        <div className="container mx-auto max-w-6xl px-6">
           
           {/* 1. 헤더 및 인사말 */}
           <div className="mb-8">
@@ -174,6 +177,15 @@ export default function DashboardPage() {
               오늘도 학생들을 위한 최고의 컨텐츠를 준비해보세요.
             </p>
           </div>
+          
+          {/* ▼▼▼ [신규] 액션 센터 위젯 추가 ▼▼▼ */}
+          {userData && (
+            <DashboardActionCenter />
+          )}
+          {/* ▲▲▲ [신규] ▲▲▲ */}
+
+          {/* 4. [신규] 전문 분석 대시보드 (차트) */}
+          <DashboardAnalytics />
 
           {/* 2. 통계 위젯 (컴포넌트 적용) */}
           {userData && (
