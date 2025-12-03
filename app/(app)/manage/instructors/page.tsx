@@ -39,29 +39,19 @@ export default function InstructorManagePage() {
   // 강사 초대(등록) 핸들러
   const handleInvite = async () => {
     if (!newEmail || !newName) return toast.error("이름과 이메일을 입력해주세요.");
-    if (!userData) return;
+    
+    // [수정] user가 null인지 확인하는 가드(Guard) 추가
+    if (!user || !userData) return;
 
     setIsAdding(true);
     try {
-      // 이메일을 ID로 쓰거나, 별도 로직이 필요하지만 간편하게 이메일 기반 가상 UID 생성 등 처리
-      // 여기서는 편의상 email을 문서 ID처럼 활용하거나 랜덤 ID 생성 후 email 필드 저장
-      // *실제로는*: Firebase Auth와 연동되므로, 강사가 로그인 시 매칭되게 하려면 
-      // 'invited_users' 컬렉션을 쓰거나, 미리 users에 email로 문서를 만들어두는 전략 사용.
-      
-      // [전략] 'users' 컬렉션에 이메일로 쿼리할 수 있게 미리 문서를 생성해둠.
-      // 단, uid를 모르므로 임시 ID로 생성하고, 강사가 로그인 시 이메일 매칭 후 업데이트하는 로직이 필요함.
-      // (간편 구현을 위해 여기서는 리스트에만 추가하는 형태가 아니라 실제 DB에 placeholder를 만듭니다)
-      
-      // *주의*: 실제 운영 시에는 '초대 메일 발송' -> '강사가 링크로 가입' 흐름이 정석입니다.
-      // 여기서는 "사전 등록" 개념으로 구현합니다.
-      
       const tempUid = `invited_${Date.now()}`; 
       await setDoc(doc(db, "users", tempUid), {
         uid: tempUid,
         email: newEmail,
         name: newName,
         role: "instructor",
-        ownerId: user.uid, // 원장님 ID 연결
+        ownerId: user.uid, // 위에서 user 체크를 했으므로 에러가 사라짐
         academy: userData.academy,
         plan: "BASIC", // 원장님 플랜 따라가거나 기본 설정
         coins: 0,

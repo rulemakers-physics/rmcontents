@@ -123,7 +123,7 @@ export default function BillingPage() {
                     <p className="text-xs text-slate-500">Basic Plan (1개월)</p>
                   </div>
                   <div className="text-right">
-                    <p className="text-sm font-bold text-slate-900">99,000원</p>
+                    <p className="text-sm font-bold text-slate-900">129,000원</p>
                     <button className="text-xs text-blue-600 hover:underline">영수증 출력</button>
                   </div>
                 </div>

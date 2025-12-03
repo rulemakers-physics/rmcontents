@@ -25,8 +25,8 @@ const PLANS = [
     id: "BASIC",
     name: "Basic Plan",
     tag: "Early Bird 특가",
-    originalPrice: "199,000",
-    price: "99,000",
+    originalPrice: "198,000",
+    price: "129,000",
     period: "/월",
     desc: "합리적인 가격으로 시작하는 스마트한 내신 대비",
     features: [
@@ -105,7 +105,7 @@ export default function PricingPage() {
     
     const confirmMsg = planId === 'MAKERS' 
       ? "Maker's Plan 도입 상담을 신청하시겠습니까? (테스트: 즉시 플랜 적용)" 
-      : "Basic Plan(월 99,000원)을 구독하시겠습니까?";
+      : "Basic Plan(월 129,000원)을 구독하시겠습니까?";
 
     if (confirm(confirmMsg)) {
       try {

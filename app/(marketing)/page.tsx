@@ -183,7 +183,7 @@ export default function HomePage() {
                 <div className="flex justify-between items-start mb-2">
                   <div>
                     <span className="text-xs font-bold text-slate-500 uppercase">Basic Plan</span>
-                    <h3 className="text-lg font-bold text-slate-900">월 99,000원</h3>
+                    <h3 className="text-lg font-bold text-slate-900">월 129,000원</h3>
                   </div>
                   <div className="p-1.5 bg-slate-100 rounded-full">
                     <ChevronRightIcon className="w-4 h-4 text-slate-400"/>
@@ -509,8 +509,8 @@ export default function HomePage() {
                 title="Basic Plan"
                 subtitle="기본 문제은행 및 내신 대비 자료"
                 planType="구독형"
-                originalPrice="월 199,000원"
-                price="월 99,000원"
+                originalPrice="월 198,000원"
+                price="월 129,000원"
                 promotionText="2025년 Early Bird 특가"
                 features={[
                 { text: "기본 문제은행 서비스", included: true },
@@ -743,7 +743,7 @@ function ServicePlanCard({
   title,
   subtitle,
   planType,       // [신규] "구독형" or "연간 계약" 라벨
-  price,          // [수정] 메인 가격 텍스트 (ex: "월 99,000원")
+  price,          // [수정] 메인 가격 텍스트 (ex: "월 129,000원")
   originalPrice,  // [신규] 할인 전 가격 (ex: "198,000원") - 선택적
   promotionText,  // [신규] 프로모션/안내 문구 (ex: "Early Bird 특가") - 선택적
   features,

@@ -4,6 +4,7 @@ import { Timestamp } from "firebase/firestore";
 export interface ClassData {
   id: string;
   instructorId: string;
+  ownerId?: string;
   name: string;        // 반 이름 (예: 서울고 1등급반)
   targetSchool?: string; // 주 타겟 학교
   schedule?: string;   // 수업 시간 (예: 월/수 7시)
