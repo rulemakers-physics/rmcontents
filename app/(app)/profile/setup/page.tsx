@@ -1,4 +1,4 @@
-// app/profile/setup/page.tsx
+// app/(app)/profile/setup/page.tsx
 
 "use client";
 
@@ -6,14 +6,11 @@ import { useState, FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import { db } from "@/lib/firebase";
-import { doc, setDoc } from "firebase/firestore";
+// [수정] query, where, getDocs, deleteDoc 추가
+import { doc, setDoc, collection, query, where, getDocs, deleteDoc } from "firebase/firestore";
 import { toast } from "react-hot-toast";
 import { 
-  UserIcon, 
-  BuildingOffice2Icon, 
-  AcademicCapIcon, 
-  SparklesIcon,
-  ArrowRightIcon
+  UserIcon, BuildingOffice2Icon, AcademicCapIcon, SparklesIcon, ArrowRightIcon
 } from "@heroicons/react/24/outline";
 
 export default function ProfileSetupPage() {
@@ -39,6 +36,37 @@ export default function ProfileSetupPage() {
     setIsSubmitting(true);
 
     try {
+      // 1. [신규] 나에게 온 초대장이 있는지 확인 (이메일 & isInvited)
+      let finalRole = user.isAdmin ? 'admin' : 'instructor';
+      let finalOwnerId = null;
+      let finalAcademy = academy;
+
+      const q = query(
+        collection(db, "users"), 
+        where("email", "==", user.email),
+        where("isInvited", "==", true)
+      );
+      const inviteSnap = await getDocs(q);
+
+      // 초대장이 있다면 정보를 합치고, 초대장은 삭제
+      if (!inviteSnap.empty) {
+        const inviteDoc = inviteSnap.docs[0];
+        const inviteData = inviteDoc.data();
+        
+        // 원장이 지정해둔 정보 우선 사용
+        finalOwnerId = inviteData.ownerId; 
+        finalAcademy = inviteData.academy || academy;
+        // role은 관리자가 지정했어도, 실제 가입자가 Admin 권한이 있으면 Admin 유지
+        if (finalRole !== 'admin') {
+           finalRole = inviteData.role || 'instructor';
+        }
+
+        // 임시 초대 문서 삭제 (중복 방지)
+        await deleteDoc(inviteDoc.ref);
+        console.log("초대 정보 연동 및 임시 문서 삭제 완료");
+      }
+
+      // 2. 실제 유저 문서 생성
       const userDocRef = doc(db, "users", user.uid);
       await setDoc(
         userDocRef,
@@ -46,11 +74,12 @@ export default function ProfileSetupPage() {
           uid: user.uid,
           email: user.email,
           name: name,
-          academy: academy,
+          academy: finalAcademy,
           school: school || "",
           createdAt: new Date(),
-          role: user.isAdmin ? 'admin' : 'instructor',
-          plan: 'FREE' // [신규] 초기 플랜 설정
+          role: finalRole,
+          ownerId: finalOwnerId || null, // [신규] 원장 ID 연동
+          plan: 'FREE' // 초기 가입은 FREE
         },
         { merge: true }
       );
@@ -71,8 +100,7 @@ export default function ProfileSetupPage() {
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-4">
-      
-      {/* 상단 로고 및 단계 표시 */}
+      {/* ... (UI 코드는 기존과 동일하므로 생략하지 않고 전체 유지) ... */}
       <div className="mb-8 text-center">
         <div className="inline-flex items-center justify-center w-12 h-12 bg-white rounded-xl shadow-md mb-4 text-blue-600">
            <SparklesIcon className="w-6 h-6" />
@@ -82,14 +110,11 @@ export default function ProfileSetupPage() {
       </div>
 
       <div className="w-full max-w-md bg-white rounded-2xl shadow-xl border border-slate-100 overflow-hidden">
-        
-        {/* 진행률 바 */}
         <div className="w-full h-1.5 bg-slate-100">
            <div className="w-2/3 h-full bg-blue-600 rounded-r-full"></div>
         </div>
 
         <form onSubmit={handleSubmit} className="p-8 space-y-6">
-          
           <div className="space-y-4">
             <div>
               <label htmlFor="name" className="block text-sm font-bold text-slate-700 mb-1">

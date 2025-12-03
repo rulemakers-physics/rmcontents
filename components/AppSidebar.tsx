@@ -22,7 +22,8 @@ import {
   UserGroupIcon,
   ChartBarIcon,
   IdentificationIcon,
-  BuildingOffice2Icon
+  BuildingOffice2Icon,
+  BanknotesIcon
 } from "@heroicons/react/24/outline";
 import { useAuth } from "@/context/AuthContext";
 import { signOut } from "firebase/auth";
@@ -192,6 +193,20 @@ export default function AppSidebar({ isCollapsed, toggleSidebar }: AppSidebarPro
             >
               <BuildingOffice2Icon className="w-6 h-6 flex-shrink-0" />
               {!isCollapsed && <span className="text-sm font-medium truncate">학원 현황</span>}
+            </Link>
+
+            {/* 5. 결제/세금 관리 (신규) */}
+            <Link
+              href="/admin/billing"
+              title="결제 및 세금 관리"
+              className={`flex items-center gap-3 px-3 py-3 rounded-xl transition-all ${
+                pathname.startsWith("/admin/billing")
+                  ? "bg-emerald-600 text-white shadow-lg shadow-emerald-900/50" // 초록색(돈) 테마
+                  : "text-emerald-400 hover:bg-slate-800 hover:text-emerald-300"
+              } ${isCollapsed ? "justify-center" : ""}`}
+            >
+              <BanknotesIcon className="w-6 h-6 flex-shrink-0" />
+              {!isCollapsed && <span className="text-sm font-medium truncate">결제/세금 관리</span>}
             </Link>
 
             {/* 공지사항 관리 메뉴 추가 */}

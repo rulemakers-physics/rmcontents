@@ -363,5 +363,92 @@ export const createNotificationOnNewFeedback = functions
       requestId: requestId
     });
     
+/**
+ * [수정] 사업자 정보 업데이트 감지 -> 슬랙 알림 (전용 채널 지원)
+ */
+export const notifyAdminOnBusinessInfoUpdate = functions
+  .runWith({ timeoutSeconds: 60 })
+  .firestore
+  .document("users/{uid}")
+  .onUpdate(async (change, context) => {
+    const before = change.before.data();
+    const after = change.after.data();
+
+    // businessInfo가 없거나, 검수 상태(verificationStatus)가 변하지 않았으면 무시
+    const beforeStatus = before.businessInfo?.verificationStatus;
+    const afterStatus = after.businessInfo?.verificationStatus;
+
+    // 상태가 'pending'(검수 대기)으로 변경된 경우에만 알림 발송
+    if (afterStatus === 'pending' && beforeStatus !== 'pending') {
+      
+      // [중요] 사업자 인증 전용 웹훅 URL을 우선 사용하고, 없으면 기본 URL 사용
+      const webhookUrl = 
+        process.env.SLACK_BIZ_WEBHOOK_URL || 
+        process.env.SLACK_WEBHOOK_URL || 
+        functions.config().slack.webhook_url;
+
+      if (!webhookUrl) {
+        functions.logger.warn("[Slack] Webhook URL이 설정되지 않았습니다.");
+        return null;
+      }
+
+      const slackMessage = {
+        blocks: [
+          {
+            type: "header",
+            text: {
+              type: "plain_text",
+              text: "📄 새로운 사업자 등록증 도착",
+              emoji: true,
+            },
+          },
+          {
+            type: "section",
+            fields: [
+              {
+                type: "mrkdwn",
+                text: `*신청자:*\n${after.name} (${after.email})`
+              },
+              {
+                type: "mrkdwn",
+                text: `*학원명:*\n${after.academy}`
+              },
+              {
+                type: "mrkdwn",
+                text: `*상호명:*\n${after.businessInfo?.companyName || "미입력"}`
+              },
+              {
+                type: "mrkdwn",
+                text: `*사업자번호:*\n${after.businessInfo?.registrationNumber || "-"}`
+              }
+            ]
+          },
+          {
+            type: "actions",
+            elements: [
+              {
+                type: "button",
+                text: {
+                  type: "plain_text",
+                  text: "관리자 페이지에서 검수하기",
+                  emoji: true
+                },
+                // [주의] 실제 배포된 URL로 꼭 변경해주세요!
+                url: `https://rmcontents1.web.app/admin/billing`, 
+                style: "primary"
+              }
+            ]
+          }
+        ]
+      };
+
+      try {
+        await axios.post(webhookUrl, slackMessage, { timeout: 5000 });
+        functions.logger.info(`[Slack] 사업자 정보 알림 전송 성공: ${after.email}`);
+      } catch (e) {
+        functions.logger.error("[Slack] 알림 전송 실패", e);
+      }
+    }
+    
     return null;
   });
