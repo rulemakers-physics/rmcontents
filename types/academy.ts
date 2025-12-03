@@ -21,3 +21,12 @@ export interface StudentData {
   parentPhone?: string;     
   joinedAt: Timestamp;
 }
+
+export interface CounselingLog {
+  id: string;
+  studentId: string;
+  type: '상담' | '전화' | '특이사항' | '과제';
+  content: string;
+  authorName: string;
+  createdAt: any; // Timestamp
+}

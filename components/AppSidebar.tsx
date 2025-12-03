@@ -20,7 +20,9 @@ import {
   UsersIcon,
   MegaphoneIcon,
   UserGroupIcon,
-  ChartBarIcon
+  ChartBarIcon,
+  IdentificationIcon,
+  BuildingOffice2Icon
 } from "@heroicons/react/24/outline";
 import { useAuth } from "@/context/AuthContext";
 import { signOut } from "firebase/auth";
@@ -45,7 +47,7 @@ interface AppSidebarProps {
 
 export default function AppSidebar({ isCollapsed, toggleSidebar }: AppSidebarProps) {
   const pathname = usePathname();
-  const { user } = useAuth();
+  const { user, userData } = useAuth();
 
   const handleLogout = async () => {
     await signOut(auth);
@@ -94,6 +96,21 @@ export default function AppSidebar({ isCollapsed, toggleSidebar }: AppSidebarPro
             </Link>
           );
         })}
+
+        {/* [신규] 원장님(Director) 전용 메뉴: 강사 관리 */}
+        {userData?.role === 'director' && (
+          <Link
+            href="/manage/instructors"
+            className={`flex items-center gap-3 px-3 py-3 rounded-xl transition-all ${
+              pathname.startsWith("/manage/instructors")
+                ? "bg-blue-600 text-white shadow-lg"
+                : "text-slate-400 hover:bg-slate-800 hover:text-white"
+            } ${isCollapsed ? "justify-center" : ""}`}
+          >
+            <IdentificationIcon className="w-6 h-6 flex-shrink-0" />
+            {!isCollapsed && <span className="text-sm font-medium truncate">강사 관리</span>}
+          </Link>
+        )}
 
         {/* 관리자 메뉴 섹션 */}
         {user?.isAdmin && (
@@ -161,6 +178,20 @@ export default function AppSidebar({ isCollapsed, toggleSidebar }: AppSidebarPro
             >
               <ExclamationTriangleIcon className="w-6 h-6 flex-shrink-0" />
               {!isCollapsed && <span className="text-sm font-medium truncate">오류 신고 관리</span>}
+            </Link>
+
+            {/* 4. 학원 현황 (신규) */}
+            <Link
+              href="/admin/academies"
+              title="학원 현황"
+              className={`flex items-center gap-3 px-3 py-3 rounded-xl transition-all ${
+                pathname.startsWith("/admin/academies")
+                  ? "bg-slate-700 text-white shadow-lg"
+                  : "text-slate-400 hover:bg-slate-800 hover:text-slate-300"
+              } ${isCollapsed ? "justify-center" : ""}`}
+            >
+              <BuildingOffice2Icon className="w-6 h-6 flex-shrink-0" />
+              {!isCollapsed && <span className="text-sm font-medium truncate">학원 현황</span>}
             </Link>
 
             {/* 공지사항 관리 메뉴 추가 */}

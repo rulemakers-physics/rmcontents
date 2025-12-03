@@ -54,6 +54,9 @@ function ExamBuilderContent() {
     solutions: true
   });
 
+  // [신규 추가] 교사용 모드 상태 관리
+  const [isTeacherMode, setIsTeacherMode] = useState(false);
+
   // 레이아웃
   const [currentTemplate, setCurrentTemplate] = useState<ExamTemplateStyle>(TEMPLATES[0]);
   const [itemsPerPage, setItemsPerPage] = useState(4);
@@ -463,6 +466,28 @@ function ExamBuilderContent() {
                     <FileCheck className="w-4 h-4 text-slate-500" />
                     <span className="text-sm text-slate-700 font-medium">상세 해설지 포함</span>
                   </label>
+
+                  {/* [신규 추가] 교사용 지도서 토글 버튼 */}
+                  <div className="mt-3 pt-3 border-t border-dashed border-gray-200">
+                    <label className={`flex items-center gap-2 cursor-pointer p-2.5 rounded-lg border transition-all ${
+                      isTeacherMode 
+                        ? "bg-red-50 border-red-200 ring-1 ring-red-200" 
+                        : "bg-white border-slate-200 hover:bg-slate-50"
+                    }`}>
+                      <input 
+                        type="checkbox" 
+                        checked={isTeacherMode} 
+                        onChange={(e) => setIsTeacherMode(e.target.checked)}
+                        className="rounded text-red-500 focus:ring-red-500 w-4 h-4 accent-red-500" 
+                      />
+                      <span className={`text-sm font-bold ${isTeacherMode ? "text-red-700" : "text-slate-600"}`}>
+                        교사용 지도서 모드
+                      </span>
+                    </label>
+                    <p className="text-[10px] text-slate-400 mt-1 pl-1">
+                      * 문제 위에 정답과 핵심 키워드가 붉은색으로 표시됩니다.
+                    </p>
+                  </div>
                 </div>
               </div>
 
@@ -583,6 +608,8 @@ function ExamBuilderContent() {
                instructor={instructorName}
                template={currentTemplate}
                printOptions={printOptions}
+               // [신규 추가] 교사용 버전 여부 전달
+               isTeacherVersion={isTeacherMode} 
              />
           </div>
         </div>

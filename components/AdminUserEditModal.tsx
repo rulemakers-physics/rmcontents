@@ -7,7 +7,7 @@ import { db } from "@/lib/firebase";
 import { doc, updateDoc } from "firebase/firestore";
 import { toast } from "react-hot-toast";
 import { XMarkIcon, CheckIcon, ShieldExclamationIcon } from "@heroicons/react/24/outline";
-import { UserData, UserPlan } from "@/types/user";
+import { UserData, UserPlan, UserRole } from "@/types/user";
 
 interface AdminUserEditModalProps {
   userData: UserData;
@@ -19,7 +19,8 @@ export default function AdminUserEditModal({ userData, onClose }: AdminUserEditM
   const [coins, setCoins] = useState(userData.coins || 0);
   const [name, setName] = useState(userData.name || "");
   const [academy, setAcademy] = useState(userData.academy || "");
-  const [role, setRole] = useState(userData.role);
+  // [수정] Role 타입 적용 및 기본값
+  const [role, setRole] = useState<UserRole>(userData.role || 'instructor');
   
   const [isSaving, setIsSaving] = useState(false);
 
@@ -32,7 +33,7 @@ export default function AdminUserEditModal({ userData, onClose }: AdminUserEditM
         academy,
         plan,
         coins: Number(coins),
-        role
+        role // 저장 시 role 반영
       });
       
       toast.success(`${name}님의 정보가 수정되었습니다.`);
@@ -48,7 +49,6 @@ export default function AdminUserEditModal({ userData, onClose }: AdminUserEditM
     <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
       <div className="w-full max-w-lg bg-white rounded-2xl shadow-2xl overflow-hidden">
         
-        {/* 헤더 */}
         <div className="flex justify-between items-center p-6 border-b border-slate-100">
           <h3 className="text-xl font-bold text-slate-900">회원 정보 수정 (Admin)</h3>
           <button onClick={() => onClose()} className="text-slate-400 hover:text-slate-600">
@@ -56,10 +56,7 @@ export default function AdminUserEditModal({ userData, onClose }: AdminUserEditM
           </button>
         </div>
 
-        {/* 바디 */}
         <div className="p-6 space-y-6">
-          
-          {/* 1. 기본 정보 */}
           <div className="space-y-4">
             <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider">기본 정보</h4>
             <div className="grid grid-cols-2 gap-4">
@@ -86,7 +83,6 @@ export default function AdminUserEditModal({ userData, onClose }: AdminUserEditM
             </div>
           </div>
 
-          {/* 2. 관리자 권한 설정 (위험 구역) */}
           <div className="p-4 bg-red-50 rounded-xl border border-red-100">
             <h4 className="text-xs font-bold text-red-600 uppercase tracking-wider mb-2 flex items-center gap-1">
               <ShieldExclamationIcon className="w-4 h-4" /> 권한 및 구독 관리
@@ -119,22 +115,21 @@ export default function AdminUserEditModal({ userData, onClose }: AdminUserEditM
                 <label className="block text-xs font-semibold text-slate-600 mb-1">계정 권한 (Role)</label>
                 <select 
                   value={role} 
-                  onChange={(e) => setRole(e.target.value as 'admin' | 'instructor')}
+                  onChange={(e) => setRole(e.target.value as UserRole)}
                   className="w-full p-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500"
                 >
                   <option value="instructor">일반 강사 (Instructor)</option>
-                  <option value="admin">관리자 (Admin)</option>
+                  <option value="director">원장/관리자 (Director)</option>
+                  <option value="admin">슈퍼 관리자 (Admin)</option>
                 </select>
                 <p className="text-[10px] text-red-500 mt-1">
-                  * 관리자로 설정하면 대시보드의 모든 데이터에 접근할 수 있습니다. 주의하세요.
+                  * 원장: 강사 관리 가능 / 슈퍼 관리자: 전체 시스템 접근 가능
                 </p>
               </div>
             </div>
           </div>
-
         </div>
 
-        {/* 푸터 */}
         <div className="p-6 border-t border-slate-100 bg-slate-50 flex justify-end gap-3">
           <button 
             onClick={() => onClose()}
@@ -150,7 +145,6 @@ export default function AdminUserEditModal({ userData, onClose }: AdminUserEditM
             <CheckIcon className="w-4 h-4" /> {isSaving ? "저장 중..." : "변경사항 저장"}
           </button>
         </div>
-
       </div>
     </div>
   );

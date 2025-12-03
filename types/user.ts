@@ -1,6 +1,7 @@
 // types/user.ts
 import { Timestamp } from "firebase/firestore";
 
+export type UserRole = 'admin' | 'director' | 'instructor';
 export type UserPlan = 'FREE' | 'BASIC' | 'MAKERS';
 
 // [신규] 사업자 정보 타입 (이전 대화에서 추가된 부분)
@@ -19,9 +20,10 @@ export interface UserData {
   email: string | null;
   name: string;
   academy: string;
-  role: 'admin' | 'instructor';
+  role: UserRole; // [수정]
   school?: string;
-  
+  // [신규] 조직 관리용 필드
+  ownerId?: string; // 소속된 원장님의 UID (강사일 경우)
   // 구독 관련
   plan: UserPlan;
   subscriptionEndDate?: string;
