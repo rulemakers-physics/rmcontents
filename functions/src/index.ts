@@ -362,6 +362,8 @@ export const createNotificationOnNewFeedback = functions
       createdAt: admin.firestore.FieldValue.serverTimestamp(),
       requestId: requestId
     });
+    return null;  // [추가]
+  });             // [추가]
     
 /**
  * [수정] 사업자 정보 업데이트 감지 -> 슬랙 알림 (전용 채널 지원)
@@ -451,4 +453,32 @@ export const notifyAdminOnBusinessInfoUpdate = functions
     }
     
     return null;
+  });
+
+  // 사용자의 사업자 인증 상태가 변경되면 알림 발송
+export const notifyUserOnVerificationChange = functions
+  .region('asia-east1')
+  .firestore.document("users/{uid}")
+  .onUpdate(async (change, context) => {
+    const before = change.before.data();
+    const after = change.after.data();
+    
+    const beforeStatus = before.businessInfo?.verificationStatus;
+    const afterStatus = after.businessInfo?.verificationStatus;
+
+    if (beforeStatus !== afterStatus && (afterStatus === 'verified' || afterStatus === 'rejected')) {
+      const isRejected = afterStatus === 'rejected';
+      
+      await admin.firestore().collection("notifications").add({
+        userId: context.params.uid,
+        type: isRejected ? "error" : "success",
+        title: isRejected ? "사업자 정보 반려" : "사업자 정보 승인",
+        message: isRejected 
+          ? `제출하신 증빙 서류가 반려되었습니다. 사유: ${after.businessInfo?.rejectionReason}`
+          : "사업자 정보 검수가 완료되었습니다.",
+        link: "/profile/billing",
+        isRead: false,
+        createdAt: admin.firestore.FieldValue.serverTimestamp()
+      });
+    }
   });

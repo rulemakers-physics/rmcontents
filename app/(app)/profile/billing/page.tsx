@@ -42,8 +42,8 @@ export default function BillingPage() {
   const [existingFileUrl, setExistingFileUrl] = useState("");
   const [existingFileName, setExistingFileName] = useState("");
 
-  // 개인용 폼
-  const [personalIdNumber, setPersonalIdNumber] = useState("");
+  // [수정] 개인용 폼 (주민번호 -> 휴대폰 번호)
+  const [cashReceiptNumber, setCashReceiptNumber] = useState("");
 
   const [isSaving, setIsSaving] = useState(false);
 
@@ -64,8 +64,8 @@ export default function BillingPage() {
       setExistingFileUrl(info.licenseFileUrl || "");
       setExistingFileName(info.licenseFileName || "");
 
-      // 개인 정보
-      setPersonalIdNumber(info.personalIdNumber || "");
+      // [수정] 개인 정보 로드
+      setCashReceiptNumber(info.cashReceiptNumber || "");
     }
   }, [userData]);
 
@@ -90,8 +90,9 @@ export default function BillingPage() {
       toast.error("상호명과 사업자번호는 필수입니다.");
       return;
     }
-    if (taxType === 'personal' && !personalIdNumber) {
-      toast.error("주민등록번호는 필수입니다.");
+    // [수정] 주민번호 대신 휴대폰 번호 체크
+    if (taxType === 'personal' && !cashReceiptNumber) {
+      toast.error("현금영수증용 번호는 필수입니다.");
       return;
     }
 
@@ -115,7 +116,7 @@ export default function BillingPage() {
         representative,
         address,
         taxEmail,
-        // 타입에 따라 필요한 정보만 저장 (나머지는 빈값 처리하거나 유지)
+        // 타입에 따라 필요한 정보만 저장 (나머지는 빈값 처리)
         ...(taxType === 'business' ? {
           companyName,
           registrationNumber,
@@ -123,7 +124,7 @@ export default function BillingPage() {
           businessItem,
           licenseFileUrl: fileUrl,
           licenseFileName: fileName,
-          personalIdNumber: "" // 초기화
+          cashReceiptNumber: "" // 초기화
         } : {
           companyName: "",
           registrationNumber: "",
@@ -131,10 +132,10 @@ export default function BillingPage() {
           businessItem: "",
           licenseFileUrl: "",
           licenseFileName: "",
-          personalIdNumber
-        }), // [수정됨] 여기에 콤마(,)가 꼭 필요합니다.
+          cashReceiptNumber // [수정] 저장
+        }),
 
-        // 파일이 새로 업로드되었다면 상태를 'pending'으로 리셋
+        // 파일이 새로 업로드되었다면 상태를 'pending'으로 리셋 (개인은 자동 승인 또는 별도 검수)
         verificationStatus: licenseFile ? 'pending' : (userData?.businessInfo?.verificationStatus || 'none'),
       };
 
@@ -310,7 +311,7 @@ export default function BillingPage() {
                   </div>
                 )}
 
-                {/* === 개인 전용 필드 === */}
+                {/* === [수정] 개인 전용 필드 (휴대폰 번호) === */}
                 {taxType === 'personal' && (
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6 animate-in fade-in">
                     <div className="space-y-2">
@@ -319,10 +320,16 @@ export default function BillingPage() {
                         className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-blue-200 outline-none" placeholder="실명을 입력하세요" required />
                     </div>
                     <div className="space-y-2">
-                      <label className="text-sm font-bold text-slate-700">주민등록번호 <span className="text-red-500">*</span></label>
-                      <input type="text" value={personalIdNumber} onChange={(e) => setPersonalIdNumber(e.target.value)}
-                        className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-blue-200 outline-none" placeholder="000000-0000000" required />
-                      <p className="text-[10px] text-slate-400">* 소득공제용 현금영수증 발행을 위해 수집하며, 목적 달성 후 파기됩니다.</p>
+                      <label className="text-sm font-bold text-slate-700">현금영수증 번호 (휴대폰) <span className="text-red-500">*</span></label>
+                      <input 
+                        type="text" 
+                        value={cashReceiptNumber} 
+                        onChange={(e) => setCashReceiptNumber(e.target.value)}
+                        className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-blue-200 outline-none" 
+                        placeholder="010-0000-0000" 
+                        required 
+                      />
+                      <p className="text-[10px] text-slate-400">* 소득공제용 현금영수증 발행을 위해 사용됩니다.</p>
                     </div>
                     <div className="space-y-2">
                       <label className="text-sm font-bold text-slate-700">이메일 <span className="text-red-500">*</span></label>
@@ -351,8 +358,7 @@ export default function BillingPage() {
           </div>
           
           <div className="mt-4 p-4 bg-yellow-50 border border-yellow-100 rounded-xl text-xs text-yellow-800 leading-relaxed">
-            * 입력하신 정보는 결제 증빙 발행 목적으로만 사용됩니다.<br/>
-            * 사업자등록증 사본을 첨부해주시면 더 빠른 검수가 가능합니다.
+            * 입력하신 정보는 결제 증빙 발행 목적으로만 사용됩니다.
           </div>
         </div>
       </div>

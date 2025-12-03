@@ -1,44 +1,48 @@
-// components/AppSidebar.tsx
-
 "use client";
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
-  HomeIcon,
-  BeakerIcon,
-  DocumentPlusIcon,
-  UserCircleIcon,
-  ArrowLeftOnRectangleIcon,
-  ShieldCheckIcon,
-  ChevronLeftIcon,
-  ChevronRightIcon,
-  FolderIcon,
-  CreditCardIcon, 
-  ArchiveBoxIcon,
-  ExclamationTriangleIcon,
-  UsersIcon,
-  MegaphoneIcon,
-  UserGroupIcon,
-  ChartBarIcon,
-  IdentificationIcon,
-  BuildingOffice2Icon,
-  BanknotesIcon
+  HomeIcon, BeakerIcon, DocumentPlusIcon, UserCircleIcon, ArrowLeftOnRectangleIcon,
+  ShieldCheckIcon, ChevronLeftIcon, ChevronRightIcon, FolderIcon, CreditCardIcon,
+  UsersIcon, MegaphoneIcon, UserGroupIcon, ChartBarIcon, IdentificationIcon,
+  BuildingOffice2Icon, BanknotesIcon, ArchiveBoxIcon, ExclamationTriangleIcon,
+  SparklesIcon, AcademicCapIcon
 } from "@heroicons/react/24/outline";
 import { useAuth } from "@/context/AuthContext";
 import { signOut } from "firebase/auth";
 import { auth } from "@/lib/firebase";
 
-const MENU_ITEMS = [
-  { name: "대시보드", href: "/dashboard", icon: HomeIcon },
-  { name: "공지사항", href: "/board/notices", icon: MegaphoneIcon },
-  { name: "문제은행", href: "/service/maker", icon: BeakerIcon },
-  { name: "내 보관함", href: "/service/storage", icon: FolderIcon },
-  { name: "반/학생 관리", href: "/manage/classes", icon: UserGroupIcon },
-  { name: "성적 리포트", href: "/manage/reports", icon: ChartBarIcon },
-  { name: "작업 요청", href: "/request", icon: DocumentPlusIcon },
-  { name: "결제/세금", href: "/profile/billing", icon: CreditCardIcon },
-  { name: "프로필 설정", href: "/profile/settings", icon: UserCircleIcon },
+// 메뉴 구조를 계층화합니다.
+const MENU_GROUPS = [
+  {
+    id: "studio",
+    label: "CONTENT STUDIO", // 컨텐츠 제작 영역
+    items: [
+      { name: "문제은행 (Maker)", href: "/service/maker", icon: BeakerIcon },
+      { name: "내 보관함", href: "/service/storage", icon: FolderIcon },
+      { name: "작업 요청", href: "/request", icon: DocumentPlusIcon },
+    ]
+  },
+  {
+    id: "lms",
+    label: "ACADEMY LMS", // 학원 관리 영역
+    items: [
+      { name: "반/학생 관리", href: "/manage/classes", icon: UserGroupIcon },
+      { name: "성적 리포트", href: "/manage/reports", icon: ChartBarIcon },
+      { name: "강사 관리", href: "/manage/instructors", icon: IdentificationIcon, role: "director" }, // Role 체크 필요
+    ]
+  },
+  {
+    id: "support",
+    label: "GENERAL", // 일반/지원 영역
+    items: [
+      { name: "대시보드", href: "/dashboard", icon: HomeIcon },
+      { name: "공지사항", href: "/board/notices", icon: MegaphoneIcon },
+      { name: "결제/세금", href: "/profile/billing", icon: CreditCardIcon },
+      { name: "프로필 설정", href: "/profile/settings", icon: UserCircleIcon },
+    ]
+  }
 ];
 
 interface AppSidebarProps {
@@ -59,16 +63,15 @@ export default function AppSidebar({ isCollapsed, toggleSidebar }: AppSidebarPro
     <aside 
       className={`${
         isCollapsed ? "w-20" : "w-64"
-      } bg-slate-900 text-white flex flex-col h-screen fixed left-0 top-0 z-50 transition-all duration-300 ease-in-out border-r border-slate-800`}
+      } bg-slate-900 text-white flex flex-col h-screen fixed left-0 top-0 z-50 transition-all duration-300 ease-in-out border-r border-slate-800 shadow-2xl`}
     >
       {/* 로고 영역 */}
-      <div className="h-16 flex items-center justify-between px-4 border-b border-slate-800">
+      <div className="h-16 flex items-center justify-between px-4 border-b border-slate-800 bg-slate-950/50">
         {!isCollapsed && (
-          <Link href="/" className="text-lg font-extrabold tracking-tighter text-white truncate">
-            RuleMakers <span className="text-blue-500 text-xs font-normal">App</span>
+          <Link href="/" className="flex items-center gap-2 text-lg font-extrabold tracking-tighter text-white truncate">
+            <span className="text-blue-500 text-xl">R</span>uleMakers
           </Link>
         )}
-        {/* 사이드바 토글 버튼 */}
         <button 
           onClick={toggleSidebar} 
           className="p-1.5 rounded-lg bg-slate-800 text-slate-400 hover:text-white hover:bg-slate-700 transition-colors mx-auto"
@@ -78,66 +81,70 @@ export default function AppSidebar({ isCollapsed, toggleSidebar }: AppSidebarPro
       </div>
 
       {/* 메뉴 영역 */}
-      <nav className="flex-1 p-3 space-y-1 overflow-y-auto custom-scrollbar">
-        {MENU_ITEMS.map((item) => {
-          const isActive = pathname.startsWith(item.href);
-          return (
-            <Link
-              key={item.href}
-              href={item.href}
-              title={isCollapsed ? item.name : ""}
-              className={`flex items-center gap-3 px-3 py-3 rounded-xl transition-all ${
-                isActive 
-                  ? "bg-blue-600 text-white shadow-lg shadow-blue-900/50" 
-                  : "text-slate-400 hover:bg-slate-800 hover:text-white"
-              } ${isCollapsed ? "justify-center" : ""}`}
-            >
-              <item.icon className="w-6 h-6 flex-shrink-0" />
-              {!isCollapsed && <span className="text-sm font-medium truncate">{item.name}</span>}
-            </Link>
-          );
-        })}
-
-        {/* [신규] 원장님(Director) 전용 메뉴: 강사 관리 */}
-        {userData?.role === 'director' && (
-          <Link
-            href="/manage/instructors"
-            className={`flex items-center gap-3 px-3 py-3 rounded-xl transition-all ${
-              pathname.startsWith("/manage/instructors")
-                ? "bg-blue-600 text-white shadow-lg"
-                : "text-slate-400 hover:bg-slate-800 hover:text-white"
-            } ${isCollapsed ? "justify-center" : ""}`}
-          >
-            <IdentificationIcon className="w-6 h-6 flex-shrink-0" />
-            {!isCollapsed && <span className="text-sm font-medium truncate">강사 관리</span>}
-          </Link>
-        )}
-
-        {/* 관리자 메뉴 섹션 */}
-        {user?.isAdmin && (
-          <>
-            <div className={`my-4 border-t border-slate-800 ${isCollapsed ? "mx-1" : "mx-2"}`} />
-            {!isCollapsed && <p className="px-4 text-xs font-bold text-slate-500 mb-2 uppercase">Admin</p>}
+      <nav className="flex-1 overflow-y-auto custom-scrollbar py-4">
+        
+        {MENU_GROUPS.map((group) => (
+          <div key={group.id} className="mb-6">
+            {/* 섹션 헤더 (접혀있지 않을 때만 표시) */}
+            {!isCollapsed && (
+              <h3 className="px-6 mb-2 text-[10px] font-extrabold text-slate-500 uppercase tracking-widest">
+                {group.label}
+              </h3>
+            )}
             
-            {/* 1. 관리자 대시보드 (메인) */}
-            <Link
-              href="/admin"
-              title="관리자 대시보드"
-              // [수정] 하위 메뉴 경로들(/admin/problems, /admin/reports)은 제외
-              className={`flex items-center gap-3 px-3 py-3 rounded-xl transition-all ${
-                (pathname.startsWith("/admin") && 
-                 !pathname.startsWith("/admin/problems") && 
-                 !pathname.startsWith("/admin/reports") &&
-                 !pathname.startsWith("/admin/users")&&
-                 !pathname.startsWith("/admin/notices"))
+            <div className="px-3 space-y-1">
+              {group.items.map((item) => {
+                // 권한 체크 (role 필드가 있는데 권한이 안 맞으면 렌더링 안 함)
+                if (item.role === "director" && userData?.role !== "director") return null;
 
-                  ? "bg-emerald-600 text-white shadow-lg shadow-emerald-900/50" // [수정] Green/Emerald 계열
-                  : "text-emerald-400 hover:bg-slate-800 hover:text-emerald-300"
-              } ${isCollapsed ? "justify-center" : ""}`}
-            >
-              <ShieldCheckIcon className="w-6 h-6 flex-shrink-0" />
-              {!isCollapsed && <span className="text-sm font-medium truncate">관리자 대시보드</span>}
-            </Link>
+                const isActive = pathname.startsWith(item.href);
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    title={isCollapsed ? item.name : ""}
+                    className={`group flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200 ${
+                      isActive 
+                        ? "bg-blue-600 text-white shadow-md shadow-blue-900/20 translate-x-1" 
+                        : "text-slate-400 hover:bg-slate-800 hover:text-white hover:translate-x-1"
+                    } ${isCollapsed ? "justify-center" : ""}`}
+                  >
+                    <item.icon className={`w-5 h-5 flex-shrink-0 transition-colors ${isActive ? "text-white" : "text-slate-500 group-hover:text-white"}`} />
+                    {!isCollapsed && <span className="text-sm font-medium truncate">{item.name}</span>}
+                    
+                    {/* Active Indicator (우측 점) */}
+                    {!isCollapsed && isActive && (
+                      <div className="ml-auto w-1.5 h-1.5 rounded-full bg-white/50" />
+                    )}
+                  </Link>
+                );
+              })}
+            </div>
+            {/* 그룹 간 구분선 (접힌 상태에서 시각적 분리) */}
+            {isCollapsed && <div className="mx-4 my-4 border-t border-slate-800" />}
+          </div>
+        ))}
+
+        {/* 관리자 메뉴 (기존 로직 유지하되 스타일 통일) */}
+        {user?.isAdmin && (
+          <div className="mb-6">
+            {!isCollapsed && (
+              <h3 className="px-6 mb-2 text-[10px] font-extrabold text-emerald-600 uppercase tracking-widest">
+                ADMINISTRATION
+              </h3>
+            )}
+            <div className="px-3 space-y-1">
+              <Link
+                href="/admin"
+                className={`flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all ${
+                  pathname.startsWith("/admin") && !pathname.startsWith("/admin/") // 메인만
+                    ? "bg-emerald-600 text-white shadow-lg"
+                    : "text-emerald-500 hover:bg-slate-800 hover:text-emerald-400"
+                } ${isCollapsed ? "justify-center" : ""}`}
+              >
+                <ShieldCheckIcon className="w-5 h-5" />
+                {!isCollapsed && <span className="text-sm font-medium">관리자 홈</span>}
+              </Link>
             
             {/* 회원 관리 메뉴 */}
             <Link
@@ -222,7 +229,8 @@ export default function AppSidebar({ isCollapsed, toggleSidebar }: AppSidebarPro
               <MegaphoneIcon className="w-6 h-6 flex-shrink-0" />
               {!isCollapsed && <span className="text-sm font-medium truncate">공지사항 관리</span>}
             </Link>
-          </>
+          </div>
+          </div>
         )}
       </nav>
 

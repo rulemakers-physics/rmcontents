@@ -54,7 +54,8 @@ export default function AdminUsersPage() {
       (u.name?.toLowerCase() || "").includes(searchTerm.toLowerCase()) ||
       (u.email?.toLowerCase() || "").includes(searchTerm.toLowerCase()) ||
       (u.academy?.toLowerCase() || "").includes(searchTerm.toLowerCase());
-    const matchesPlan = planFilter === "ALL" || u.plan === planFilter;
+    const userPlan = u.plan || 'FREE'; 
+    const matchesPlan = planFilter === "ALL" || userPlan === planFilter;
     return matchesSearch && matchesPlan;
   });
 

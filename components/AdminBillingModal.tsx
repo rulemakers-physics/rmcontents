@@ -8,7 +8,7 @@ import { doc, updateDoc } from "firebase/firestore";
 import { toast } from "react-hot-toast";
 import { 
   XMarkIcon, CheckCircleIcon, XCircleIcon, 
-  CreditCardIcon, DocumentTextIcon, CurrencyDollarIcon 
+  CreditCardIcon, DocumentTextIcon, CurrencyDollarIcon, BanknotesIcon 
 } from "@heroicons/react/24/outline";
 import { UserData, UserPlan } from "@/types/user";
 
@@ -119,7 +119,12 @@ export default function AdminBillingModal({ userData, onClose }: AdminBillingMod
                 <div className="text-sm space-y-1 mb-4 text-slate-600">
                   <p><span className="font-bold">유형:</span> {bizInfo.taxType === 'business' ? '사업자' : '개인'}</p>
                   <p><span className="font-bold">상호/성명:</span> {bizInfo.companyName || bizInfo.representative}</p>
-                  <p><span className="font-bold">등록번호:</span> {bizInfo.registrationNumber || bizInfo.personalIdNumber}</p>
+                  
+                  {/* [수정] 등록번호 표시 (사업자번호 or 현금영수증 번호) */}
+                  <p>
+                    <span className="font-bold">{bizInfo.taxType === 'business' ? '사업자번호' : '현금영수증 번호'}:</span> 
+                    {bizInfo.registrationNumber || bizInfo.cashReceiptNumber || '-'}
+                  </p>
                   
                   {/* 파일 다운로드 */}
                   {bizInfo.licenseFileUrl ? (
@@ -199,6 +204,3 @@ export default function AdminBillingModal({ userData, onClose }: AdminBillingMod
     </div>
   );
 }
-
-// 아이콘 임포트 보완 (BanknotesIcon이 없으면 Heroicons에서 추가 필요)
-import { BanknotesIcon } from "@heroicons/react/24/outline";
