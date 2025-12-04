@@ -1,4 +1,4 @@
-// app/pricing/page.tsx
+// app/(marketing)/pricing/page.tsx
 
 "use client";
 
@@ -15,12 +15,16 @@ import {
   FireIcon,
   CurrencyDollarIcon,
   ShieldCheckIcon,
-  ChevronDownIcon
+  ChevronDownIcon,
+  AcademicCapIcon, // [신규] 학생 아이콘
+  BuildingLibraryIcon // [신규] 학원 아이콘
 } from "@heroicons/react/24/outline";
 import { toast } from "react-hot-toast";
 
 // --- 데이터 정의 ---
-const PLANS = [
+
+// 1. 강사/학원용 플랜 (기존)
+const INSTRUCTOR_PLANS = [
   {
     id: "BASIC",
     name: "Basic Plan",
@@ -60,18 +64,53 @@ const PLANS = [
   },
 ];
 
-const COMPARISON_ROWS = [
-  { category: "컨텐츠 제공", name: "기본 문항 데이터베이스", basic: true, makers: true },
-  { category: "컨텐츠 제공", name: "학교별 기출 분석 리포트", basic: true, makers: true },
-  { category: "컨텐츠 제공", name: "교육청/EBS/부교재 유사 문항", basic: true, makers: true },
-  { category: "컨텐츠 제공", name: "RM 자체 개발 킬러/고난도 문항", basic: false, makers: true },
-  { category: "제작 서비스", name: "PDF 시험지 생성/출력", basic: true, makers: true },
-  { category: "제작 서비스", name: "1:1 맞춤 교재 제작 요청 (Coin)", basic: false, makers: "월 3회 제공" },
-  { category: "브랜딩 & 케어", name: "전담 매니저 배정", basic: false, makers: true },
-  { category: "브랜딩 & 케어", name: "학원 로고/커스텀 표지", basic: false, makers: true },
+// 2. 학생용 플랜 (신규)
+const STUDENT_PLANS = [
+  {
+    id: "STD_STANDARD",
+    name: "내신 한 달 Plan",
+    tag: "단기 완성",
+    originalPrice: "",
+    price: "49,000",
+    period: "/월",
+    desc: "시험 직전, 집중적인 문제 풀이가 필요할 때",
+    features: [
+      "통합과학 전 단원 문제은행 무제한",
+      "AI 취약점 분석 리포트",
+      "실전 모의고사 10회분 제공",
+      "오답 노트 자동 생성",
+      "해설지 무제한 열람"
+    ],
+    highlight: false,
+    buttonText: "한 달 이용권 구매",
+    buttonStyle: "bg-white text-slate-900 border border-slate-200 hover:bg-slate-50",
+  },
+  {
+    id: "STD_PREMIUM",
+    name: "통합과학 연간 Plan",
+    tag: "Early Bird 특가",
+    originalPrice: "24,900",
+    price: "19,900",
+    period: "/월",
+    desc: "1년 내내 1등급을 유지하는 가장 확실한 방법",
+    features: [
+      "월간 플랜의 모든 혜택 포함",
+      "⭐ [혜택] 심화 개정 개념서 실물 배송", 
+      "고난도 킬러 문항 전용관 입장",
+      "1:1 학습 Q&A 게시판 이용권",
+      "시험 기간 시크릿 자료 제공"
+    ],
+    highlight: true,
+    buttonText: "지금 특가로 시작하기",
+    buttonStyle: "bg-gradient-to-r from-teal-500 to-emerald-600 text-white hover:shadow-lg hover:shadow-teal-500/30 border-transparent",
+  },
 ];
 
 const FAQS = [
+  {
+    q: "학생용 '연간 Plan'의 개념서는 언제 배송되나요?",
+    a: "결제 완료 후 영업일 기준 2~3일 이내에 가입 시 입력한 주소로 발송됩니다. 배송비는 무료입니다."
+  },
   {
     q: "Basic Plan의 'Early Bird 특가'는 언제까지인가요?",
     a: "현재 런칭 기념 프로모션으로 선착순 한정 제공되고 있습니다. 프로모션 종료 시 정상가(월 199,000원)로 전환될 수 있습니다."
@@ -82,18 +121,13 @@ const FAQS = [
   },
   {
     q: "결제 후 바로 이용 가능한가요?",
-    a: "Basic Plan은 결제 즉시 모든 기능을 이용하실 수 있습니다. Maker's Plan은 담당자와의 상담 및 계약 체결 후 계정이 활성화됩니다."
-  },
-  {
-    q: "세금계산서 발행이 가능한가요?",
-    a: "네, 가능합니다. 마이페이지 > 결제 관리에서 사업자 정보를 입력해주시면 매월 자동으로 발행됩니다."
+    a: "Basic Plan 및 학생용 플랜은 결제 즉시 모든 기능을 이용하실 수 있습니다. Maker's Plan은 담당자와의 상담 및 계약 체결 후 계정이 활성화됩니다."
   }
 ];
 
 export default function PricingPage() {
   const { user, userData } = useAuth();
-  
-  // FAQ 인터랙션을 위한 상태 추가
+  const [target, setTarget] = useState<'instructor' | 'student'>('instructor');
   const [openFaqIndex, setOpenFaqIndex] = useState<number | null>(null);
 
   const toggleFaq = (index: number) => {
@@ -103,9 +137,11 @@ export default function PricingPage() {
   const handleUpgrade = async (planId: string) => {
     if (!user) return toast.error("로그인이 필요한 서비스입니다.");
     
-    const confirmMsg = planId === 'MAKERS' 
-      ? "Maker's Plan 도입 상담을 신청하시겠습니까? (테스트: 즉시 플랜 적용)" 
-      : "Basic Plan(월 129,000원)을 구독하시겠습니까?";
+    // 단순 테스트용 로직 (실제 결제 연동 전)
+    let confirmMsg = "";
+    if (planId === 'MAKERS') confirmMsg = "Maker's Plan 도입 상담을 신청하시겠습니까?";
+    else if (planId === 'STD_PREMIUM') confirmMsg = "통합과학 연간 Plan(월 19,900원)을 구독하시겠습니까?";
+    else confirmMsg = `${planId} 플랜을 선택하시겠습니까?`;
 
     if (confirm(confirmMsg)) {
       try {
@@ -122,6 +158,9 @@ export default function PricingPage() {
       }
     }
   };
+
+  // 현재 선택된 타겟에 따른 플랜 데이터
+  const currentPlans = target === 'instructor' ? INSTRUCTOR_PLANS : STUDENT_PLANS;
 
   return (
     <div className="min-h-screen bg-slate-50 font-sans text-slate-900 selection:bg-blue-100 selection:text-blue-900">
@@ -140,23 +179,51 @@ export default function PricingPage() {
             Pricing Plans
           </span>
           <h1 className="text-4xl md:text-6xl font-extrabold tracking-tight text-slate-900 mb-6 leading-tight">
-            학원 성장의 파트너,<br />
+            가장 확실한 <br />
             <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-indigo-600">
-              가장 확실한 투자
-            </span>를 시작하세요.
+              성적 상승 솔루션
+            </span>
           </h1>
           <p className="text-lg md:text-xl text-slate-500 max-w-2xl mx-auto leading-relaxed">
-            단순한 문제은행을 넘어, 선생님의 시간을 아껴드리고<br className="hidden md:block"/> 
-            수업의 질을 높이는 <strong>RuleMakers</strong>의 프리미엄 솔루션입니다.
+            {target === 'instructor' 
+              ? "단순한 문제은행을 넘어, 선생님의 시간을 아껴드리고 수업의 질을 높이는 프리미엄 솔루션입니다."
+              : "대치동 1타 강사진의 노하우가 담긴 고퀄리티 컨텐츠로 내신 1등급을 완성하세요."}
           </p>
         </motion.div>
       </section>
 
-      {/* 2. Pricing Cards */}
-      <section className="py-24 px-6 -mt-10 relative z-20">
+      {/* 2. Target Toggle & Pricing Cards */}
+      <section className="py-16 px-6 -mt-10 relative z-20">
         <div className="container mx-auto max-w-6xl">
+          
+          {/* 타겟 전환 토글 */}
+          <div className="flex justify-center mb-12">
+            <div className="bg-white p-1.5 rounded-full flex shadow-md border border-slate-200">
+              <button 
+                onClick={() => setTarget('instructor')}
+                className={`flex items-center gap-2 px-6 py-3 rounded-full text-sm font-bold transition-all ${
+                  target === 'instructor' 
+                    ? 'bg-slate-900 text-white shadow-sm' 
+                    : 'text-slate-500 hover:text-slate-900'
+                }`}
+              >
+                <BuildingLibraryIcon className="w-4 h-4" /> 강사/학원용
+              </button>
+              <button 
+                onClick={() => setTarget('student')}
+                className={`flex items-center gap-2 px-6 py-3 rounded-full text-sm font-bold transition-all ${
+                  target === 'student' 
+                    ? 'bg-teal-600 text-white shadow-sm' 
+                    : 'text-slate-500 hover:text-slate-900'
+                }`}
+              >
+                <AcademicCapIcon className="w-4 h-4" /> 학생용 (신규)
+              </button>
+            </div>
+          </div>
+
           <div className="grid md:grid-cols-2 gap-8 items-stretch">
-            {PLANS.map((plan, idx) => (
+            {currentPlans.map((plan, idx) => (
               <motion.div
                 key={plan.id}
                 initial={{ opacity: 0, y: 30 }}
@@ -199,7 +266,7 @@ export default function PricingPage() {
                   <span className={`text-lg ${plan.highlight ? "text-slate-400" : "text-slate-500"}`}>{plan.period}</span>
                 </div>
 
-                {/* Button - cursor-pointer 추가됨 */}
+                {/* Button */}
                 <button
                   onClick={() => handleUpgrade(plan.id)}
                   className={`w-full py-4 rounded-xl font-bold text-base transition-all mb-10 border cursor-pointer active:scale-95 ${plan.buttonStyle}`}
@@ -229,11 +296,11 @@ export default function PricingPage() {
         </div>
       </section>
 
-      {/* 3. Value Proposition (Marketing) */}
+      {/* 3. Value Proposition (강사용일 때만 표시하거나 공통 내용으로 수정) */}
       <section className="py-20 bg-white border-t border-slate-100">
         <div className="container mx-auto px-6 max-w-5xl">
           <div className="text-center mb-16">
-            <h2 className="text-3xl font-bold text-slate-900">왜 Maker's Plan인가요?</h2>
+            <h2 className="text-3xl font-bold text-slate-900">Why RuleMakers?</h2>
             <p className="text-slate-500 mt-2">단순 구독 그 이상의 가치를 제공합니다.</p>
           </div>
           
@@ -242,80 +309,35 @@ export default function PricingPage() {
               <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center text-blue-600 mb-4">
                 <FireIcon className="w-6 h-6" />
               </div>
-              <h3 className="font-bold text-lg text-slate-900 mb-2">대체 불가능한 킬러 문항</h3>
+              <h3 className="font-bold text-lg text-slate-900 mb-2">검증된 킬러 문항</h3>
               <p className="text-slate-600 text-sm leading-relaxed">
-                시중 교재 어디에도 없는 RuleMakers 자체 제작 고난도 문항으로 상위권 변별력을 확보하세요.
+                서울대 연구진이 직접 제작한 고난도 문항으로 상위권 변별력을 확보하세요.
               </p>
             </div>
             <div className="bg-slate-50 p-8 rounded-2xl border border-slate-100 hover:border-indigo-200 transition-colors duration-300">
               <div className="w-12 h-12 bg-indigo-100 rounded-xl flex items-center justify-center text-indigo-600 mb-4">
                 <CurrencyDollarIcon className="w-6 h-6" />
               </div>
-              <h3 className="font-bold text-lg text-slate-900 mb-2">인건비 절감 효과</h3>
+              <h3 className="font-bold text-lg text-slate-900 mb-2">최고의 가성비</h3>
               <p className="text-slate-600 text-sm leading-relaxed">
-                교재 제작 조교 1명 고용 비용의 1/10도 안 되는 비용으로, 서울대 연구진 퀄리티의 자료를 받으세요.
+                합리적인 가격으로 대치동 퀄리티의 컨텐츠와 관리 시스템을 누리세요.
               </p>
             </div>
             <div className="bg-slate-50 p-8 rounded-2xl border border-slate-100 hover:border-purple-200 transition-colors duration-300">
               <div className="w-12 h-12 bg-purple-100 rounded-xl flex items-center justify-center text-purple-600 mb-4">
                 <ShieldCheckIcon className="w-6 h-6" />
               </div>
-              <h3 className="font-bold text-lg text-slate-900 mb-2">학원 브랜드 강화</h3>
+              <h3 className="font-bold text-lg text-slate-900 mb-2">확실한 성적 향상</h3>
               <p className="text-slate-600 text-sm leading-relaxed">
-                학원 로고와 전용 표지 디자인을 적용하여, 학원만의 독자적인 프리미엄 교재 브랜딩을 완성합니다.
+                취약점 분석부터 실전 대비까지, 점수가 오를 수밖에 없는 시스템입니다.
               </p>
             </div>
           </div>
         </div>
       </section>
 
-      {/* 4. Detailed Comparison Table */}
-      <section className="py-24 bg-slate-50 border-t border-slate-200">
-        <div className="container mx-auto max-w-4xl px-6">
-          <div className="text-center mb-12">
-            <h2 className="text-2xl font-bold text-slate-900">기능 상세 비교</h2>
-          </div>
-          
-          <div className="overflow-hidden rounded-2xl border border-slate-200 shadow-sm bg-white">
-            <table className="w-full text-sm text-left">
-              <thead className="bg-slate-50 text-slate-900 font-bold border-b border-slate-200">
-                <tr>
-                  <th className="py-5 px-6 w-1/2">기능</th>
-                  <th className="py-5 px-6 text-center w-1/4 text-slate-600">Basic Plan</th>
-                  <th className="py-5 px-6 text-center w-1/4 text-blue-600 bg-blue-50/50">Maker's Plan</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {COMPARISON_ROWS.map((item, i) => (
-                  <tr key={i} className="hover:bg-slate-50/50 transition-colors">
-                    <td className="py-4 px-6">
-                      <span className="block text-xs text-slate-400 mb-0.5">{item.category}</span>
-                      <span className="font-medium text-slate-700">{item.name}</span>
-                    </td>
-                    <td className="py-4 px-6 text-center">
-                      {item.basic ? (
-                        <CheckIcon className="w-5 h-5 text-slate-900 mx-auto" />
-                      ) : (
-                        <XMarkIcon className="w-5 h-5 text-slate-300 mx-auto" />
-                      )}
-                    </td>
-                    <td className="py-4 px-6 text-center font-bold text-blue-600 bg-blue-50/30">
-                      {item.makers === true ? (
-                        <CheckIcon className="w-5 h-5 text-blue-600 mx-auto" />
-                      ) : (
-                        <span>{item.makers}</span>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </section>
-
-      {/* 5. FAQ Section (Accordion Style with Cursors) */}
-      <section className="py-24 bg-white">
+      {/* 4. FAQ Section */}
+      <section className="py-24 bg-white border-t border-slate-100">
         <div className="container mx-auto max-w-3xl px-6">
           <div className="flex flex-col items-center justify-center gap-2 mb-12">
             <QuestionMarkCircleIcon className="w-8 h-8 text-blue-500" />
@@ -362,7 +384,7 @@ export default function PricingPage() {
         </div>
       </section>
 
-      {/* 6. Bottom CTA */}
+      {/* 5. Bottom CTA */}
       <section className="py-24 bg-slate-900 text-white text-center">
         <div className="container mx-auto px-6">
           <SparklesIcon className="w-12 h-12 text-yellow-400 mx-auto mb-6" />

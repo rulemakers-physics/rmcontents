@@ -12,11 +12,13 @@ import { toast } from "react-hot-toast";
 import { 
   UserIcon, BuildingOffice2Icon, AcademicCapIcon, SparklesIcon, ArrowRightIcon
 } from "@heroicons/react/24/outline";
+import { UserRole } from "@/types/user";
 
 export default function ProfileSetupPage() {
   const { user, checkFirstLogin } = useAuth();
   const router = useRouter();
-  
+  // [신규] 역할 선택 상태
+  const [role, setRole] = useState<UserRole | null>(null);
   const [name, setName] = useState("");
   const [academy, setAcademy] = useState("");
   const [school, setSchool] = useState("");

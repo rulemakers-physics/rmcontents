@@ -2,7 +2,13 @@
 import { Timestamp } from "firebase/firestore";
 
 export type UserRole = 'admin' | 'director' | 'instructor';
-export type UserPlan = 'FREE' | 'BASIC' | 'MAKERS';
+export type UserPlan = 
+  | 'FREE' 
+  | 'BASIC' 
+  | 'MAKERS' 
+  // [신규] 학생용 플랜 추가
+  | 'STD_STANDARD'  // 내신 한 달 Plan
+  | 'STD_PREMIUM';  // 통합과학 연간 Plan
 
 // [수정] 세금 정보 타입 고도화
 export interface BusinessInfo {
