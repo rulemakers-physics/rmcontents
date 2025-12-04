@@ -7,7 +7,7 @@ import {
   ShieldCheckIcon, ChevronLeftIcon, ChevronRightIcon, FolderIcon, CreditCardIcon,
   UsersIcon, MegaphoneIcon, UserGroupIcon, ChartBarIcon, IdentificationIcon,
   BuildingOffice2Icon, BanknotesIcon, ArchiveBoxIcon, ExclamationTriangleIcon,
-  SparklesIcon, AcademicCapIcon
+  SparklesIcon, AcademicCapIcon, ArrowTopRightOnSquareIcon
 } from "@heroicons/react/24/outline";
 import { useAuth } from "@/context/AuthContext";
 import { signOut } from "firebase/auth";
@@ -229,6 +229,32 @@ export default function AppSidebar({ isCollapsed, toggleSidebar }: AppSidebarPro
               <MegaphoneIcon className="w-6 h-6 flex-shrink-0" />
               {!isCollapsed && <span className="text-sm font-medium truncate">공지사항 관리</span>}
             </Link>
+
+            {/* ▼▼▼ [신규] 학생 뷰 바로가기 버튼 ▼▼▼ */}
+              <div className="pt-2 mt-2 border-t border-slate-800/50">
+                <Link
+                  href="/student/dashboard"
+                  target="_blank" // 편의를 위해 새 탭으로 열기
+                  title="학생 페이지 미리보기"
+                  className={`group flex items-center gap-3 px-3 py-3 rounded-xl transition-all border border-dashed border-slate-700 hover:border-emerald-500 hover:bg-slate-800/50 ${
+                    isCollapsed ? "justify-center" : ""
+                  }`}
+                >
+                  <AcademicCapIcon className="w-6 h-6 flex-shrink-0 text-slate-500 group-hover:text-emerald-400 transition-colors" />
+                  {!isCollapsed && (
+                    <div className="flex flex-col">
+                      <span className="text-sm font-medium text-slate-400 group-hover:text-emerald-400 transition-colors">
+                        학생 모드로 이동
+                      </span>
+                      <span className="text-[10px] text-slate-600">미리보기 (새 탭)</span>
+                    </div>
+                  )}
+                  {!isCollapsed && (
+                    <ArrowTopRightOnSquareIcon className="w-3.5 h-3.5 text-slate-600 ml-auto group-hover:text-emerald-500" />
+                  )}
+                </Link>
+              </div>
+              {/* ▲▲▲ [신규] ▲▲▲ */}
           </div>
           </div>
         )}
