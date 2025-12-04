@@ -2,7 +2,7 @@
 
 "use client";
 
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useCallback } from "react"; // [수정] useCallback 추가
 import { useAuth } from "@/context/AuthContext";
 import { db } from "@/lib/firebase";
 import { 
@@ -11,7 +11,6 @@ import {
 import { 
   MagnifyingGlassIcon, FunnelIcon, UserCircleIcon,
   PencilSquareIcon, CreditCardIcon, CurrencyDollarIcon,
-  IdentificationIcon, ChevronRightIcon, ChevronDownIcon,
   ListBulletIcon, BuildingOfficeIcon
 } from "@heroicons/react/24/outline";
 import { toast } from "react-hot-toast";
@@ -30,7 +29,8 @@ export default function AdminUsersPage() {
   const [isLoading, setIsLoading] = useState(true);
   
   // 상태 관리
-  const [viewMode, setViewMode] = useState<'list' | 'group'>('group'); // 기본값을 'group'으로 변경
+  // 기본값을 'list'로 하여 전체 현황을 먼저 보게 함
+  const [viewMode, setViewMode] = useState<'list' | 'group'>('list'); 
   const [searchTerm, setSearchTerm] = useState("");
   const [planFilter, setPlanFilter] = useState("ALL");
   
@@ -41,7 +41,8 @@ export default function AdminUsersPage() {
   // 그룹 확장 상태 (Set에 director uid 저장)
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
 
-  const fetchUsers = async () => {
+  // [수정] fetchUsers 함수를 useCallback으로 감싸서 안정화
+  const fetchUsers = useCallback(async () => {
     setIsLoading(true);
     try {
       const usersRef = collection(db, "users");
@@ -57,29 +58,31 @@ export default function AdminUsersPage() {
       toast.error("데이터를 불러오지 못했습니다.");
     }
     setIsLoading(false);
-  };
+  }, []); // 의존성 없음 (외부 변수인 db 등은 안정적임)
 
+  // [수정] 의존성 배열에 fetchUsers 추가 (이제 안전함)
   useEffect(() => {
     if (user?.isAdmin) fetchUsers();
-  }, [user]);
+  }, [user, fetchUsers]);
 
   // --- [로직] 필터링 및 그룹핑 ---
   
-  // 1. 단일 유저 필터링 함수
-  const matchUser = (u: UserData) => {
+  // 1. 단일 유저 필터링 함수 [수정됨: useCallback 적용]
+  const matchUser = useCallback((u: UserData) => {
     const searchLower = searchTerm.toLowerCase();
     const matchesSearch = 
       (u.name?.toLowerCase() || "").includes(searchLower) ||
       (u.email?.toLowerCase() || "").includes(searchLower) ||
-      (u.academy?.toLowerCase() || "").includes(searchLower);
+      (u.academy?.toLowerCase() || "").includes(searchLower) ||
+      (u.school?.toLowerCase() || "").includes(searchLower); 
     
     const userPlan = u.plan || 'FREE'; 
     const matchesPlan = planFilter === "ALL" || userPlan === planFilter;
 
     return matchesSearch && matchesPlan;
-  };
+  }, [searchTerm, planFilter]); // searchTerm이나 planFilter가 바뀔 때만 함수 재생성
 
-  // 2. 데이터 가공 (메모이제이션)
+  // 2. 데이터 가공 (메모이제이션) [수정됨: 의존성 배열 변경]
   const { filteredList, groupedData, others } = useMemo(() => {
     // A. 리스트 뷰용 단순 필터링
     const filteredList = users.filter(matchUser);
@@ -100,23 +103,23 @@ export default function AdminUsersPage() {
 
     // Step 2: 강사(Instructor) 및 기타 유저 분류
     users.forEach(u => {
-      if (u.role === 'director') return; // 이미 처리함
+      if (u.role === 'director') return; 
 
       if (u.role === 'instructor' && u.ownerId && directorMap.has(u.ownerId)) {
-        // 소속된 학원이 있으면 해당 그룹에 추가
         directorMap.get(u.ownerId)!.instructors.push(u);
       } else {
-        // 소속이 없거나(프리랜서), Admin 등은 기타로 분류
         otherUsers.push(u);
       }
     });
 
-    // Step 3: 그룹 필터링 (원장이 조건에 맞거나, 소속 강사 중 한 명이라도 조건에 맞으면 표시)
+    // Step 3: 그룹 필터링
     const filteredGroups = groups.filter(group => {
       const directorMatches = matchUser(group.director);
       const hasMatchingInstructor = group.instructors.some(inst => matchUser(inst));
       
-      // 검색어가 있을 때는 매칭되는 항목이 있는 그룹만 표시
+      // 검색어가 있거나 필터가 있을 때는 매칭되는 항목이 있는 그룹만 표시
+      // (matchUser 내부에 이미 searchTerm, planFilter 로직이 있으므로 여기선 결과만 확인해도 됨)
+      // 하지만 원본 로직 유지를 위해 조건문 유지
       if (searchTerm || planFilter !== "ALL") {
         return directorMatches || hasMatchingInstructor;
       }
@@ -127,7 +130,7 @@ export default function AdminUsersPage() {
     const filteredOthers = otherUsers.filter(matchUser);
 
     return { filteredList, groupedData: filteredGroups, others: filteredOthers };
-  }, [users, searchTerm, planFilter]);
+  }, [users, matchUser]); // [수정됨] users와 matchUser가 변경될 때만 재계산
 
 
   // --- 핸들러 ---
@@ -150,6 +153,15 @@ export default function AdminUsersPage() {
       newSet.add(directorId);
     }
     setExpandedGroups(newSet);
+  };
+
+  // 날짜 포맷팅 헬퍼 (Timestamp 호환)
+  const formatDate = (dateValue: any) => {
+    if (!dateValue) return "-";
+    // Firestore Timestamp인 경우
+    if (dateValue.toDate) return dateValue.toDate().toLocaleDateString();
+    // JS Date 객체이거나 문자열인 경우
+    return new Date(dateValue).toLocaleDateString();
   };
 
   if (loading || !user?.isAdmin) return <div className="p-8 text-center">접근 권한 확인 중...</div>;
@@ -175,13 +187,13 @@ export default function AdminUsersPage() {
                 onClick={() => setViewMode('list')}
                 className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${viewMode === 'list' ? 'bg-slate-100 text-slate-900' : 'text-slate-400 hover:text-slate-600'}`}
               >
-                <ListBulletIcon className="w-4 h-4" /> 리스트
+                <ListBulletIcon className="w-4 h-4" /> 전체 리스트
               </button>
               <button 
                 onClick={() => setViewMode('group')}
                 className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${viewMode === 'group' ? 'bg-blue-50 text-blue-600' : 'text-slate-400 hover:text-slate-600'}`}
               >
-                <BuildingOfficeIcon className="w-4 h-4" /> 학원별
+                <BuildingOfficeIcon className="w-4 h-4" /> 학원별 보기
               </button>
             </div>
 
@@ -194,6 +206,8 @@ export default function AdminUsersPage() {
                 <option value="ALL">전체 플랜</option>
                 <option value="MAKERS">Maker's</option>
                 <option value="BASIC">Basic</option>
+                <option value="STD_PREMIUM">학생(연간)</option>
+                <option value="STD_STANDARD">학생(월간)</option>
                 <option value="FREE">Free</option>
               </select>
               <FunnelIcon className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
@@ -203,7 +217,7 @@ export default function AdminUsersPage() {
             <div className="relative">
               <input 
                 type="text" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)}
-                placeholder="이름, 이메일, 학원 검색" 
+                placeholder="이름, 이메일, 학교/학원 검색" 
                 className="pl-9 pr-4 py-2.5 w-full sm:w-64 bg-white border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 outline-none shadow-sm"
               />
               <MagnifyingGlassIcon className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
@@ -254,8 +268,11 @@ export default function AdminUsersPage() {
                           <span className="block text-xs text-slate-400 font-bold uppercase">소속 강사</span>
                           <span className="text-lg font-bold text-slate-700">{group.instructors.length}명</span>
                         </div>
+                        {/* 더보기 아이콘 */}
                         <div className={`p-2 rounded-full transition-transform duration-200 ${isExpanded ? 'rotate-180 bg-slate-200' : 'hover:bg-slate-100'}`}>
-                          <ChevronDownIcon className="w-5 h-5 text-slate-500" />
+                          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5 text-slate-500">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
+                          </svg>
                         </div>
                       </div>
                     </div>
@@ -291,7 +308,7 @@ export default function AdminUsersPage() {
                                     </span>
                                   </td>
                                   <td className="py-3 text-slate-400 text-xs">
-                                    {inst.createdAt ? new Date(inst.createdAt.seconds * 1000).toLocaleDateString() : "-"}
+                                    {formatDate(inst.createdAt)}
                                   </td>
                                   <td className="py-3 text-right pr-4">
                                     <button 
@@ -327,18 +344,18 @@ export default function AdminUsersPage() {
               })}
             </div>
 
-            {/* 기타 회원 (미분류) 섹션 */}
+            {/* 기타 회원 (학생 포함) 섹션 */}
             {others.length > 0 && (
               <div className="mt-8">
                 <h3 className="text-sm font-bold text-slate-500 uppercase tracking-wider mb-3 px-1">
-                  기타 회원 (관리자 / 프리랜서)
+                  기타 회원 (학생 / 관리자 / 프리랜서)
                 </h3>
                 <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
                   <table className="min-w-full divide-y divide-slate-100">
                     <thead className="bg-slate-50">
                       <tr>
                         <th className="px-6 py-3 text-left text-xs font-semibold text-slate-500">회원 정보</th>
-                        <th className="px-6 py-3 text-left text-xs font-semibold text-slate-500">역할</th>
+                        <th className="px-6 py-3 text-left text-xs font-semibold text-slate-500">역할 / 소속</th>
                         <th className="px-6 py-3 text-left text-xs font-semibold text-slate-500">플랜</th>
                         <th className="px-6 py-3 text-right text-xs font-semibold text-slate-500">관리</th>
                       </tr>
@@ -358,11 +375,16 @@ export default function AdminUsersPage() {
                             </div>
                           </td>
                           <td className="px-6 py-3">
-                            <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold ${
-                              u.role === 'admin' ? 'bg-red-100 text-red-700' : 'bg-slate-100 text-slate-600'
-                            }`}>
-                              {u.role === 'admin' ? 'ADMIN' : 'Instructor (Free)'}
-                            </span>
+                            <div className="flex flex-col gap-1">
+                              <div>
+                                {u.role === 'admin' && <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-red-100 text-red-700">Admin</span>}
+                                {u.role === 'student' && <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-700">학생</span>}
+                                {(!u.role || u.role === 'instructor') && <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-slate-100 text-slate-600">Instructor (Free)</span>}
+                              </div>
+                              <p className="text-xs text-slate-500">
+                                {u.role === 'student' ? u.school || "학교 미입력" : u.academy || "소속 없음"}
+                              </p>
+                            </div>
                           </td>
                           <td className="px-6 py-3 text-sm text-slate-600">
                             {u.plan || 'FREE'}
@@ -382,7 +404,7 @@ export default function AdminUsersPage() {
           </div>
         )}
 
-        {/* --- [뷰 2] 단순 리스트 보기 (기존 테이블 유지) --- */}
+        {/* --- [뷰 2] 전체 리스트 보기 (학생 포함) --- */}
         {viewMode === 'list' && (
           <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
             <div className="overflow-x-auto">
@@ -390,7 +412,7 @@ export default function AdminUsersPage() {
                 <thead className="bg-slate-50/50">
                   <tr>
                     <th className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase">회원 정보</th>
-                    <th className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase">역할 / 학원</th>
+                    <th className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase">역할 / 소속</th>
                     <th className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase">플랜 / 코인</th>
                     <th className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase">가입일</th>
                     <th className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase">관리</th>
@@ -415,9 +437,14 @@ export default function AdminUsersPage() {
                           <div>
                             {u.role === 'admin' && <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold bg-red-100 text-red-700">Admin</span>}
                             {u.role === 'director' && <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold bg-purple-100 text-purple-700">원장</span>}
-                            {(!u.role || u.role === 'instructor') && <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold bg-slate-100 text-slate-600">강사</span>}
+                            {u.role === 'instructor' && <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold bg-slate-100 text-slate-600">강사</span>}
+                            {/* 학생 뱃지 추가 */}
+                            {u.role === 'student' && <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-700">학생</span>}
                           </div>
-                          <p className="text-sm text-slate-700">{u.academy}</p>
+                          {/* 학생이면 학교, 아니면 학원 */}
+                          <p className="text-sm text-slate-700">
+                            {u.role === 'student' ? u.school || "-" : u.academy || "-"}
+                          </p>
                         </div>
                       </td>
                       <td className="px-6 py-4">
@@ -426,6 +453,7 @@ export default function AdminUsersPage() {
                             <CreditCardIcon className="w-3.5 h-3.5 text-slate-400" />
                             <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${
                               u.plan === 'MAKERS' ? 'bg-indigo-100 text-indigo-700' :
+                              u.plan?.startsWith('STD') ? 'bg-emerald-100 text-emerald-700' : // 학생용 플랜 색상
                               u.plan === 'BASIC' ? 'bg-blue-100 text-blue-700' :
                               'bg-slate-100 text-slate-600'
                             }`}>
@@ -441,7 +469,7 @@ export default function AdminUsersPage() {
                         </div>
                       </td>
                       <td className="px-6 py-4 text-xs text-slate-500">
-                        {u.createdAt ? (u.createdAt as any).toDate?.().toLocaleDateString() || new Date(u.createdAt as any).toLocaleDateString() : "-"}
+                        {formatDate(u.createdAt)}
                       </td>
                       <td className="px-6 py-4">
                         <button 

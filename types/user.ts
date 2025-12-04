@@ -1,7 +1,8 @@
 // types/user.ts
 import { Timestamp } from "firebase/firestore";
 
-export type UserRole = 'admin' | 'director' | 'instructor';
+// [수정] 'student' 역할 추가
+export type UserRole = 'admin' | 'director' | 'instructor' | 'student';
 export type UserPlan = 
   | 'FREE' 
   | 'BASIC' 

@@ -3,6 +3,7 @@
 "use client";
 
 import StudentBottomNav from "@/components/StudentBottomNav";
+import StudentSidebar from "@/components/StudentSidebar"; // 위에서 만든 컴포넌트
 
 export default function StudentLayout({
   children,
@@ -10,20 +11,22 @@ export default function StudentLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div className="min-h-screen bg-slate-50 pb-20 md:pb-0">
-      {/* 데스크탑에서는 중앙 정렬된 모바일 뷰처럼 보여줌 (선택사항) */}
-      <div className="mx-auto max-w-md min-h-screen bg-white shadow-2xl md:my-8 md:rounded-[3rem] md:overflow-hidden md:border-8 md:border-slate-900 relative">
-        
-        {/* 상태바 영역 (데스크탑 뷰 꾸미기용) */}
-        <div className="hidden md:block absolute top-0 left-0 right-0 h-7 bg-slate-900 z-50">
-           <div className="absolute top-0 left-1/2 -translate-x-1/2 w-32 h-6 bg-slate-900 rounded-b-xl"></div>
-        </div>
+    <div className="min-h-screen bg-slate-50">
+      {/* 1. Desktop Sidebar (md 이상에서만 보임) */}
+      <StudentSidebar />
 
-        <main className="h-full overflow-y-auto scrollbar-hide pt-safe md:pt-8 bg-slate-50/50">
+      {/* 2. Main Content Area */}
+      {/* md:pl-64는 사이드바 너비만큼 왼쪽 여백 확보 */}
+      <div className="flex flex-col min-h-screen md:pl-64 transition-all duration-300">
+        
+        {/* 페이지 컨텐츠 */}
+        <main className="flex-1 pb-20 md:pb-0">
           {children}
         </main>
-        
+
+        {/* 3. Mobile Bottom Nav (md 미만에서만 보임) */}
         <StudentBottomNav />
+        
       </div>
     </div>
   );
