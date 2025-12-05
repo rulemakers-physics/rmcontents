@@ -254,19 +254,17 @@ export default function RequestPage() {
   };
   
   // 로딩 및 비로그인 UI (변경 없음)
-  if (loading) {
-    return <div className="flex min-h-screen items-center justify-center bg-gray-100">로딩 중...</div>
-  }
-  if (!user) {
-    return null;
-  }
+  if (loading) return <div className="flex min-h-full items-center justify-center">로딩 중...</div>;
+  if (!user) return null;
 
   // --- [수정된 JSX] ---
   return (
-    <div className="min-h-screen bg-gray-100 py-12 sm:py-16">
+    // [수정 1 & 2] 배경색을 Layout과 동일한 gray-50으로 변경하고, 하단 여백(pb-32) 추가
+    <div className="min-h-full w-full bg-gray-50 py-12 sm:py-16 pb-32">
       <div className="container mx-auto max-w-6xl px-4">
         
-        <h1 className="mb-8 text-center text-3xl font-bold text-gray-900">
+        {/* [수정 3] 제목 정렬을 왼쪽(text-left)으로 변경 */}
+        <h1 className="mb-8 text-left text-3xl font-bold text-gray-900">
           새 작업 요청하기
         </h1>
 
@@ -562,7 +560,7 @@ export default function RequestPage() {
 
 
               {/* 에러 메시지 및 제출 버튼 (변경 없음) */}
-              <div className="mt-8">
+              <div className="mt-8 mb-24">
                 {error && (
                   <p className="text-center text-sm text-red-600 mb-4">{error}</p>
                 )}

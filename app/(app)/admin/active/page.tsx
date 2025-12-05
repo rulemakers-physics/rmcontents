@@ -68,7 +68,7 @@ export default function AdminActiveListPage() {
   if (loading || isLoading) return <div className="p-8 text-center">로딩 중...</div>;
 
   return (
-    <div className="p-8 bg-gray-50 min-h-screen">
+    <div className="p-8 bg-gray-50 min-h-full">
       <div className="max-w-6xl mx-auto">
         
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">

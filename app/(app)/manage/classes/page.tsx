@@ -177,7 +177,7 @@ export default function ClassManagePage() {
   if (loading) return <div className="p-8 text-center">로딩 중...</div>;
 
   return (
-    <div className="p-8 bg-gray-50 min-h-screen">
+    <div className="p-8 bg-gray-50 min-h-full">
       <div className="max-w-6xl mx-auto">
         
         {/* 헤더 */}

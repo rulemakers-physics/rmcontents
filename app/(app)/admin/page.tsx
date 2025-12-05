@@ -75,7 +75,7 @@ export default function AdminDashboardPage() {
   if (!user?.isAdmin) return <div className="p-8 text-center">접근 권한이 없습니다.</div>;
 
   return (
-    <div className="p-8 space-y-8 bg-gray-50/50 min-h-screen">
+    <div className="p-8 space-y-8 bg-gray-50/50 min-h-full">
       
       {/* 1. 헤더 및 빠른 이동 */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">

@@ -163,7 +163,7 @@ export default function DashboardPage() {
   if (!user) return null; 
 
   return (
-    <div className="flex min-h-screen flex-col bg-slate-50">
+    <div className="flex min-h-full flex-col bg-slate-50">
       <FeatureTour />
       <main className="flex-grow py-12">
         <div className="container mx-auto max-w-6xl px-6">

@@ -304,7 +304,7 @@ export default function StoragePage() {
 
   return (
     <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
-      <div className="p-8 max-w-7xl mx-auto min-h-screen bg-slate-50">
+      <div className="p-8 max-w-7xl mx-auto min-h-full bg-slate-50">
         
         {/* 상단 헤더 영역 */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">

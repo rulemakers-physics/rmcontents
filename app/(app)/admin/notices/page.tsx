@@ -66,7 +66,7 @@ export default function AdminNoticesPage() {
   if (loading || !user?.isAdmin) return null;
 
   return (
-    <div className="p-8 bg-gray-50 min-h-screen">
+    <div className="p-8 bg-gray-50 min-h-full">
       <div className="max-w-5xl mx-auto">
         <div className="flex justify-between items-center mb-8">
           <div className="flex items-center gap-3">

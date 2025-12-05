@@ -130,7 +130,7 @@ function ReportsContent() {
   if (loading) return null;
 
   return (
-    <div className="p-8 bg-gray-50 min-h-screen">
+    <div className="p-8 bg-gray-50 min-h-full">
       <div className="max-w-6xl mx-auto">
         
         {/* 헤더 */}

@@ -61,7 +61,7 @@ export default function AdminBillingPage() {
   if (loading || !user?.isAdmin) return <div className="p-8 text-center">권한 확인 중...</div>;
 
   return (
-    <div className="p-8 bg-gray-50 min-h-screen">
+    <div className="p-8 bg-gray-50 min-h-full">
       <div className="max-w-7xl mx-auto">
         
         {/* 헤더 & 필터 */}

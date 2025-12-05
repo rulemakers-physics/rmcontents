@@ -76,14 +76,14 @@ export default function AdminCompletedDashboard() {
 
   if (loading || isLoading || !isAdmin) {
     return (
-      <div className="flex min-h-screen items-center justify-center">
+      <div className="flex min-h-full items-center justify-center">
         관리자 정보를 확인 중입니다...
       </div>
     );
   }
 
   return (
-    <div className="flex min-h-screen flex-col">
+    <div className="flex min-h-full flex-col">
       <main className="flex-grow bg-gray-50 py-12">
         <div className="container mx-auto max-w-5xl px-6">
           <div className="flex justify-between items-center mb-8">

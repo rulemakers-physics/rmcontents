@@ -26,7 +26,7 @@ export default function NoticesPage() {
   }, []);
 
   return (
-    <div className="max-w-4xl mx-auto p-8 min-h-screen">
+    <div className="max-w-4xl mx-auto p-8 min-h-full">
       <div className="mb-8">
         <h1 className="text-2xl font-bold text-slate-900 flex items-center gap-2">
           <MegaphoneIcon className="w-7 h-7 text-blue-600" /> 공지사항
