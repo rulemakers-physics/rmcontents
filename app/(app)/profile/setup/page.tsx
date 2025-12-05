@@ -80,7 +80,10 @@ export default function ProfileSetupPage() {
       };
 
       await setDoc(userDocRef, { ...baseData, ...additionalData }, { merge: true });
-      
+      // [추가] 서버(Functions)가 권한을 부여할 시간을 1~2초 벌어준 뒤, 토큰을 갱신합니다.
+      // 사용자는 "설정 중..." 메시지를 보게 되므로 어색하지 않습니다.
+      await new Promise(resolve => setTimeout(resolve, 2000)); 
+      await user.getIdToken(true); // true = 강제 갱신 (서버에서 받은 admin 권한을 받아옴)
       // 세션 갱신 및 리다이렉트
       await checkFirstLogin(user);
       

@@ -51,7 +51,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         const isAdmin = idTokenResult.claims.admin === true;
         // --- 기존 로직 끝 ---
 
-        const authUser: AuthUser = { ...firebaseUser, isAdmin: isAdmin };
+        const authUser = firebaseUser as AuthUser;
+        authUser.isAdmin = isAdmin;
         setUser(authUser);
       } else {
         setUser(null);
