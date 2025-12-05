@@ -266,7 +266,7 @@ export default function RequestDetailModal({ request, onClose, onSave }: Request
           )}
 
           {/* --- 폼 --- */}
-          <form onSubmit={handleSaveSubmit} className="space-y-8">
+          <div className="space-y-8">
             
             <div className="rounded-lg bg-white p-6 shadow-lg sm:p-8">
               <h2 className="flex items-center text-xl font-semibold text-gray-800">
@@ -445,7 +445,7 @@ export default function RequestDetailModal({ request, onClose, onSave }: Request
                 </div>
               </div>
             </div>
-          </form>
+          </div>
         </div>
 
         {/* --- 모달 푸터 --- */}

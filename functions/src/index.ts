@@ -57,6 +57,40 @@ export const setAdminClaimOnUserCreate = functions
     }
   });
 
+/**
+ * [신규 트리거] 프로필 설정(DB 생성) 시 관리자 이메일 체크 및 권한 부여
+ * - 상황: DB를 날리고 재가입하거나, Auth 트리거가 씹혔을 때를 대비한 2차 안전장치입니다.
+ * - users/{uid} 문서가 생성될 때 이메일을 확인하여 관리자라면 role을 강제로 'admin'으로 수정합니다.
+ */
+export const grantAdminRoleOnProfileCreate = functions
+  .runWith({ timeoutSeconds: 60 })
+  .firestore
+  .document("users/{uid}")
+  .onCreate(async (snap, context) => {
+    const newData = snap.data();
+    const uid = context.params.uid;
+
+    // 1. 이메일 도메인 확인
+    if (newData.email && newData.email.endsWith("@rulemakers.co.kr")) {
+      functions.logger.info(`[Admin Auto-Grant] 관리자 이메일 감지: ${newData.email}`);
+
+      try {
+        // 2. DB 역할(Role) 및 플랜 강제 업데이트
+        await snap.ref.update({
+          role: "admin",
+          plan: "MAKERS", // 관리자는 최고 플랜 권한을 가짐
+          isAdmin: true   // 편의상 필드 추가
+        });
+
+        // 3. Auth Token Claim도 다시 한 번 확실하게 부여 (혹시 풀렸을 경우 대비)
+        await admin.auth().setCustomUserClaims(uid, { admin: true });
+
+        functions.logger.info(`[Admin Auto-Grant] 성공: ${newData.email} -> Admin 권한 부여 완료`);
+      } catch (error) {
+        functions.logger.error(`[Admin Auto-Grant] 실패: ${newData.email}`, error);
+      }
+    }
+  });
 
 // --- [신규] 새 작업 요청 시 슬랙 알림 전송 (v1 구문) ---
 export const sendSlackNotificationOnNewRequest = functions
