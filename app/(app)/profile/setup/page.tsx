@@ -8,10 +8,12 @@ import { useAuth } from "@/context/AuthContext";
 import { db } from "@/lib/firebase";
 import { doc, setDoc, serverTimestamp } from "firebase/firestore";
 import { toast } from "react-hot-toast";
+// [수정 1] Image 컴포넌트 추가 및 불필요한 아이콘(SparklesIcon, BeakerIcon) 제거
+import Image from "next/image";
 import { 
   UserIcon, BuildingOffice2Icon, AcademicCapIcon, 
-  SparklesIcon, ArrowRightIcon, CheckCircleIcon,
-  BeakerIcon, BookOpenIcon
+  ArrowRightIcon,
+  BookOpenIcon
 } from "@heroicons/react/24/outline";
 import { UserRole } from "@/types/user";
 import { SCIENCE_UNITS } from "@/types/scienceUnits"; // 통합과학 단원 정보
@@ -68,7 +70,7 @@ export default function ProfileSetupPage() {
         grade: parseInt(grade),
         targetUnit: targetUnit, // 현재 학습 단원
         parentPhone: parentPhone,
-        plan: 'STD_STANDARD', // 학생 기본 플랜
+        plan: 'FREE', // 학생 기본 플랜
         academy: "RuleMakers Online", // 학생은 기본적으로 온라인 소속 (추후 학원 연동 가능)
       } : {
         academy: academy,
@@ -150,15 +152,24 @@ export default function ProfileSetupPage() {
 
   // --- Step 2: 정보 입력 폼 ---
   const isStudent = selectedRole === 'student';
-  const themeColor = isStudent ? "emerald" : "blue"; // 테마 색상 변수
+  // 테마 색상 변수는 유지하되, 로고 표시에는 영향을 주지 않음
 
   return (
     <div className={`min-h-screen flex flex-col items-center justify-center p-4 ${isStudent ? 'bg-emerald-50/30' : 'bg-slate-50'}`}>
       
       <div className="mb-8 text-center animate-in fade-in slide-in-from-bottom-4">
-        <div className={`inline-flex items-center justify-center w-12 h-12 rounded-xl shadow-md mb-4 text-white ${isStudent ? 'bg-emerald-500' : 'bg-blue-600'}`}>
-           {isStudent ? <BeakerIcon className="w-6 h-6" /> : <SparklesIcon className="w-6 h-6" />}
+        {/* [수정 2] 기존 아이콘 박스를 로고 이미지로 교체 */}
+        <div className="flex justify-center mb-6">
+          <Image
+            src="/images/logo.png"
+            alt="RuleMakers Logo"
+            width={180}
+            height={50}
+            className="h-12 w-auto object-contain"
+            priority
+          />
         </div>
+        
         <h1 className="text-3xl font-extrabold text-slate-900 mb-2">
           {isStudent ? "통합과학 마스터를 위한 첫 걸음" : "RuleMakers에 오신 것을 환영합니다!"}
         </h1>
@@ -167,7 +178,7 @@ export default function ProfileSetupPage() {
         </p>
       </div>
 
-      <div className="w-full max-w-md bg-white rounded-2xl shadow-xl border border-slate-100 overflow-hidden animate-in fade-in slide-in-from-bottom-8 delay-100">
+      <div className="w-full max-w-4xl bg-white rounded-2xl shadow-xl border border-slate-100 overflow-hidden animate-in fade-in slide-in-from-bottom-8 delay-100">
         <div className="w-full h-1.5 bg-slate-100">
            <div className={`w-2/3 h-full rounded-r-full ${isStudent ? 'bg-emerald-500' : 'bg-blue-600'}`}></div>
         </div>

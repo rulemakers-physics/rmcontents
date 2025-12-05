@@ -2,6 +2,8 @@
 "use client";
 
 import { useState } from "react";
+// [추가] 경로 확인을 위한 훅 import
+import { usePathname } from "next/navigation"; 
 import AppSidebar from "@/components/AppSidebar";
 import Breadcrumbs from "@/components/Breadcrumbs";
 
@@ -10,11 +12,25 @@ export default function AppLayout({
 }: {
   children: React.ReactNode;
 }) {
+  // [추가] 현재 경로 확인
+  const pathname = usePathname();
+  const isSetupPage = pathname === "/profile/setup";
+
   // 사이드바 접힘 상태 관리
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
 
   const toggleSidebar = () => setIsSidebarCollapsed(!isSidebarCollapsed);
 
+  // [추가] 프로필 셋업 페이지라면 사이드바와 헤더 없이 컨텐츠만 반환
+  if (isSetupPage) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        {children}
+      </div>
+    );
+  }
+
+  // 그 외 일반 페이지는 기존 레이아웃 유지
   return (
     <div className="flex min-h-screen bg-gray-50">
       {/* 사이드바 */}

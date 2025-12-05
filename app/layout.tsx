@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 import { AuthProvider } from "@/context/AuthContext";
 import { Toaster } from "react-hot-toast"; // [추가]
+import RouteGuard from "@/components/RouteGuard"; // 방금 만든 컴포넌트 import
 
 export const metadata: Metadata = {
   title: "RuleMakers",
@@ -18,8 +19,9 @@ export default function RootLayout({
     <html lang="ko">
       <body className="flex min-h-screen flex-col font-sans">
         <AuthProvider>
-          {children}
-          {/* [추가] 토스트 알림 위치 및 옵션 설정 */}
+          <RouteGuard>
+            {children}
+          </RouteGuard>
           <Toaster 
             position="top-center" 
             toastOptions={{

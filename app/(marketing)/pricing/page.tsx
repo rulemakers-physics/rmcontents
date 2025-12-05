@@ -217,7 +217,7 @@ export default function PricingPage() {
                     : 'text-slate-500 hover:text-slate-900'
                 }`}
               >
-                <AcademicCapIcon className="w-4 h-4" /> 학생용 (신규)
+                <AcademicCapIcon className="w-4 h-4" /> 학생용
               </button>
             </div>
           </div>
