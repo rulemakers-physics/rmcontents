@@ -2,10 +2,16 @@
 
 "use client";
 
-import React, { forwardRef, useState } from "react";
+import React, { forwardRef, useMemo } from "react";
 import { ExamTemplateStyle } from "@/types/examTemplates";
 import { ExclamationCircleIcon } from "@heroicons/react/24/outline";
 import ReportIssueModal from "./ReportIssueModal";
+
+// --- [상수 설정] A4 및 레이아웃 (96DPI 기준) ---
+const A4_HEIGHT_PX = 1123; // A4 높이 (297mm)
+const PADDING_X_MM = 20; // 좌우 여백
+// 이미지 스케일링 팩터 (원본 해상도가 클 경우 화면/출력물 컬럼 너비에 맞춰 줄임)
+const IMG_SCALE_FACTOR = 0.28; 
 
 export interface ExamProblem {
   id: string;
@@ -17,272 +23,377 @@ export interface ExamProblem {
   difficulty?: string;
   majorTopic?: string;
   minorTopic?: string;
+  // [신규] DB에서 가져온 높이 정보
+  height?: number; 
+  solutionHeight?: number;
 }
 
 export interface PrintOptions {
   questions: boolean;
   answers: boolean;
   solutions: boolean;
+  // [신규] 사용자 지정 패딩
+  questionPadding: number;
+  solutionPadding: number;
 }
 
 interface ExamPaperLayoutProps {
-  pages: ExamProblem[][];
+  problems: ExamProblem[]; 
   title: string;
   instructor: string;
   template: ExamTemplateStyle;
   printOptions: PrintOptions;
-  // [신규] 교사용 지도서 모드 여부
-  isTeacherVersion?: boolean; 
+  isTeacherVersion?: boolean;
 }
 
-const getCircledNum = (val?: string | null) => {
-  if (!val) return "-";
-  const num = parseInt(val, 10);
-  if (!isNaN(num) && num >= 1 && num <= 15) return String.fromCharCode(9311 + num);
-  return val;
-};
+// --- [알고리즘] 문항 분배 함수 ---
+function distributeItems(
+  items: ExamProblem[],
+  type: 'question' | 'solution',
+  options: {
+    pageHeight: number;
+    headerHeightFirst: number; // 1페이지 헤더 높이
+    headerHeightNormal: number; // 2페이지부터 헤더 높이
+    footerHeight: number;
+    paddingTop: number;
+    paddingBottom: number;
+    itemGap: number; // 문항 간 간격
+  }
+) {
+  // [안전 장치] items가 undefined/null인 경우 빈 배열 반환하여 에러 방지
+  if (!items || items.length === 0) return [];
+
+  // 3차원 배열: Pages -> Columns(2) -> Items
+  const pages: ExamProblem[][][] = []; 
+  
+  let currentPageIdx = 0;
+  let currentColIdx = 0; // 0: 좌측, 1: 우측
+  let currentY = 0;
+
+  // 새 페이지 생성 헬퍼
+  const createNewPage = () => {
+    pages.push([[], []]); // 좌/우 컬럼 초기화
+    currentPageIdx = pages.length - 1;
+    currentColIdx = 0;
+    
+    // 헤더 높이만큼 시작점 확보
+    const hHeight = currentPageIdx === 0 ? options.headerHeightFirst : options.headerHeightNormal;
+    currentY = options.paddingTop + hHeight;
+  };
+
+  // 첫 페이지 시작
+  createNewPage();
+
+  items.forEach((item) => {
+    // 1. 아이템의 렌더링 높이 추산
+    // (이전 답변에서 설정한 기본값 유지)
+    const estimatedDefaultHeight = 200; 
+    const rawHeight = type === 'question' 
+      ? (item.height ? item.height * IMG_SCALE_FACTOR : estimatedDefaultHeight)
+      : (item.solutionHeight ? item.solutionHeight * IMG_SCALE_FACTOR : 100);
+    
+    // 2. 현재 페이지의 가용 높이 (전체 - 푸터 - 하단여백)
+    const maxContentY = options.pageHeight - options.footerHeight - options.paddingBottom;
+
+    // [핵심 수정 구간] ---------------------------------------------------
+    // 기존: if (currentY + rawHeight + options.itemGap > maxContentY) 
+    // 수정: 간격(Gap)을 제외하고, "순수 콘텐츠 높이(rawHeight)"만으로 공간 체크
+    
+    if (currentY + rawHeight > maxContentY) {
+      // 현재 단(Column)이 꽉 참 -> 다음 단으로 이동
+      currentColIdx++;
+      
+      const hHeight = currentPageIdx === 0 ? options.headerHeightFirst : options.headerHeightNormal;
+      currentY = options.paddingTop + hHeight;
+
+      if (currentColIdx > 1) {
+        createNewPage();
+      }
+    }
+    // ------------------------------------------------------------------
+
+    // 4. 배치 및 Y축 증가
+    if (pages[currentPageIdx] && pages[currentPageIdx][currentColIdx]) {
+        pages[currentPageIdx][currentColIdx].push(item);
+    }
+    
+    // 배치가 끝난 후, 다음 아이템을 위해 "높이 + 간격"을 더해줌
+    currentY += (rawHeight + options.itemGap);
+  });
+
+  return pages;
+}
 
 const ExamPaperLayout = forwardRef<HTMLDivElement, ExamPaperLayoutProps>(
-  ({ pages, title, instructor, template, printOptions, isTeacherVersion }, ref) => {
+  ({ problems = [], title, instructor, template, printOptions, isTeacherVersion }, ref) => {
     
-    const [reportTarget, setReportTarget] = useState<ExamProblem | null>(null);
-    const allProblems = pages.flat().sort((a, b) => a.number - b.number);
+    const [reportTarget, setReportTarget] = React.useState<ExamProblem | null>(null);
 
-    // 헤더 렌더링 (페이지별 분기 처리)
-    const renderHeader = (pageNum: number, sectionTitle?: string) => {
-      const displayTitle = sectionTitle || title;
+    // 템플릿 값 파싱 (대략적인 px 변환)
+    const headerH = parseInt(template.headerHeight) || 100; 
+    const paddingY = 60; // 상하 여백 (px)
 
-      // 2페이지부터는 공간 확보를 위해 심플 헤더 적용
-      if (pageNum > 0 && !sectionTitle) {
+    // 1. [계산] 문제지 페이지네이션
+const questionPages = useMemo(() => {
+  if (!printOptions.questions) return [];
+  
+  // [핵심] 실제 푸터 높이는 40px이지만, 계산할 때는 80~100px로 잡아서
+  // 문항이 바닥에 닿기 전에 미리 다음 단으로 넘기게 만듭니다.
+  const SAFE_MARGIN = 50; 
+
+  return distributeItems(problems, 'question', {
+    pageHeight: A4_HEIGHT_PX,
+    headerHeightFirst: headerH + 20, 
+    headerHeightNormal: 50, 
+    
+    // 기존 40에서 -> (40 + SAFE_MARGIN)으로 변경
+    footerHeight: 40 + SAFE_MARGIN, 
+    
+    paddingTop: paddingY,
+    paddingBottom: paddingY, // 여백도 그대로 유지
+    itemGap: printOptions.questionPadding
+  });
+}, [problems, printOptions.questions, printOptions.questionPadding, headerH]);
+
+    // 2. [계산] 해설지 페이지네이션
+    const solutionPages = useMemo(() => {
+      if (!printOptions.solutions) return [];
+      
+      // 해설이 있는 문항만 필터링
+      const solutionItems = (problems || []).filter(p => p.solutionUrl || p.content);
+      
+      return distributeItems(solutionItems, 'solution', {
+        pageHeight: A4_HEIGHT_PX,
+        headerHeightFirst: 70, // 해설지 헤더는 작게
+        headerHeightNormal: 50,
+        footerHeight: 40,
+        paddingTop: paddingY,
+        paddingBottom: paddingY,
+        itemGap: printOptions.solutionPadding
+      });
+    }, [problems, printOptions.solutions, printOptions.solutionPadding]);
+
+
+    // --- 헤더 렌더링 ---
+    const renderHeader = (pageNum: number, isSolution = false) => {
+      const displayTitle = isSolution ? `${title} [정답 및 해설]` : title;
+
+      // 2페이지 이후 or 해설지 헤더 (심플형)
+      if (pageNum > 0 || isSolution) {
          return (
-           <div className="w-full mb-2 border-b border-slate-400 pb-1 flex justify-between items-end shrink-0 h-10 print:h-10">
-              <h1 className="text-sm font-bold text-slate-600 truncate max-w-[70%]">{displayTitle}</h1>
-              <div className="flex items-center gap-2">
-                <span className="text-xs text-slate-400">RuleMakers</span>
-                <span className="text-xs font-bold text-slate-500 border-l border-slate-300 pl-2">제 {pageNum + 1} 면</span>
+           <div className="w-full h-[50px] border-b border-gray-400 flex justify-between items-end pb-1 mb-2 shrink-0">
+              <span className="text-sm font-bold text-slate-600 truncate max-w-[70%]">
+                {displayTitle}
+              </span>
+              <div className="flex items-center gap-2 text-xs text-slate-400">
+                <span>RuleMakers</span>
+                <span className="pl-2 border-l border-slate-300 font-bold text-slate-500">
+                  {pageNum + 1}
+                </span>
               </div>
            </div>
          );
       }
 
-      // 1페이지 (메인 헤더) - 템플릿 스타일 적용
-      if (template.headerType === 'box-table') {
-        return (
-          <div className="w-full mb-4 border-b-2 border-slate-900 pb-2 flex flex-col justify-between shrink-0" style={{ height: template.headerHeight, borderColor: template.borderColor }}>
-             <div className="flex justify-between items-end mb-2">
-                <div>
-                   <span className="text-xs text-slate-500 font-bold tracking-widest mb-1 block">2025학년도 1학기 대비</span>
-                   <h1 className={`font-extrabold tracking-tight text-slate-900 ${template.titleSize}`}>{displayTitle}</h1>
-                </div>
-                {template.showScoreBox && (
-                  <div className="flex border border-slate-800 text-sm">
-                     <div className="bg-slate-100 px-3 py-1 border-r border-slate-800 font-bold flex items-center">성명</div>
-                     <div className="w-20 border-r border-slate-800"></div>
-                     <div className="bg-slate-100 px-3 py-1 border-r border-slate-800 font-bold flex items-center">점수</div>
-                     <div className="w-16"></div>
-                  </div>
-                )}
-             </div>
-             <div className="flex justify-between items-center text-xs font-medium text-slate-500 bg-slate-50 px-2 py-1 rounded">
-                <span>{instructor} 선생님</span>
-                <span>RuleMakers</span>
-             </div>
-          </div>
-        );
-      }
-
-      // 기본 심플형 메인 헤더
+      // 1페이지 메인 헤더 (템플릿 적용)
       return (
-        <div className="w-full mb-6 flex justify-between items-end border-b-2 pb-2 shrink-0" style={{ height: template.headerHeight, borderColor: template.borderColor }}>
-           <div className="text-center w-full relative">
-              <h1 className={`font-serif font-black ${template.titleSize} mb-2`}>{displayTitle}</h1>
-              <div className="absolute right-0 bottom-0 text-sm font-bold text-slate-600">
-                {sectionTitle ? sectionTitle : `제 ${pageNum + 1} 교시`}
+        <div 
+          className="w-full border-b-2 border-slate-900 pb-2 mb-4 flex flex-col justify-end shrink-0" 
+          style={{ height: template.headerHeight, borderColor: template.borderColor }}
+        >
+           <div className="flex justify-between items-end">
+              <div>
+                 <span className="text-xs text-slate-500 font-bold tracking-widest mb-1 block">
+                   2025학년도 1학기 대비
+                 </span>
+                 <h1 className={`font-extrabold tracking-tight text-slate-900 ${template.titleSize}`}>
+                   {title}
+                 </h1>
               </div>
+              
+              {/* 점수 박스 (템플릿 옵션) */}
+              {template.showScoreBox && (
+                <div className="flex border border-slate-800 text-xs">
+                   <div className="bg-slate-50 px-2 py-1 border-r border-slate-800 font-bold flex items-center">성명</div>
+                   <div className="w-16 border-r border-slate-800"></div>
+                   <div className="bg-slate-50 px-2 py-1 border-r border-slate-800 font-bold flex items-center">점수</div>
+                   <div className="w-12"></div>
+                </div>
+              )}
+           </div>
+           
+           <div className="flex justify-between items-center mt-2 text-xs font-medium text-slate-500">
+              <span>{instructor} 선생님</span>
+              <span>RuleMakers</span>
            </div>
         </div>
       );
     };
 
-    // 문제 번호 렌더링
-    const renderProblemNumber = (num: number) => {
-      if (template.numberStyle === 'box') {
-        return (
-          <span className="flex-shrink-0 w-6 h-6 flex items-center justify-center text-xs font-bold text-white rounded mr-2 mt-0.5" 
-                style={{ backgroundColor: template.borderColor }}>
-            {num}
-          </span>
-        );
-      }
-      if (template.numberStyle === 'circle') {
-        return (
-          <span className="flex-shrink-0 w-6 h-6 flex items-center justify-center text-sm font-extrabold border-2 rounded-full mr-2 leading-none"
-                style={{ borderColor: template.borderColor, color: template.borderColor }}>
-            {num}
-          </span>
-        );
-      }
-      return (
-        <span className="flex-shrink-0 text-lg font-extrabold mr-2 leading-none" style={{ color: template.borderColor }}>
-          {num}.
-        </span>
-      );
-    };
-
     return (
       <>
+        {/* 인쇄 대상 컨테이너 */}
         <div ref={ref} className="w-full bg-gray-100 flex flex-col items-center gap-10 py-10 print:p-0 print:bg-white print:gap-0">
           
-          {/* === 1. 문제지 === */}
-          {printOptions.questions && pages.map((pageProblems, pageIndex) => (
+          {/* === [1] 문제지 영역 === */}
+          {questionPages.map((columns, pageIdx) => (
             <div
-              key={`page-${pageIndex}`}
-              className="bg-white shadow-xl print:shadow-none relative overflow-hidden flex flex-col"
+              key={`q-page-${pageIdx}`}
+              className="bg-white shadow-xl print:shadow-none relative flex flex-col overflow-hidden break-after-page"
               style={{
                 width: "210mm",
                 height: "297mm",
-                padding: template.contentPadding,
-                fontFamily: template.fontFamily,
-                pageBreakAfter: "always"
+                padding: `0 ${PADDING_X_MM}mm`,
+                pageBreakAfter: "always",
+                fontFamily: template.fontFamily
               }}
             >
               {/* 워터마크 */}
               {template.watermarkOpacity > 0 && (
                  <div className="absolute inset-0 flex items-center justify-center pointer-events-none select-none z-0" style={{ opacity: template.watermarkOpacity }}>
-                   <span className="text-9xl font-black text-slate-900 transform -rotate-45">RuleMakers</span>
+                   <span className="text-9xl font-black text-slate-900 transform -rotate-45 opacity-10">RuleMakers</span>
                  </div>
               )}
 
-              {/* 헤더 */}
-              <div className="relative z-10 shrink-0">
-                {renderHeader(pageIndex)}
-              </div>
-              
-              {/* 문제 배치 그리드 */}
-              <div
-                className="relative z-10 flex-1 grid grid-cols-2 grid-rows-2 grid-flow-col"
-                style={{
-                  columnGap: template.columnGap,
-                  rowGap: '2rem',
-                }}
-              >
-                {Array.from({ length: 4 }).map((_, slotIndex) => {
-                  const prob = pageProblems[slotIndex];
-                  if (!prob) return <div key={`empty-${slotIndex}`} />; 
+              {renderHeader(pageIdx, false)}
 
-                  return (
-                    <div 
-                      key={prob.id} 
-                      className={`relative group flex items-start h-full overflow-hidden ${template.problemGap}`}
-                    >
-                      {/* 오류 신고 버튼 */}
-                      <button
-                        onClick={() => setReportTarget(prob)}
-                        className="absolute top-0 right-0 p-1.5 text-slate-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity print:hidden z-20 cursor-pointer"
-                        title="오류 신고"
+              {/* 2단 컬럼 바디 */}
+              <div className="flex-1 flex gap-[10mm] relative z-10">
+                {columns.map((items, colIdx) => (
+                  <div key={colIdx} className="flex-1 flex flex-col h-full">
+                    {items.map((prob) => (
+                      <div 
+                        key={prob.id} 
+                        className="relative w-full group break-inside-avoid"
+                        style={{ marginBottom: printOptions.questionPadding }}
                       >
-                        <ExclamationCircleIcon className="w-5 h-5" />
-                      </button>
+                        {/* 오류 신고 버튼 (화면에서만 보임) */}
+                        <button
+                          onClick={() => setReportTarget(prob)}
+                          className="absolute -top-1 right-0 text-slate-200 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity print:hidden z-20"
+                        >
+                          <ExclamationCircleIcon className="w-4 h-4" />
+                        </button>
 
-                      {renderProblemNumber(prob.number)}
-                      
-                      {/* [수정] relative 추가 */}
-                      <div className="flex-1 h-full relative">
-                        {prob.imageUrl ? (
-                          /* eslint-disable-next-line @next/next/no-img-element */
-                          <img 
-                            src={prob.imageUrl} 
-                            alt={`Problem ${prob.number}`} 
-                            className="w-full h-full object-contain object-top" 
-                          />
-                        ) : (
-                          <p className={`whitespace-pre-wrap leading-relaxed ${template.problemFontSize} text-slate-800 font-medium`}>
-                            {prob.content}
-                          </p>
-                        )}
-                        
-                        {prob.difficulty === '킬러' && (
-                          <span className="inline-block mt-1 px-1.5 py-0.5 text-[10px] font-bold text-red-600 border border-red-200 bg-red-50 rounded">
-                            고난도
-                          </span>
-                        )}
+                        <div className="flex items-start">
+                           {/* 문제 번호 */}
+                           <span 
+                             className="font-extrabold text-lg mr-2 leading-none shrink-0" 
+                             style={{ color: template.borderColor }}
+                           >
+                             {prob.number}.
+                           </span>
+                           
+                           {/* 문제 본문 (이미지 or 텍스트) */}
+                           <div className="flex-1">
+                              {prob.imageUrl ? (
+                                /* eslint-disable-next-line @next/next/no-img-element */
+                                <img 
+                                  src={prob.imageUrl} 
+                                  alt={`Problem ${prob.number}`} 
+                                  className="w-full h-auto object-contain" 
+                                />
+                              ) : (
+                                <p className={`whitespace-pre-wrap leading-relaxed ${template.problemFontSize} text-slate-800`}>
+                                  {prob.content}
+                                </p>
+                              )}
+                           </div>
+                        </div>
 
-                        {/* [신규] 교사용 지도서 오버레이 */}
+                        {/* 교사용 오버레이 */}
                         {isTeacherVersion && (
-                          <div className="absolute inset-0 z-10 flex flex-col justify-end p-2 pointer-events-none">
-                            {/* 정답 표시 */}
-                            <div className="absolute bottom-0 right-0 p-2">
-                              <span className="text-red-600 font-extrabold text-lg opacity-90 border-2 border-red-600 rounded-full w-8 h-8 flex items-center justify-center bg-white/60 shadow-sm">
-                                {prob.answer || "?"}
+                           <div className="absolute bottom-0 right-0 z-10 pointer-events-none select-none print:block">
+                              <span className="text-red-600 font-bold opacity-60 text-sm border border-red-200 bg-white/80 px-1 rounded">
+                                답: {prob.answer}
                               </span>
-                            </div>
-                            {/* 수업 팁 (티칭 포인트) */}
-                            <div className="mt-auto mr-14 mb-1">
-                              <div className="inline-block bg-red-50/90 border border-red-200 rounded px-2 py-1 text-xs text-red-600 font-bold backdrop-blur-sm shadow-sm">
-                                💡 Teaching Point <br/>
-                                <span className="font-normal text-red-500">
-                                  [{prob.difficulty}] {prob.minorTopic || "단원 미분류"}
-                                </span>
-                              </div>
-                            </div>
-                          </div>
+                           </div>
                         )}
                       </div>
-                    </div>
-                  );
-                })}
+                    ))}
+                  </div>
+                ))}
               </div>
 
               {/* 푸터 */}
-              <div className="h-8 flex justify-center items-center relative border-t border-slate-200 mt-2 shrink-0">
-                 <span className="font-serif text-sm text-slate-400 font-bold">- {pageIndex + 1} -</span>
-                 <span className="absolute right-0 text-[15px] text-slate-500">R&D by RuleMakers</span>
+              <div className="absolute bottom-0 left-0 w-full h-[40px] flex justify-center items-center border-t border-gray-200 text-xs text-gray-400 z-20 bg-white">
+                 RuleMakers - {pageIdx + 1} -
               </div>
             </div>
           ))}
 
-          {/* === 2. 빠른 정답표 === */}
-          {printOptions.answers && allProblems.length > 0 && (
-             <div className="bg-white shadow-xl print:shadow-none relative overflow-hidden" 
-                  style={{ width: "210mm", height: "297mm", padding: template.contentPadding, fontFamily: template.fontFamily, pageBreakAfter: "always" }}>
-                <div className="border-b-2 border-black pb-4 mb-8">
-                   <h2 className="text-3xl font-extrabold text-slate-900">빠른 정답</h2>
-                   <p className="text-sm text-slate-500 mt-2">채점용으로 활용하세요.</p>
+          {/* === [2] 정답표 (옵션) === */}
+          {printOptions.answers && problems.length > 0 && (
+             <div className="bg-white shadow-xl print:shadow-none relative flex flex-col" 
+                  style={{ width: "210mm", height: "297mm", padding: `0 ${PADDING_X_MM}mm`, pageBreakAfter: "always" }}>
+                
+                <div className="h-[80px] flex items-center border-b-2 border-black mb-8">
+                   <h2 className="text-2xl font-extrabold text-slate-900">빠른 정답표</h2>
                 </div>
+
                 <div className="grid grid-cols-5 gap-4 content-start">
-                   {allProblems.map((prob) => (
-                     <div key={prob.id} className="flex justify-between items-center p-2 border-b border-gray-200">
-                        <span className="font-bold text-slate-400 text-sm">{String(prob.number).padStart(2, '0')}</span>
-                        <span className="font-extrabold text-slate-900 text-lg">{getCircledNum(prob.answer)}</span>
+                   {problems.sort((a,b) => a.number - b.number).map((prob) => (
+                     <div key={prob.id} className="flex justify-between items-center p-2 border-b border-gray-200 text-sm">
+                        <span className="font-bold text-slate-500">{String(prob.number).padStart(2, '0')}</span>
+                        <span className="font-extrabold text-slate-900 text-base">{prob.answer}</span>
                      </div>
                    ))}
                 </div>
              </div>
           )}
 
-          {/* === 3. 상세 해설 === */}
-          {printOptions.solutions && allProblems.length > 0 && (
-            <div className="bg-white shadow-xl print:shadow-none relative overflow-visible"
-                 style={{ width: "210mm", minHeight: "297mm", padding: template.contentPadding, fontFamily: template.fontFamily, height: "auto" }}>
-              
-              {renderHeader(0, "상세 해설")}
+          {/* === [3] 해설지 영역 === */}
+          {solutionPages.map((columns, pageIdx) => (
+            <div
+              key={`s-page-${pageIdx}`}
+              className="bg-white shadow-xl print:shadow-none relative flex flex-col overflow-hidden break-after-page"
+              style={{
+                width: "210mm",
+                height: "297mm",
+                padding: `0 ${PADDING_X_MM}mm`,
+                pageBreakAfter: "always",
+                fontFamily: template.fontFamily
+              }}
+            >
+              {renderHeader(pageIdx, true)}
 
-              <div className="w-full grid grid-cols-2 items-start" style={{ gap: template.columnGap, rowGap: '2rem' }}>
-                {allProblems.filter(p => p.solutionUrl).map((prob) => (
-                  <div key={prob.id} className="break-inside-avoid w-full border rounded-xl overflow-hidden shadow-sm" style={{ pageBreakInside: "avoid", borderColor: '#e2e8f0' }}>
-                     <div className="bg-slate-50 px-3 py-2 border-b border-slate-100 flex items-center justify-between">
-                        <span className="font-bold text-sm text-slate-700">{prob.number}번 해설</span>
-                        <span className="text-[10px] bg-white border px-1.5 py-0.5 rounded text-slate-400">{prob.difficulty}</span>
-                     </div>
-                     <div className="p-2 bg-white">
-                        {/* eslint-disable-next-line @next/next/no-img-element */ }
-                        <img src={prob.solutionUrl!} alt={`해설-${prob.number}`} className="w-full object-contain" />
-                     </div>
+              <div className="flex-1 flex gap-[10mm] relative z-10 mt-2">
+                {columns.map((items, colIdx) => (
+                  <div key={colIdx} className="flex-1 flex flex-col h-full">
+                    {items.map((prob) => (
+                      <div 
+                        key={prob.id} 
+                        className="w-full mb-0 border-b border-dashed border-gray-200 pb-2 last:border-0 break-inside-avoid"
+                        style={{ marginBottom: printOptions.solutionPadding }}
+                      >
+                        <div className="flex items-center mb-1 gap-2">
+                           <span className="text-xs font-bold bg-gray-100 px-2 py-0.5 rounded text-slate-700">
+                             {prob.number}번
+                           </span>
+                           <span className="text-xs font-bold text-slate-500">
+                             정답: {prob.answer}
+                           </span>
+                        </div>
+                        <div className="text-sm text-gray-700 mt-1">
+                           {prob.solutionUrl ? (
+                             /* eslint-disable-next-line @next/next/no-img-element */
+                             <img src={prob.solutionUrl} alt="해설" className="w-full h-auto object-contain" />
+                           ) : (
+                             <p className="text-xs text-slate-400 italic">해설 이미지가 없습니다.</p>
+                           )}
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 ))}
               </div>
+
+              <div className="absolute bottom-0 left-0 w-full h-[40px] flex justify-center items-center border-t border-gray-200 text-xs text-gray-400 z-20 bg-white">
+                 - {pageIdx + 1} (정답 및 해설) -
+              </div>
             </div>
-          )}
+          ))}
+
         </div>
 
         {/* 오류 신고 모달 */}

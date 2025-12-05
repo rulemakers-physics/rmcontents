@@ -21,6 +21,8 @@ export interface DBProblem {
   imgUrl: string;
   solutionUrl?: string;
   answer?: string;
+  imgHeight?: number;      
+  solutionHeight?: number;
   // [신규] 유사 문항 리스트 필드 추가
   similarProblems?: SimilarProblemInfo[]; 
   createdAt: any;

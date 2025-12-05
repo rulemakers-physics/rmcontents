@@ -90,5 +90,6 @@ scripts/upload_bulk.js
 scripts/delete_bulk.js
 scripts/reset_beta_data.js
 scripts/force_delete_requests.js
+scripts/update_image_heights.js
 # 혹시 모를 키 파일 누락 방지 (중복이어도 안전함)
 scripts/serviceAccountKey.json
