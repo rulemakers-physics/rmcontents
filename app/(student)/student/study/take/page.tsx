@@ -64,7 +64,8 @@ export default function ExamTakePage() {
         const docSnap = await getDoc(docRef);
 
         if (docSnap.exists()) {
-          const data = docSnap.data() as StudentExam;
+          // [수정됨] Omit을 사용하여 data 내부에 id가 없음을 명시하여 충돌 방지
+          const data = docSnap.data() as Omit<StudentExam, "id">;
           
           // 이미 완료된 시험이면 리포트 페이지로 리다이렉트
           if (data.status === 'completed') {
@@ -73,6 +74,7 @@ export default function ExamTakePage() {
             return;
           }
 
+          // 이제 data에는 id가 없으므로 여기서 id를 병합해도 충돌 경고가 발생하지 않음
           setExam({ id: docSnap.id, ...data });
           
           // 실전 모드일 때만 타이머 설정 (문항당 2분)

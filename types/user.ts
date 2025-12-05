@@ -44,6 +44,10 @@ export interface UserData {
   role: UserRole;
   school?: string;
   ownerId?: string;
+  // 학생 전용 필드 (추가됨)
+  grade?: number;       // 학년
+  targetUnit?: string;  // 집중 학습 단원
+  parentPhone?: string; // 부모님 연락처
   plan: UserPlan;
   coins: number;
   

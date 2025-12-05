@@ -1,5 +1,3 @@
-// app/(student)/student/report/page.tsx
-
 "use client";
 
 import { useEffect, useState, useRef, useMemo } from "react";
@@ -33,9 +31,8 @@ export default function ReportDashboard() {
   const [history, setHistory] = useState<ExamHistory[]>([]);
   const [loading, setLoading] = useState(true);
   
-  // PDF 출력용
+  // PDF 출력용 Ref
   const printRef = useRef<HTMLDivElement>(null);
-  const [wrongAnswersForPdf, setWrongAnswersForPdf] = useState<any[]>([]);
 
   useEffect(() => {
     if (!user) return;
@@ -60,7 +57,7 @@ export default function ReportDashboard() {
     fetchHistory();
   }, [user]);
 
-  // 1. [분석] 레이더 차트 데이터 가공 (대단원별 정답률)
+  // 1. [분석] 레이더 차트 데이터 가공
   const radarData = useMemo(() => {
     const stats: Record<string, { total: number, correct: number }> = {};
     
@@ -75,41 +72,47 @@ export default function ReportDashboard() {
 
     return Object.entries(stats).map(([subject, data]) => ({
       subject,
-      score: Math.round((data.correct / data.total) * 100), // 100점 만점 환산
+      score: Math.round((data.correct / data.total) * 100),
       fullMark: 100
-    })).slice(0, 6); // 차트 가독성을 위해 상위 6개만 (실제론 다 보여줘도 됨)
+    })).slice(0, 6);
   }, [history]);
 
-  // 2. [PDF] 오답노트 출력 핸들러
-  const handlePrintWrongNotes = useReactToPrint({
+  // 2. [PDF] 오답노트 데이터 미리 준비 (useMemo)
+  // 렌더링 시점에 미리 계산하여 Hidden Div에 뿌려둠 -> 출력 시 바로 사용
+  const wrongAnswersForPdf = useMemo(() => {
+    // 모든 시험에서 틀린 문제만 수집
+    const allWrongProblems = history.flatMap(exam => 
+      exam.problems.filter(p => !p.isCorrect).map(p => ({
+        ...p,
+        id: p.problemId,
+        answer: p.answer || null,
+        imageUrl: p.imgUrl || null,
+        solutionUrl: null
+      }))
+    );
+
+    // 4문제씩 페이지네이션
+    const pages = [];
+    for (let i = 0; i < allWrongProblems.length; i += 4) {
+      pages.push(allWrongProblems.slice(i, i + 4));
+    }
+    return pages;
+  }, [history]);
+
+  // 3. [PDF] 출력 훅 설정 (contentRef 사용)
+  // @ts-ignore: 라이브러리 타입 정의 충돌 방지
+  const triggerPrint = useReactToPrint({
     contentRef: printRef,
     documentTitle: "나만의_오답노트",
-    onBeforeGetContent: async () => {
-      // 모든 시험에서 틀린 문제만 수집
-      const allWrongProblems = history.flatMap(exam => 
-        exam.problems.filter(p => !p.isCorrect).map(p => ({
-          ...p,
-          id: p.problemId, // ExamPaperLayout 호환
-          answer: p.answer || null,
-          imageUrl: p.imgUrl || null,
-          solutionUrl: null // 해설은 일단 제외 (옵션 가능)
-        }))
-      );
-
-      if (allWrongProblems.length === 0) {
-        toast.error("틀린 문제가 없습니다. 완벽합니다!");
-        return Promise.reject();
-      }
-
-      // 4문제씩 페이지네이션 (ExamPaperLayout 호환)
-      const pages = [];
-      for (let i = 0; i < allWrongProblems.length; i += 4) {
-        pages.push(allWrongProblems.slice(i, i + 4));
-      }
-      setWrongAnswersForPdf(pages);
-      await new Promise(resolve => setTimeout(resolve, 500)); // 렌더링 대기
-    }
   });
+
+  const handlePrintClick = () => {
+    if (wrongAnswersForPdf.length === 0) {
+      toast.error("틀린 문제가 없습니다. 완벽합니다!");
+      return;
+    }
+    if (triggerPrint) triggerPrint();
+  };
 
   if (loading) return <div className="p-10 text-center text-slate-400">데이터 분석 중...</div>;
 
@@ -122,7 +125,7 @@ export default function ReportDashboard() {
           <p className="text-slate-500">약점을 분석하고 오답노트를 만들어보세요.</p>
         </div>
         <button 
-          onClick={() => handlePrintWrongNotes && handlePrintWrongNotes()}
+          onClick={handlePrintClick}
           className="flex items-center gap-2 px-5 py-2.5 bg-slate-900 text-white rounded-xl font-bold hover:bg-slate-800 transition-all shadow-lg active:scale-95"
         >
           <PrinterIcon className="w-5 h-5" /> 오답노트 PDF 출력
@@ -227,6 +230,7 @@ export default function ReportDashboard() {
       </div>
 
       {/* [Hidden] 오답노트 출력용 컴포넌트 */}
+      {/* display: none으로 숨겨져 있지만, wrongAnswersForPdf 데이터가 바뀌면 리렌더링되어 최신 상태 유지 */}
       <div style={{ display: "none" }}>
         <ExamPaperLayout
           ref={printRef}
