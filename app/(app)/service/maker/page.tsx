@@ -439,7 +439,7 @@ function ExamBuilderContent() {
                          <span className="font-bold text-blue-600">{printOptions.questionPadding}</span>
                       </div>
                       <input 
-                        type="range" min="100" max="500" step="50" 
+                        type="range" min="10" max="100" step="5" 
                         value={printOptions.questionPadding} 
                         onChange={(e) => setPrintOptions(prev => ({...prev, questionPadding: Number(e.target.value)}))}
                         className="w-full h-1.5 bg-gray-300 rounded-lg appearance-none cursor-pointer accent-blue-600" 

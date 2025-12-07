@@ -86,39 +86,37 @@ function distributeItems(
 
   items.forEach((item) => {
     // 1. 아이템의 렌더링 높이 추산
-    // (이전 답변에서 설정한 기본값 유지)
-    const estimatedDefaultHeight = 200; 
+    // DB값이 있으면 스케일 적용, 없으면 기본값(텍스트 문항 등) 150px/100px + 여유분
     const rawHeight = type === 'question' 
-      ? (item.height ? item.height * IMG_SCALE_FACTOR : estimatedDefaultHeight)
+      ? (item.height ? item.height * IMG_SCALE_FACTOR : 150)
       : (item.solutionHeight ? item.solutionHeight * IMG_SCALE_FACTOR : 100);
     
+    // 실제 차지하는 높이 = 컨텐츠 높이 + 사용자 지정 패딩
+    const itemTotalHeight = rawHeight + options.itemGap;
+
     // 2. 현재 페이지의 가용 높이 (전체 - 푸터 - 하단여백)
     const maxContentY = options.pageHeight - options.footerHeight - options.paddingBottom;
 
-    // [핵심 수정 구간] ---------------------------------------------------
-    // 기존: if (currentY + rawHeight + options.itemGap > maxContentY) 
-    // 수정: 간격(Gap)을 제외하고, "순수 콘텐츠 높이(rawHeight)"만으로 공간 체크
-    
-    if (currentY + rawHeight > maxContentY) {
+    // 3. 넘침 체크
+    if (currentY + itemTotalHeight > maxContentY) {
       // 현재 단(Column)이 꽉 참 -> 다음 단으로 이동
       currentColIdx++;
       
+      // 해당 페이지의 헤더 높이 다시 계산 (Y축 초기화)
       const hHeight = currentPageIdx === 0 ? options.headerHeightFirst : options.headerHeightNormal;
       currentY = options.paddingTop + hHeight;
 
+      // 만약 2단(0, 1)을 넘어 2가 되면 -> 다음 페이지로
       if (currentColIdx > 1) {
         createNewPage();
       }
     }
-    // ------------------------------------------------------------------
 
     // 4. 배치 및 Y축 증가
     if (pages[currentPageIdx] && pages[currentPageIdx][currentColIdx]) {
         pages[currentPageIdx][currentColIdx].push(item);
     }
-    
-    // 배치가 끝난 후, 다음 아이템을 위해 "높이 + 간격"을 더해줌
-    currentY += (rawHeight + options.itemGap);
+    currentY += itemTotalHeight;
   });
 
   return pages;
@@ -134,26 +132,19 @@ const ExamPaperLayout = forwardRef<HTMLDivElement, ExamPaperLayoutProps>(
     const paddingY = 60; // 상하 여백 (px)
 
     // 1. [계산] 문제지 페이지네이션
-const questionPages = useMemo(() => {
-  if (!printOptions.questions) return [];
-  
-  // [핵심] 실제 푸터 높이는 40px이지만, 계산할 때는 80~100px로 잡아서
-  // 문항이 바닥에 닿기 전에 미리 다음 단으로 넘기게 만듭니다.
-  const SAFE_MARGIN = 50; 
-
-  return distributeItems(problems, 'question', {
-    pageHeight: A4_HEIGHT_PX,
-    headerHeightFirst: headerH + 20, 
-    headerHeightNormal: 50, 
-    
-    // 기존 40에서 -> (40 + SAFE_MARGIN)으로 변경
-    footerHeight: 40 + SAFE_MARGIN, 
-    
-    paddingTop: paddingY,
-    paddingBottom: paddingY, // 여백도 그대로 유지
-    itemGap: printOptions.questionPadding
-  });
-}, [problems, printOptions.questions, printOptions.questionPadding, headerH]);
+    const questionPages = useMemo(() => {
+      if (!printOptions.questions) return [];
+      
+      return distributeItems(problems, 'question', {
+        pageHeight: A4_HEIGHT_PX,
+        headerHeightFirst: headerH + 20, 
+        headerHeightNormal: 50, // 2페이지부터 심플 헤더
+        footerHeight: 40,
+        paddingTop: paddingY,
+        paddingBottom: paddingY,
+        itemGap: printOptions.questionPadding
+      });
+    }, [problems, printOptions.questions, printOptions.questionPadding, headerH]);
 
     // 2. [계산] 해설지 페이지네이션
     const solutionPages = useMemo(() => {
@@ -224,7 +215,7 @@ const questionPages = useMemo(() => {
            
            <div className="flex justify-between items-center mt-2 text-xs font-medium text-slate-500">
               <span>{instructor} 선생님</span>
-              <span>RuleMakers</span>
+              <span>RuleMakers Problem Bank</span>
            </div>
         </div>
       );
@@ -316,7 +307,7 @@ const questionPages = useMemo(() => {
               </div>
 
               {/* 푸터 */}
-              <div className="absolute bottom-0 left-0 w-full h-[40px] flex justify-center items-center border-t border-gray-200 text-xs text-gray-400 z-20 bg-white">
+              <div className="h-[40px] flex justify-center items-center border-t border-gray-200 text-xs text-gray-400 shrink-0">
                  RuleMakers - {pageIdx + 1} -
               </div>
             </div>
@@ -388,7 +379,7 @@ const questionPages = useMemo(() => {
                 ))}
               </div>
 
-              <div className="absolute bottom-0 left-0 w-full h-[40px] flex justify-center items-center border-t border-gray-200 text-xs text-gray-400 z-20 bg-white">
+              <div className="h-[40px] flex justify-center items-center border-t border-gray-200 text-xs text-gray-400 shrink-0">
                  - {pageIdx + 1} (정답 및 해설) -
               </div>
             </div>
