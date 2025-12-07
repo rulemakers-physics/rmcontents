@@ -9,9 +9,16 @@ interface FilterProps {
   selectedMajorTopics: string[];
   selectedMinorTopics: string[];
   difficulties: Difficulty[];
+  // [추가] 제외할 문제 ID 목록 (선택 사항)
+  excludedProblemIds?: string[];
 }
 
-export function useProblemFetcher({ selectedMajorTopics, selectedMinorTopics, difficulties }: FilterProps) {
+export function useProblemFetcher({ 
+  selectedMajorTopics, 
+  selectedMinorTopics, 
+  difficulties,
+  excludedProblemIds = [] // [추가] 기본값 빈 배열
+}: FilterProps) {
   const [problems, setProblems] = useState<DBProblem[]>([]);
   const [loading, setLoading] = useState(false);
 
@@ -26,22 +33,16 @@ export function useProblemFetcher({ selectedMajorTopics, selectedMinorTopics, di
       setLoading(true);
       try {
         const problemsRef = collection(db, 'problems');
-        const results: DBProblem[] = [];
-
-        // [최적화 전략]
-        // Firestore의 'in' 쿼리 제약(최대 10개)과 '서로 다른 필드의 in/array-contains 동시 사용 불가' 제약을 우회하기 위해,
-        // 선택된 Major Topic 각각에 대해 별도의 쿼리를 병렬로 날려서 합칩니다.
-        // 이렇게 하면 각 쿼리 내에서 where('difficulty', 'in', difficulties)를 안전하게 사용할 수 있습니다.
         
         // 1. 과부하 방지를 위해 상위 5개의 대단원만 처리 (필요시 조정)
         const targetTopics = selectedMajorTopics.slice(0, 5);
 
         // 2. 병렬 쿼리 실행
         const promises = targetTopics.map(async (topic) => {
-          // 난이도 필터가 있으면 쿼리에 포함 (복합 인덱스 필요: majorTopic ASC + difficulty ASC)
+          // 난이도 필터가 있으면 쿼리에 포함
           const constraints = [
             where('majorTopic', '==', topic),
-            limit(50) // 단원별 최대 50문제 (총 250문제)
+            limit(50) // 단원별 최대 50문제
           ];
 
           if (difficulties.length > 0) {
@@ -58,14 +59,19 @@ export function useProblemFetcher({ selectedMajorTopics, selectedMinorTopics, di
         // 3. 결과 병합
         let allFetched = chunkedResults.flat();
 
-        // 4. 소단원(Minor Topic) 필터링 (클라이언트 사이드)
-        // 소단원 필터가 있다면, 해당 소단원이 아닌 것은 제거
+        // 4. 소단원(Minor Topic) 필터링
         if (selectedMinorTopics.length > 0) {
            allFetched = allFetched.filter(p => selectedMinorTopics.includes(p.minorTopic));
         }
 
-        // 5. 랜덤 셔플 (매번 다른 문제 나오도록)
-        // Fisher-Yates Shuffle
+        // ▼▼▼ [추가] 5. 이미 사용한 문항(Excluded IDs) 필터링 ▼▼▼
+        if (excludedProblemIds.length > 0) {
+          // 제외 목록에 포함되지 않은 문제만 남김
+          allFetched = allFetched.filter(p => !excludedProblemIds.includes(p.id));
+        }
+        // ▲▲▲ [추가 끝] ▲▲▲
+
+        // 6. 랜덤 셔플 (매번 다른 문제 나오도록)
         for (let i = allFetched.length - 1; i > 0; i--) {
           const j = Math.floor(Math.random() * (i + 1));
           [allFetched[i], allFetched[j]] = [allFetched[j], allFetched[i]];
@@ -80,7 +86,7 @@ export function useProblemFetcher({ selectedMajorTopics, selectedMinorTopics, di
     };
 
     fetchProblems();
-  }, [selectedMajorTopics, selectedMinorTopics, difficulties]); // 의존성 배열
+  }, [selectedMajorTopics, selectedMinorTopics, difficulties, excludedProblemIds]); // [수정] 의존성 배열 추가
 
   return { problems, loading };
 }

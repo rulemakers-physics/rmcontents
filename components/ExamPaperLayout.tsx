@@ -1,5 +1,3 @@
-// components/ExamPaperLayout.tsx
-
 "use client";
 
 import React, { forwardRef, useMemo } from "react";
@@ -254,7 +252,8 @@ const ExamPaperLayout = forwardRef<HTMLDivElement, ExamPaperLayoutProps>(
                   <div key={colIdx} className="flex-1 flex flex-col h-full">
                     {items.map((prob) => (
                       <div 
-                        key={prob.id} 
+                        // [수정] id 중복 방지를 위해 번호를 key에 포함
+                        key={`${prob.id}-${prob.number}`} 
                         className="relative w-full group break-inside-avoid"
                         style={{ marginBottom: printOptions.questionPadding }}
                       >
@@ -324,7 +323,7 @@ const ExamPaperLayout = forwardRef<HTMLDivElement, ExamPaperLayoutProps>(
 
                 <div className="grid grid-cols-5 gap-4 content-start">
                    {problems.sort((a,b) => a.number - b.number).map((prob) => (
-                     <div key={prob.id} className="flex justify-between items-center p-2 border-b border-gray-200 text-sm">
+                     <div key={`ans-${prob.id}-${prob.number}`} className="flex justify-between items-center p-2 border-b border-gray-200 text-sm">
                         <span className="font-bold text-slate-500">{String(prob.number).padStart(2, '0')}</span>
                         <span className="font-extrabold text-slate-900 text-base">{prob.answer}</span>
                      </div>
@@ -353,7 +352,8 @@ const ExamPaperLayout = forwardRef<HTMLDivElement, ExamPaperLayoutProps>(
                   <div key={colIdx} className="flex-1 flex flex-col h-full">
                     {items.map((prob) => (
                       <div 
-                        key={prob.id} 
+                        // [수정] 해설지 영역도 키 충돌 방지
+                        key={`sol-${prob.id}-${prob.number}`} 
                         className="w-full mb-0 border-b border-dashed border-gray-200 pb-2 last:border-0 break-inside-avoid"
                         style={{ marginBottom: printOptions.solutionPadding }}
                       >

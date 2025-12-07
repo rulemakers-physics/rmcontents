@@ -1,6 +1,8 @@
+// app/(student)/student/maker/page.tsx
+
 "use client";
 
-import React, { useState, useEffect, useCallback, useRef } from "react";
+import React, { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import { db } from "@/lib/firebase";
@@ -14,7 +16,8 @@ import {
   Lock, 
   FileText,
   ChevronDown,
-  Save
+  Save,
+  CheckSquare // [신규] 체크박스 아이콘
 } from "lucide-react";
 import { DragDropContext, Droppable, Draggable, DropResult } from "@hello-pangea/dnd";
 import { useReactToPrint } from "react-to-print";
@@ -38,6 +41,9 @@ interface StudentExamProblem {
   minorTopic?: string;
   answer?: string | null;
   solutionUrl?: string | null;
+  // [신규] 높이 정보 추가 (ExamPaperLayout 호환)
+  height?: number;
+  solutionHeight?: number;
 }
 
 export default function StudentMakerPage() {
@@ -52,46 +58,99 @@ export default function StudentMakerPage() {
   
   // 필터 상태
   const [selectedMajorTopics, setSelectedMajorTopics] = useState<string[]>([]);
-  const [selectedMinorTopics, setSelectedMinorTopics] = useState<string[]>([]); // 소단원 필터 추가 가능
+  const [selectedMinorTopics, setSelectedMinorTopics] = useState<string[]>([]); 
   const [difficulties, setDifficulties] = useState<Difficulty[]>(["중"]);
   const [questionCount, setQuestionCount] = useState(10); 
+
+  // [신규] 사용 문항 필터링 상태
+  const [excludeUsed, setExcludeUsed] = useState(true); // 기본값: 제외함
+  const [usedProblemIds, setUsedProblemIds] = useState<string[]>([]);
 
   // 생성된 문제 목록
   const [examProblems, setExamProblems] = useState<StudentExamProblem[]>([]);
   const [examTitle, setExamTitle] = useState("나만의 모의고사");
   const [isCreating, setIsCreating] = useState(false);
+  const [isSavingAndPrinting, setIsSavingAndPrinting] = useState(false); // [신규] 저장 및 출력 상태
 
   // PDF 출력용 Ref
   const printRef = useRef<HTMLDivElement>(null);
 
-  // 문제 데이터 Fetcher Hook 사용
+  // [신규] 최근 1개월 내 사용된 문제 ID 조회 (학습 기록 기준)
+  useEffect(() => {
+    if (!user) return;
+
+    const fetchUsedProblems = async () => {
+      try {
+        const oneMonthAgo = new Date();
+        oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1);
+
+        // 학생의 학습 기록(student_exams)에서 최근 1개월 내 문제 조회
+        const q = query(
+          collection(db, "student_exams"),
+          where("userId", "==", user.uid),
+          where("createdAt", ">=", oneMonthAgo)
+        );
+
+        const snapshot = await getDocs(q);
+        const usedIds = new Set<string>();
+
+        snapshot.forEach((doc) => {
+          const data = doc.data();
+          if (Array.isArray(data.problems)) {
+            data.problems.forEach((p: any) => {
+              // problemId 필드 사용
+              if (p.problemId) usedIds.add(p.problemId);
+            });
+          }
+        });
+
+        setUsedProblemIds(Array.from(usedIds));
+      } catch (error) {
+        console.error("사용된 문제 조회 실패:", error);
+      }
+    };
+
+    fetchUsedProblems();
+  }, [user]);
+
+  // 문제 데이터 Fetcher Hook 사용 (필터링 적용)
   const { problems: fetchedProblems, loading: isFetching } = useProblemFetcher({
     selectedMajorTopics,
     selectedMinorTopics,
-    difficulties
+    difficulties,
+    // [신규] 사용된 문항 ID 전달
+    excludedProblemIds: excludeUsed ? usedProblemIds : [],
   });
 
   // 1. 문제 자동 구성 (Fetcher 결과 반영)
   useEffect(() => {
     if (isFetching) return;
     
-    // 필터 조건이 변경되어 새로운 문제들이 로드되었고, 현재 문제 리스트가 비어있다면 채워넣음
-    // (실제 UX에서는 '생성' 버튼을 눌러야 바뀌게 할 수도 있지만, 여기선 반응형으로 구현)
-    if (fetchedProblems.length > 0 && examProblems.length === 0) {
-       const formatted = fetchedProblems.slice(0, questionCount).map((p, idx) => ({
-         id: p.id,
-         number: idx + 1,
-         imageUrl: p.imgUrl,
-         content: p.content,
-         difficulty: p.difficulty,
-         majorTopic: p.majorTopic,
-         minorTopic: p.minorTopic,
-         answer: p.answer,
-         solutionUrl: p.solutionUrl
-       }));
-       setExamProblems(formatted);
+    // 조건이 변경되어 새 문제가 로드되었고, 목록이 비어있다면(또는 사용자가 리셋했을 때) 채워넣음
+    if (fetchedProblems.length > 0 && (examProblems.length === 0 || activeTab === 'filter')) {
+       // [수정] 탭 변경이나 조건 변경 시 바로 반영되지 않도록 조건 강화 가능하나, 
+       // 여기서는 단순화를 위해 빈 배열일 때만 채우는 기존 로직 유지 + 명시적 리셋 필요
+       if (examProblems.length === 0) {
+         const formatted = fetchedProblems.slice(0, questionCount).map((p, idx) => ({
+           id: p.id,
+           number: idx + 1,
+           imageUrl: p.imgUrl,
+           content: p.content,
+           difficulty: p.difficulty,
+           majorTopic: p.majorTopic,
+           minorTopic: p.minorTopic,
+           answer: p.answer,
+           solutionUrl: p.solutionUrl,
+           height: (p as any).imgHeight,
+           solutionHeight: (p as any).solutionHeight
+         }));
+         setExamProblems(formatted);
+       }
+    } else if (fetchedProblems.length === 0 && selectedMajorTopics.length > 0) {
+      // 조건에 맞는 문제가 없을 경우 초기화
+      setExamProblems([]);
     }
-  }, [fetchedProblems, questionCount, examProblems.length, isFetching]);
+  }, [fetchedProblems, questionCount, examProblems.length, isFetching, selectedMajorTopics.length]);
 
   // 2. 문제 교체 (Reroll) 핸들러
   const handleReplaceProblem = useCallback(async (problemId: string, currentMajor: string, currentDifficulty: string) => {
@@ -99,19 +158,22 @@ export default function StudentMakerPage() {
     const toastId = toast.loading("유사 문제를 찾는 중...");
 
     try {
-      // 같은 단원, 같은 난이도의 문제 조회
       const q = query(
         collection(db, "problems"),
         where("majorTopic", "==", currentMajor),
         where("difficulty", "==", currentDifficulty),
-        limit(20) // 넉넉히 가져와서 랜덤 선택
+        limit(30)
       );
       const snap = await getDocs(q);
       const candidates = snap.docs.map(d => ({ id: d.id, ...d.data() } as DBProblem));
       
-      // 현재 리스트에 이미 있는 문제는 제외
       const currentIds = examProblems.map(p => p.id);
-      const validCandidates = candidates.filter(p => !currentIds.includes(p.id));
+      
+      // [수정] 교체 시에도 '이미 사용한 문항' 및 '현재 리스트 문항' 제외
+      const validCandidates = candidates.filter(p => 
+        !currentIds.includes(p.id) && 
+        (!excludeUsed || !usedProblemIds.includes(p.id))
+      );
 
       if (validCandidates.length > 0) {
         const newProbData = validCandidates[Math.floor(Math.random() * validCandidates.length)];
@@ -124,7 +186,9 @@ export default function StudentMakerPage() {
               imageUrl: newProbData.imgUrl,
               content: newProbData.content,
               answer: newProbData.answer,
-              solutionUrl: newProbData.solutionUrl
+              solutionUrl: newProbData.solutionUrl,
+              height: (newProbData as any).imgHeight,
+              solutionHeight: (newProbData as any).solutionHeight
             };
           }
           return p;
@@ -137,9 +201,9 @@ export default function StudentMakerPage() {
       console.error(e);
       toast.error("오류가 발생했습니다.", { id: toastId });
     }
-  }, [examProblems]);
+  }, [examProblems, excludeUsed, usedProblemIds]);
 
-  // 3. 온라인 시험 시작 (CBT)
+  // 3. 온라인 시험 시작 (CBT) - 저장 로직 포함
   const handleStartExam = async () => {
     if (examProblems.length === 0) return toast.error("문제가 없습니다. 조건을 선택해주세요.");
     if (!examTitle.trim()) return toast.error("시험지 제목을 입력해주세요.");
@@ -148,7 +212,6 @@ export default function StudentMakerPage() {
     const toastId = toast.loading("시험지를 생성하고 있습니다...");
 
     try {
-      // student_exams 컬렉션에 저장 (CBT용)
       const examRef = await addDoc(collection(db, "student_exams"), {
         userId: user?.uid,
         userName: userData?.name || "학생",
@@ -157,6 +220,8 @@ export default function StudentMakerPage() {
         status: "in_progress",
         totalQuestions: examProblems.length,
         difficulty: difficulties.join(", "),
+        // [신규] CBT 모드 명시
+        mode: "test", 
         problems: examProblems.map((p, idx) => ({
           problemId: p.id,
           number: idx + 1,
@@ -181,25 +246,73 @@ export default function StudentMakerPage() {
     }
   };
 
-  // 4. PDF 출력 핸들러
-  const handlePrint = useReactToPrint({
+  // 4. [수정] 기록 저장 및 PDF 출력 핸들러
+  // 기존 handlePrint 대신, DB에 먼저 저장하고 출력하도록 변경
+  const triggerPrint = useReactToPrint({
     contentRef: printRef,
     documentTitle: examTitle,
+    onAfterPrint: () => {
+      // 출력 후 추가 동작이 필요하다면 여기에 작성
+    }
   });
 
-  // Drag End 핸들러
+  // [수정] 4. 기록 저장 및 보관함 이동 핸들러
+// (기존의 handleSaveAndPrint 대체)
+const handleSaveToStorage = async () => {
+  if (examProblems.length === 0) return toast.error("문제가 없습니다.");
+  if (!examTitle.trim()) return toast.error("시험지 제목을 입력해주세요.");
+  if (!user) return toast.error("로그인이 필요합니다.");
+
+  setIsSavingAndPrinting(true); // 로딩 상태 재사용
+  const toastId = toast.loading("보관함에 저장 중...");
+
+  try {
+    // student_exams에 'saved' 상태로 저장
+    await addDoc(collection(db, "student_exams"), {
+      userId: user.uid,
+      userName: userData?.name || "학생",
+      title: examTitle,
+      createdAt: serverTimestamp(),
+      status: "saved", // 아직 안 풂
+      mode: "print",   // 출력용으로 생성됨 (하지만 CBT로도 풀 수 있음)
+      totalQuestions: examProblems.length,
+      difficulty: difficulties.join(", "),
+      problems: examProblems.map((p, idx) => ({
+        problemId: p.id,
+        number: idx + 1,
+        content: p.content || "",
+        imgUrl: p.imageUrl || "",
+        answer: p.answer || "",
+        majorTopic: p.majorTopic || "기타",
+        minorTopic: p.minorTopic || "",
+        solutionUrl: p.solutionUrl || null,
+        // 필요시 height 정보 등 추가
+      }))
+    });
+
+    toast.success("저장 완료! 보관함으로 이동합니다.", { id: toastId });
+    
+    // [중요] 저장 후 보관함으로 이동
+    router.push("/student/storage");
+
+  } catch (e) {
+    console.error(e);
+    toast.error("저장 중 오류가 발생했습니다.", { id: toastId });
+  } finally {
+    setIsSavingAndPrinting(false);
+  }
+};
+
   const onDragEnd = (result: DropResult) => {
     if (!result.destination) return;
     const items = Array.from(examProblems);
     const [reorderedItem] = items.splice(result.source.index, 1);
     items.splice(result.destination.index, 0, reorderedItem);
     
-    // 번호 재할당
     const renumbered = items.map((item, idx) => ({ ...item, number: idx + 1 }));
     setExamProblems(renumbered);
   };
 
-  // 난이도 토글 (학생용: 킬러 제한)
   const toggleDifficulty = (d: Difficulty) => {
     if (d === '킬러' && !isPremium) {
       if(confirm("킬러 문항은 프리미엄 멤버십 전용입니다.\n멤버십을 업그레이드 하시겠습니까?")) {
@@ -208,23 +321,18 @@ export default function StudentMakerPage() {
       return;
     }
     setDifficulties(prev => prev.includes(d) ? prev.filter(x => x !== d) : [...prev, d]);
+    setExamProblems([]); // 난이도 변경 시 목록 초기화 (새로고침 유도)
   };
 
-  // 페이지네이션용 (PDF 출력용 데이터 변환)
-  const pagedProblems = React.useMemo(() => {
-    const itemsPerPage = 4; // 페이지당 4문제
-    const pages: LayoutExamProblem[][] = [];
-    for (let i = 0; i < examProblems.length; i += itemsPerPage) {
-      // 타입 호환성을 위해 변환
-      const pageSlice = examProblems.slice(i, i + itemsPerPage).map(p => ({
-        ...p,
-        answer: p.answer || null, // nullish 처리 확실하게
-        imageUrl: p.imageUrl || null,
-        solutionUrl: p.solutionUrl || null
-      }));
-      pages.push(pageSlice);
-    }
-    return pages;
+  // 페이지네이션 (PDF 출력용 데이터 변환 - ExamPaperLayout 호환)
+  // 학생용은 심플하게 전체를 넘겨 Layout 내부에서 처리하도록 함 (ExamPaperLayout 최신 로직 따름)
+  const layoutProblems = useMemo(() => {
+    return examProblems.map(p => ({
+      ...p,
+      answer: p.answer || null,
+      imageUrl: p.imageUrl || null,
+      solutionUrl: p.solutionUrl || null
+    }));
   }, [examProblems]);
 
   return (
@@ -269,7 +377,6 @@ export default function StudentMakerPage() {
                             setSelectedMajorTopics(prev => 
                               prev.includes(major.name) ? prev.filter(t => t !== major.name) : [...prev, major.name]
                             );
-                            // 새로운 단원 선택 시 문제 목록 초기화하고 다시 불러오기
                             setExamProblems([]); 
                           }}
                           className="accent-emerald-600 w-4 h-4 rounded border-slate-300"
@@ -290,10 +397,7 @@ export default function StudentMakerPage() {
                 {['하', '중', '상', '킬러'].map((level) => (
                   <button
                     key={level}
-                    onClick={() => {
-                      toggleDifficulty(level as Difficulty);
-                      setExamProblems([]); // 난이도 변경 시 리셋
-                    }}
+                    onClick={() => toggleDifficulty(level as Difficulty)}
                     className={`px-3 py-1.5 rounded-full text-xs font-bold border transition-all flex items-center gap-1 ${
                       difficulties.includes(level as Difficulty)
                         ? 'bg-slate-800 text-white border-slate-800'
@@ -317,7 +421,7 @@ export default function StudentMakerPage() {
                 value={questionCount} 
                 onChange={(e) => {
                   setQuestionCount(Number(e.target.value));
-                  setExamProblems([]); // 문항 수 변경 시 리셋
+                  setExamProblems([]);
                 }}
                 className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-emerald-600"
               />
@@ -326,6 +430,28 @@ export default function StudentMakerPage() {
                 <span>30</span>
               </div>
             </div>
+          </div>
+
+          {/* [신규] 3. 사용 문항 필터 */}
+          <div className="pt-4 border-t border-slate-100">
+            <h3 className="text-sm font-bold text-slate-800 mb-3 flex items-center gap-2">
+              <CheckSquare className="w-4 h-4"/> 필터 설정
+            </h3>
+            <label className="flex items-center gap-3 cursor-pointer p-3 border border-slate-200 rounded-xl hover:bg-slate-50 bg-white transition-colors">
+              <input 
+                type="checkbox" 
+                checked={excludeUsed} 
+                onChange={(e) => {
+                  setExcludeUsed(e.target.checked);
+                  setExamProblems([]); // 필터 변경 시 리셋
+                }}
+                className="rounded text-emerald-600 focus:ring-emerald-500 w-4 h-4 accent-emerald-600" 
+              />
+              <div>
+                <span className="text-sm font-bold text-slate-700 block">이미 푼 문제 제외</span>
+                <span className="text-[10px] text-slate-400">최근 1개월 학습 기록 기준 ({usedProblemIds.length}개)</span>
+              </div>
+            </label>
           </div>
 
         </div>
@@ -347,29 +473,30 @@ export default function StudentMakerPage() {
           </div>
           
           <div className="flex items-center gap-3">
-            {/* PDF 출력 버튼 */}
-            <button 
-              onClick={() => handlePrint && handlePrint()}
-              disabled={examProblems.length === 0}
-              className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 text-slate-700 rounded-xl font-bold text-sm hover:bg-slate-50 hover:text-blue-600 transition-colors"
-            >
-              <Printer className="w-4 h-4" /> PDF 저장
-            </button>
+    {/* [변경] '보관함 저장' 버튼 */}
+    <button 
+      onClick={handleSaveToStorage}
+      disabled={examProblems.length === 0 || isSavingAndPrinting}
+      className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 text-slate-700 rounded-xl font-bold text-sm hover:bg-slate-50 hover:text-blue-600 transition-colors shadow-sm"
+    >
+      <Save className="w-4 h-4" /> 
+      {isSavingAndPrinting ? "저장 중..." : "보관함 저장 (출력)"}
+    </button>
 
-            {/* CBT 응시 버튼 */}
-            <button 
-              onClick={handleStartExam}
-              disabled={isCreating || examProblems.length === 0}
-              className="flex items-center gap-2 px-6 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold text-sm shadow-md shadow-emerald-200 transition-all active:scale-95 disabled:opacity-50 disabled:shadow-none"
-            >
-              {isCreating ? "생성 중..." : (
-                <>
-                  <PlayIcon className="w-4 h-4" /> 바로 응시하기
-                </>
-              )}
-            </button>
-          </div>
-        </header>
+    {/* CBT 응시 버튼 (유지) */}
+    <button 
+      onClick={handleStartExam}
+      disabled={isCreating || examProblems.length === 0}
+      className="flex items-center gap-2 px-6 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold text-sm shadow-md shadow-emerald-200 transition-all active:scale-95 disabled:opacity-50 disabled:shadow-none"
+    >
+      {isCreating ? "생성 중..." : (
+        <>
+          <PlayIcon className="w-4 h-4" /> 바로 응시하기
+        </>
+      )}
+    </button>
+  </div>
+</header>
 
         {/* 문제 목록 (Drag & Drop) */}
         <div className="flex-1 overflow-y-auto p-6 md:p-10">
@@ -468,20 +595,22 @@ export default function StudentMakerPage() {
         </div>
 
         {/* === [Hidden] PDF 출력용 컴포넌트 === 
-          화면에는 보이지 않지만(handlePrint 실행 시) 렌더링되어 인쇄됨.
-          강사용 ExamPaperLayout을 재사용하되, 심플한 옵션 적용.
+          화면에는 보이지 않지만(handleSaveAndPrint 실행 시) 렌더링되어 인쇄됨.
+          학생용이므로 정답지 포함, 해설지 포함 여부는 기본값으로 설정 (필요시 UI 추가 가능)
         */}
         <div style={{ display: "none" }}>
           <ExamPaperLayout
             ref={printRef}
-            pages={pagedProblems}
+            problems={layoutProblems}
             title={examTitle}
             instructor={userData?.name || "학생"}
             template={TEMPLATES[0]} // 기본 심플 템플릿 사용
             printOptions={{
               questions: true,
-              answers: true,  // 정답 포함
-              solutions: false // 해설 미포함 (기본값)
+              answers: true,  
+              solutions: true, // 학생용은 해설지 포함 기본
+              questionPadding: 40,
+              solutionPadding: 20
             }}
             isTeacherVersion={false}
           />

@@ -18,14 +18,16 @@ import {
   TrashIcon, 
   DocumentTextIcon, 
   CalendarDaysIcon,
-  PencilSquareIcon,
+  PencilSquareIcon, // [기존] 새 시험지 버튼용
+  PencilIcon,       // [신규] 폴더 수정용 (추가됨)
   ChartBarIcon,
   FolderPlusIcon,
   ArrowUturnLeftIcon,
   ChevronRightIcon,
   FolderOpenIcon,
   EllipsisHorizontalIcon,
-  ArrowUpTrayIcon
+  ArrowUpTrayIcon,
+  PrinterIcon 
 } from "@heroicons/react/24/outline";
 
 // --- DnD Kit ---
@@ -40,6 +42,9 @@ import {
   TouchSensor
 } from "@dnd-kit/core";
 
+// 인쇄 모달 임포트
+import ExamPrintModal from "@/components/ExamPrintModal";
+
 // --- 타입 정의 ---
 interface SavedExam {
   id: string;
@@ -49,6 +54,7 @@ interface SavedExam {
   instructorName: string;
   folderId?: string; 
   problems?: any[];
+  templateId?: string; 
 }
 
 interface Folder {
@@ -58,7 +64,7 @@ interface Folder {
   createdAt: Timestamp;
 }
 
-// --- [DnD 컴포넌트 1] 드롭 가능한 폴더 ---
+// --- [DnD 컴포넌트] ---
 function DroppableFolder({ folder, children, onClick }: { folder: Folder, children: React.ReactNode, onClick: () => void }) {
   const { setNodeRef, isOver } = useDroppable({
     id: `folder-${folder.id}`,
@@ -82,7 +88,6 @@ function DroppableFolder({ folder, children, onClick }: { folder: Folder, childr
   );
 }
 
-// --- [DnD 컴포넌트 2] 상위 이동 존 ---
 function DroppableBackZone({ targetName, children, onClick }: { targetName: string, children: React.ReactNode, onClick: () => void }) {
   const { setNodeRef, isOver } = useDroppable({
     id: "nav-back-zone",
@@ -113,7 +118,6 @@ function DroppableBackZone({ targetName, children, onClick }: { targetName: stri
   );
 }
 
-// --- [DnD 컴포넌트 3] 드래그 가능한 시험지 ---
 function DraggableExam({ exam, children }: { exam: SavedExam, children: React.ReactNode }) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: `exam-${exam.id}`,
@@ -159,6 +163,12 @@ export default function StoragePage() {
   const [isCreateFolderOpen, setIsCreateFolderOpen] = useState(false);
   const [newFolderName, setNewFolderName] = useState("");
   const [isMoveMode, setIsMoveMode] = useState<string | null>(null); 
+  const [printTargetExam, setPrintTargetExam] = useState<SavedExam | null>(null);
+
+  // [신규] 폴더 이름 변경 상태
+  const [isRenameModalOpen, setIsRenameModalOpen] = useState(false);
+  const [renameTarget, setRenameTarget] = useState<{ id: string, name: string } | null>(null);
+  const [renameInput, setRenameInput] = useState("");
 
   // DnD 센서 설정
   const sensors = useSensors(
@@ -235,6 +245,35 @@ export default function StoragePage() {
     }
   };
 
+  // --- [신규] 핸들러: 폴더 이름 변경 ---
+  const handleOpenRenameModal = (folder: Folder) => {
+    setRenameTarget({ id: folder.id, name: folder.name });
+    setRenameInput(folder.name);
+    setIsRenameModalOpen(true);
+  };
+
+  const handleRenameFolder = async () => {
+    if (!renameInput.trim()) return toast.error("폴더명을 입력해주세요.");
+    if (!renameTarget) return;
+
+    try {
+      await updateDoc(doc(db, "folders", renameTarget.id), {
+        name: renameInput
+      });
+      
+      // 로컬 상태 즉시 반영
+      setFolders(prev => prev.map(f => f.id === renameTarget.id ? { ...f, name: renameInput } : f));
+      
+      toast.success("폴더명이 변경되었습니다.");
+      setIsRenameModalOpen(false);
+      setRenameTarget(null);
+      setRenameInput("");
+    } catch (e) {
+      console.error(e);
+      toast.error("변경 실패");
+    }
+  };
+
   // --- 핸들러: Drag & Drop ---
   const handleDragEnd = async (event: DragEndEvent) => {
     const { active, over } = event;
@@ -244,13 +283,11 @@ export default function StoragePage() {
     const overType = over.data.current?.type;
     const examId = active.data.current?.id;
     
-    // 폴더로 이동
     if (activeType === "exam" && overType === "folder") {
       const targetFolderId = over.data.current?.id;
       if (examId && targetFolderId) updateExamLocation(examId, targetFolderId, "이동되었습니다.");
     }
 
-    // 상위로 이동
     if (activeType === "exam" && overType === "back-zone") {
       if (!currentFolderId) return; 
       updateExamLocation(examId, parentFolderId, `${parentFolderName}로 이동했습니다.`);
@@ -258,11 +295,9 @@ export default function StoragePage() {
   };
 
   const updateExamLocation = async (examId: string, targetFolderId: string | null, successMsg: string) => {
-    // 낙관적 업데이트
     setSavedExams(prev => prev.map(e => e.id === examId ? { ...e, folderId: targetFolderId || undefined } : e));
     toast.success(successMsg);
     
-    // DB 업데이트
     try {
       await updateDoc(doc(db, "saved_exams", examId), { folderId: targetFolderId });
     } catch (e) {
@@ -298,6 +333,10 @@ export default function StoragePage() {
 
   const handleGoToGrade = (examId: string) => {
     router.push(`/manage/reports?action=input&examId=${examId}`);
+  };
+
+  const handleOpenPrintModal = (exam: SavedExam) => {
+    setPrintTargetExam(exam);
   };
 
   if (loading) return <div className="p-10 text-center">로딩 중...</div>;
@@ -379,9 +418,18 @@ export default function StoragePage() {
                       </div>
                       
                       <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        {/* [신규] 폴더 이름 변경 버튼 */}
+                        <button 
+                          onClick={(e) => { e.stopPropagation(); handleOpenRenameModal(folder); }}
+                          className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg"
+                          title="이름 변경"
+                        >
+                          <PencilIcon className="w-4 h-4" />
+                        </button>
                         <button 
                           onClick={(e) => { e.stopPropagation(); handleDeleteFolder(folder.id); }}
                           className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg"
+                          title="삭제"
                         >
                           <TrashIcon className="w-4 h-4" />
                         </button>
@@ -413,13 +461,23 @@ export default function StoragePage() {
                           <div className="p-2.5 bg-slate-100 text-slate-500 rounded-xl group-hover:bg-slate-800 group-hover:text-white transition-colors">
                             <DocumentTextIcon className="w-6 h-6" />
                           </div>
-                          <button 
-                             onPointerDown={(e) => e.stopPropagation()}
-                             onClick={() => setIsMoveMode(exam.id)}
-                             className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg md:hidden"
-                          >
-                            <EllipsisHorizontalIcon className="w-5 h-5" />
-                          </button>
+                          
+                          <div className="flex gap-1" onPointerDown={(e) => e.stopPropagation()}>
+                             <button 
+                                onClick={() => handleOpenPrintModal(exam)}
+                                className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
+                                title="인쇄 및 PDF 저장"
+                             >
+                               <PrinterIcon className="w-5 h-5" />
+                             </button>
+                             <button 
+                                onClick={() => handleDeleteExam(exam.id)}
+                                className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                                title="삭제"
+                             >
+                               <TrashIcon className="w-5 h-5" />
+                             </button>
+                          </div>
                         </div>
                         
                         <div>
@@ -450,14 +508,8 @@ export default function StoragePage() {
                             href={`/service/maker?id=${exam.id}`}
                             className="flex-1 py-2 text-xs font-bold text-blue-700 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors flex items-center justify-center gap-1"
                           >
-                            <PencilSquareIcon className="w-3.5 h-3.5" /> 불러오기/수정
+                            <PencilSquareIcon className="w-3.5 h-3.5" /> 수정/불러오기
                           </Link>
-                          <button 
-                            onClick={() => handleDeleteExam(exam.id)}
-                            className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                          >
-                            <TrashIcon className="w-4 h-4" />
-                          </button>
                         </div>
                       </div>
                     </DraggableExam>
@@ -490,7 +542,38 @@ export default function StoragePage() {
           </div>
         )}
 
-        {/* 모달 2: 이동 (모바일/레거시 지원) */}
+        {/* [신규] 모달 2: 폴더 이름 변경 */}
+        {isRenameModalOpen && renameTarget && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
+            <div className="bg-white rounded-2xl shadow-xl p-6 w-full max-w-sm">
+              <h3 className="text-lg font-bold text-slate-900 mb-4">폴더 이름 변경</h3>
+              <input 
+                autoFocus
+                type="text" 
+                value={renameInput}
+                onChange={(e) => setRenameInput(e.target.value)}
+                className="w-full p-3 border border-slate-200 rounded-xl mb-4 focus:ring-2 focus:ring-blue-500 outline-none"
+                onKeyDown={(e) => e.key === 'Enter' && handleRenameFolder()}
+              />
+              <div className="flex gap-2 justify-end">
+                <button 
+                  onClick={() => setIsRenameModalOpen(false)} 
+                  className="px-4 py-2 text-slate-500 hover:bg-slate-100 rounded-lg text-sm font-bold"
+                >
+                  취소
+                </button>
+                <button 
+                  onClick={handleRenameFolder} 
+                  className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-bold hover:bg-blue-700"
+                >
+                  변경
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* 모달 3: 이동 (모바일/레거시 지원) */}
         {isMoveMode && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
             <div className="bg-white rounded-2xl shadow-xl p-6 w-full max-w-sm">
@@ -517,6 +600,14 @@ export default function StoragePage() {
               </div>
             </div>
           </div>
+        )}
+
+        {/* [신규] 인쇄 모달 */}
+        {printTargetExam && (
+          <ExamPrintModal 
+            exam={printTargetExam} 
+            onClose={() => setPrintTargetExam(null)} 
+          />
         )}
 
       </div>

@@ -16,7 +16,8 @@ import {
   ArrowLeftOnRectangleIcon,
   SparklesIcon,
   BookmarkIcon,
-  ListBulletIcon // [수정] 추가됨
+  ListBulletIcon,
+  FolderIcon 
 } from "@heroicons/react/24/outline";
 import { 
   HomeIcon as HomeSolid, 
@@ -24,13 +25,15 @@ import {
   ChartBarIcon as ChartSolid, 
   UserCircleIcon as UserSolid,
   ListBulletIcon as ListSolid,
-  BookmarkIcon as BookmarkSolid // [수정] 추가됨
+  BookmarkIcon as BookmarkSolid,
+  FolderIcon as FolderSolid // [수정] 추가됨
 } from "@heroicons/react/24/solid";
 
 const NAV_ITEMS = [
   { name: "홈", href: "/student/dashboard", icon: HomeIcon, activeIcon: HomeSolid },
   { name: "학습하기", href: "/student/study", icon: BookOpenIcon, activeIcon: BookSolid },
   { name: "나만의 시험지", href: "/student/maker", icon: ListBulletIcon, activeIcon: ListSolid },
+  { name: "내 보관함", href: "/student/storage", icon: FolderIcon, activeIcon: FolderSolid },
   { name: "성적 리포트", href: "/student/report", icon: ChartBarIcon, activeIcon: ChartSolid },
   { name: "나의 스크랩북", href: "/student/scraps", icon: BookmarkIcon, activeIcon: BookmarkSolid },
   { name: "내 정보", href: "/student/profile", icon: UserCircleIcon, activeIcon: UserSolid },

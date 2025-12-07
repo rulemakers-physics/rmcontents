@@ -46,6 +46,10 @@ function ExamBuilderContent() {
   const [selectedMajorTopics, setSelectedMajorTopics] = useState<string[]>([]);
   const [selectedMinorTopics, setSelectedMinorTopics] = useState<string[]>([]);
 
+  // [신규] 사용 문항 필터링 상태
+  const [excludeUsed, setExcludeUsed] = useState(true); // 기본값: 제외함
+  const [usedProblemIds, setUsedProblemIds] = useState<string[]>([]);
+
   // 메타데이터 & 옵션
   const [examTitle, setExamTitle] = useState("2025 1학기 중간고사 대비");
   const [instructorName, setInstructorName] = useState(userData?.name || "김룰메 선생님");
@@ -73,14 +77,55 @@ function ExamBuilderContent() {
     setIsMounted(true);
   }, []);
 
+  // [신규] 최근 1개월 내 사용된 문제 ID 조회
+  useEffect(() => {
+    if (!user) return;
+
+    const fetchUsedProblems = async () => {
+      try {
+        // 1개월 전 날짜 계산
+        const oneMonthAgo = new Date();
+        oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1);
+
+        // 최근 1개월 내 저장된 시험지 조회
+        const q = query(
+          collection(db, "saved_exams"),
+          where("userId", "==", user.uid),
+          where("createdAt", ">=", oneMonthAgo)
+        );
+
+        const snapshot = await getDocs(q);
+        const usedIds = new Set<string>();
+
+        snapshot.forEach((doc) => {
+          const data = doc.data();
+          // 저장된 시험지의 문제 배열에서 ID 추출
+          if (Array.isArray(data.problems)) {
+            data.problems.forEach((p: any) => {
+              if (p.id) usedIds.add(p.id);
+            });
+          }
+        });
+
+        setUsedProblemIds(Array.from(usedIds));
+      } catch (error) {
+        console.error("사용된 문제 조회 실패:", error);
+      }
+    };
+
+    fetchUsedProblems();
+  }, [user]);
+
+  // 문제 데이터 Fetcher Hook 사용 (필터링 조건 전달)
   const { problems: fetchedProblems, loading: isFetching } = useProblemFetcher({
     selectedMajorTopics,
     selectedMinorTopics,
-    difficulties
+    difficulties,
+    // [신규] 체크박스가 켜져있을 때만 제외할 ID 목록 전달
+    excludedProblemIds: excludeUsed ? usedProblemIds : [],
   });
 
   // [핵심 수정] 자동 생성 로직
-  // 기존 코드에서 의존성 배열에 'isFetching'이 빠져있어 로딩 완료 후 실행되지 않던 문제 해결
   useEffect(() => {
     // 1. 아직 로딩 전이거나 데이터를 불러오는 중이면 대기
     if (!isLoaded || isFetching) return;
@@ -111,7 +156,6 @@ function ExamBuilderContent() {
       setExamProblems([]);
     }
   }, [fetchedProblems, questionCount, isLoaded, isFetching, selectedMajorTopics.length]); 
-  // ▲ 여기에 isFetching과 selectedMajorTopics.length 추가됨
 
   // 문제 교체 핸들러 (유사 문항)
   const handleReplaceProblem = useCallback(async (problemId: string, currentMajor: string, currentDifficulty: string) => {
@@ -135,6 +179,7 @@ function ExamBuilderContent() {
           const snap = await getDocs(q);
           if (!snap.empty) {
             const candidateDoc = snap.docs[0];
+            // [수정] 교체 시에도 '이미 사용한 문제' 제외 로직 적용 여부 고려 (여기선 현재 시험지에 있는 것만 제외)
             if (!currentIds.includes(candidateDoc.id)) {
               newProblemData = { id: candidateDoc.id, ...candidateDoc.data() } as DBProblem;
               break;
@@ -259,13 +304,15 @@ function ExamBuilderContent() {
   };
 
   const printRef = useRef<HTMLDivElement>(null);
-  const handlePrint = useReactToPrint({
-    contentRef: printRef,
-    documentTitle: examTitle,
-  });
+  
+  // [수정] PDF 출력 기능은 여기서 사용되지 않고 보관함에서 사용됨.
+  // 하지만 미리보기용으로 ref는 유지해야 함.
 
+  // [수정] 저장 핸들러: 저장 후 보관함 이동 유도
   const handleSaveExam = async () => {
     if (!user) { toast.error("로그인 필요"); return; }
+    if (examProblems.length === 0) { toast.error("문제가 없습니다."); return; }
+
     setIsSaving(true);
     try {
       const cleanProblems = examProblems.map(p => ({
@@ -288,9 +335,14 @@ function ExamBuilderContent() {
         createdAt: serverTimestamp(),
         problemCount: examProblems.length,
       });
-      toast.success("저장 완료");
-      if (confirm("보관함으로 이동하시겠습니까?")) router.push("/service/storage");
+      
+      toast.success("시험지가 보관함에 저장되었습니다!");
+      
+      // [중요] 저장 후 보관함으로 자동 이동하여 출력을 유도
+      router.push("/service/storage");
+      
     } catch (e) {
+      console.error(e);
       toast.error("저장 실패");
     }
     setIsSaving(false);
@@ -348,7 +400,6 @@ function ExamBuilderContent() {
                                   setSelectedMajorTopics(prev => 
                                     prev.includes(major.name) ? prev.filter(t => t !== major.name) : [...prev, major.name]
                                   );
-                                  // 새로운 단원 선택 시 초기화 (UX 옵션)
                                   setExamProblems([]); 
                                 }}
                                 className="rounded text-blue-600 w-4 h-4"
@@ -400,6 +451,25 @@ function ExamBuilderContent() {
                     </button>
                   ))}
                 </div>
+              </div>
+
+              {/* [신규] 문항 필터 (사용 문항 제외) */}
+              <div className="pt-4 border-t border-gray-100">
+                <h3 className="text-sm font-bold text-gray-900 mb-3 flex items-center gap-2">
+                  <CheckSquare className="w-4 h-4"/> 문항 필터
+                </h3>
+                <label className="flex items-center gap-2 cursor-pointer p-2 border rounded-lg hover:bg-gray-50 bg-white">
+                  <input 
+                    type="checkbox" 
+                    checked={excludeUsed} 
+                    onChange={(e) => setExcludeUsed(e.target.checked)} 
+                    className="rounded text-blue-600 focus:ring-blue-500 w-4 h-4" 
+                  />
+                  <div>
+                    <span className="text-sm font-bold text-slate-700 block">최근 1개월 내 사용 문항 제외</span>
+                    <span className="text-xs text-slate-400">보관함에 저장된 기록 기준 ({usedProblemIds.length}개 제외됨)</span>
+                  </div>
+                </label>
               </div>
 
               {/* 문항 수 */}
@@ -533,11 +603,9 @@ function ExamBuilderContent() {
             </label>
           </div>
           <div className="flex gap-3">
-             <button onClick={handleSaveExam} disabled={isSaving} className="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-bold text-sm shadow-md transition-all active:scale-95 disabled:opacity-50">
-               <SaveIcon className="w-4 h-4" /> {isSaving ? "저장 중..." : "보관함 저장"}
-             </button>
-             <button onClick={() => handlePrint && handlePrint()} className="flex items-center gap-2 px-5 py-2.5 bg-slate-900 hover:bg-slate-800 text-white rounded-lg font-bold shadow-lg shadow-slate-200 transition-all active:scale-95">
-               <Printer className="w-4 h-4" /> PDF 출력
+             {/* [수정] PDF 출력 버튼 제거하고, 저장 버튼 강조 */}
+             <button onClick={handleSaveExam} disabled={isSaving} className="flex items-center gap-2 px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-bold text-sm shadow-md transition-all active:scale-95 disabled:opacity-50">
+               <SaveIcon className="w-4 h-4" /> {isSaving ? "저장 중..." : "보관함 저장 (출력)"}
              </button>
           </div>
         </header>
