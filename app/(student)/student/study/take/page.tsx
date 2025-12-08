@@ -15,7 +15,11 @@ import {
   LightBulbIcon,
   EyeIcon
 } from "@heroicons/react/24/outline";
+import { PencilSquareIcon } from "@heroicons/react/24/solid"; // [신규] 필기 아이콘 추가
 import { toast } from "react-hot-toast";
+
+// [신규] DrawingLayer 컴포넌트 및 타입 임포트
+import DrawingLayer, { Stroke } from "@/components/DrawingLayer"; 
 
 interface ExamProblem {
   problemId: string;
@@ -53,6 +57,11 @@ export default function ExamTakePage() {
 
   // [연습 모드용] 문제별 정답 확인 여부 (true면 해설 표시)
   const [checkedProblems, setCheckedProblems] = useState<Record<number, boolean>>({});
+
+  // [신규] 필기 모드 및 데이터 상태
+  const [isPenMode, setIsPenMode] = useState(false);
+  // 문항 번호(number)를 키로 사용하여 필기 데이터 저장 (문제 이동 시 복원용)
+  const [drawings, setDrawings] = useState<Record<number, Stroke[]>>({});
 
   // 1. 시험지 로드
   useEffect(() => {
@@ -105,9 +114,6 @@ export default function ExamTakePage() {
         if (prev <= 1) {
           clearInterval(timer);
           // 시간 초과 시 자동 제출
-          // 여기서는 handleSubmit을 직접 부르는 대신 별도 처리
-          // (의존성 문제 회피를 위해 alert 후 이동 등 간소화 가능하나, handleSubmit 호출 시도)
-          // 아래 handleSubmit은 useCallback으로 감싸져 있음.
           return 0;
         }
         return prev - 1;
@@ -118,11 +124,12 @@ export default function ExamTakePage() {
   }, [timeLeft, exam]);
 
   // 시간이 0이 되었을 때 자동 제출 트리거 (useEffect 분리)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (exam && exam.mode !== 'practice' && timeLeft === 0 && !isLoading) {
        handleSubmit(true);
     }
-  }, [timeLeft, exam, isLoading]);
+  }, [timeLeft, exam, isLoading]); // handleSubmit은 의존성에서 제외하여 루프 방지 (useCallback 사용)
 
 
   // 답안 마킹 핸들러
@@ -134,6 +141,16 @@ export default function ExamTakePage() {
   const handleCheckAnswer = (qNum: number) => {
     if (!answers[qNum]) return toast.error("답안을 먼저 선택해주세요.");
     setCheckedProblems(prev => ({ ...prev, [qNum]: true }));
+  };
+
+  // [신규] 필기 저장 핸들러
+  const handleSaveDrawing = (newStrokes: Stroke[]) => {
+    if (!exam) return;
+    const currentNum = exam.problems[currentQIdx].number;
+    setDrawings(prev => ({
+      ...prev,
+      [currentNum]: newStrokes
+    }));
   };
 
   // 제출 및 채점 로직
@@ -224,12 +241,28 @@ export default function ExamTakePage() {
             </span>
             <h1 className="text-lg font-bold text-slate-800 truncate max-w-md">{exam.title}</h1>
           </div>
-          {!isPractice && (
-            <div className={`flex items-center gap-2 font-mono text-xl font-bold ${timeLeft < 60 ? 'text-red-500 animate-pulse' : 'text-slate-700'}`}>
-              <ClockIcon className="w-6 h-6" />
-              {formatTime(timeLeft)}
-            </div>
-          )}
+          
+          <div className="flex items-center gap-6">
+            {/* [신규] 필기 모드 토글 버튼 */}
+            <button
+              onClick={() => setIsPenMode(!isPenMode)}
+              className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-bold transition-all ${
+                isPenMode 
+                  ? "bg-indigo-600 text-white shadow-md ring-2 ring-indigo-200" 
+                  : "bg-white border border-slate-200 text-slate-600 hover:bg-slate-50"
+              }`}
+            >
+              <PencilSquareIcon className="w-5 h-5" />
+              {isPenMode ? "필기 모드 ON" : "필기 모드 OFF"}
+            </button>
+
+            {!isPractice && (
+              <div className={`flex items-center gap-2 font-mono text-xl font-bold ${timeLeft < 60 ? 'text-red-500 animate-pulse' : 'text-slate-700'}`}>
+                <ClockIcon className="w-6 h-6" />
+                {formatTime(timeLeft)}
+              </div>
+            )}
+          </div>
         </header>
 
         {/* 문제 뷰어 (스크롤 영역) */}
@@ -237,6 +270,7 @@ export default function ExamTakePage() {
           <div className="max-w-3xl w-full space-y-6">
             
             {/* 문제 카드 */}
+            {/* [수정] DrawingLayer가 잘리지 않도록 overflow-hidden 제거 및 relative 유지 */}
             <div className="bg-white shadow-sm border border-slate-200 rounded-xl p-6 md:p-10 relative">
               <div className="flex justify-between items-start mb-6">
                 <span className="text-emerald-600 font-extrabold text-2xl border-b-2 border-emerald-600 pb-1">
@@ -251,20 +285,37 @@ export default function ExamTakePage() {
                 )}
               </div>
               
-              {/* 문제 이미지/텍스트 */}
-              <div className="min-h-[250px] mb-8 flex flex-col items-center justify-center">
-                {currentQ.imgUrl ? (
-                  /* eslint-disable-next-line @next/next/no-img-element */
-                  <img src={currentQ.imgUrl} alt="문제" className="max-w-full object-contain max-h-[500px]" />
-                ) : (
-                  <p className="text-slate-700 whitespace-pre-wrap leading-relaxed text-lg text-center px-4">
-                    {currentQ.content || "문제 내용이 없습니다."}
-                  </p>
-                )}
+              {/* 문제 이미지/텍스트 영역 */}
+              {/* [핵심] DrawingLayer를 오버레이하기 위해 relative wrapper 추가 */}
+              <div className="relative min-h-[250px] mb-8 flex flex-col items-center justify-center border border-transparent rounded-xl">
+                
+                {/* 원본 컨텐츠 (이미지/텍스트) */}
+                <div className="w-full h-full flex flex-col items-center justify-center select-none"> {/* 필기 중 텍스트 선택 방지 */}
+                  {currentQ.imgUrl ? (
+                    /* eslint-disable-next-line @next/next/no-img-element */
+                    <img src={currentQ.imgUrl} alt="문제" className="max-w-full object-contain max-h-[500px]" />
+                  ) : (
+                    <p className="text-slate-700 whitespace-pre-wrap leading-relaxed text-lg text-center px-4">
+                      {currentQ.content || "문제 내용이 없습니다."}
+                    </p>
+                  )}
+                </div>
+
+                {/* [신규] 필기 레이어 */}
+                {/* isPenMode가 꺼져있어도 필기 내용은 보여야 하므로 pointer-events만 제어 */}
+                <div className={`absolute inset-0 w-full h-full z-10 ${!isPenMode ? 'pointer-events-none' : ''}`}>
+                   <DrawingLayer 
+                     // 현재 문제 번호에 해당하는 데이터가 없으면 빈 배열 전달
+                     initialData={drawings[currentQ.number] || []}
+                     onSave={handleSaveDrawing}
+                     disabled={!isPenMode}
+                   />
+                </div>
+
               </div>
 
               {/* 선택지 (5지선다) */}
-              <div className="grid grid-cols-5 gap-3 md:gap-4 pt-6 border-t border-slate-100">
+              <div className="grid grid-cols-5 gap-3 md:gap-4 pt-6 border-t border-slate-100 relative z-20">
                 {[1, 2, 3, 4, 5].map((num) => {
                   const isSelected = answers[currentQ.number] === num;
                   
@@ -305,7 +356,7 @@ export default function ExamTakePage() {
 
             {/* [연습 모드] 해설 카드 (확인 시에만 노출) */}
             {isPractice && isChecked && (
-              <div className="bg-white border border-slate-200 rounded-xl p-6 shadow-sm animate-in slide-in-from-bottom-4 duration-500">
+              <div className="bg-white border border-slate-200 rounded-xl p-6 shadow-sm animate-in slide-in-from-bottom-4 duration-500 relative z-20">
                 <h3 className="font-bold text-slate-800 mb-3 flex items-center gap-2 border-b border-slate-100 pb-2">
                   <LightBulbIcon className="w-5 h-5 text-yellow-500" /> 해설 및 풀이
                 </h3>
@@ -317,7 +368,7 @@ export default function ExamTakePage() {
 
             {/* [연습 모드] 정답 확인 버튼 */}
             {isPractice && !isChecked && (
-              <div className="flex justify-center pb-10">
+              <div className="flex justify-center pb-10 relative z-20">
                 <button 
                   onClick={() => handleCheckAnswer(currentQ.number)}
                   className="px-8 py-3 bg-slate-800 text-white rounded-full font-bold shadow-lg hover:bg-slate-700 transition-transform active:scale-95 flex items-center gap-2"
@@ -331,7 +382,7 @@ export default function ExamTakePage() {
         </div>
 
         {/* 하단 네비게이션 */}
-        <div className="h-20 bg-white border-t border-slate-200 flex items-center justify-center gap-6 md:gap-12 flex-shrink-0 px-4 shadow-[0_-4px_20px_-5px_rgba(0,0,0,0.05)]">
+        <div className="h-20 bg-white border-t border-slate-200 flex items-center justify-center gap-6 md:gap-12 flex-shrink-0 px-4 shadow-[0_-4px_20px_-5px_rgba(0,0,0,0.05)] z-30">
           <button 
             onClick={() => {
               setCurrentQIdx(prev => Math.max(0, prev - 1));
@@ -358,7 +409,7 @@ export default function ExamTakePage() {
       </div>
 
       {/* 2. OMR 카드 (PC: 사이드바) */}
-      <div className="hidden md:flex w-80 bg-white border-l border-slate-200 flex-col z-20 shadow-xl">
+      <div className="hidden md:flex w-80 bg-white border-l border-slate-200 flex-col z-30 shadow-xl">
         <div className="p-6 border-b border-slate-100 bg-emerald-50">
           <h2 className="font-bold text-emerald-900 text-lg flex items-center gap-2">
             <CheckCircleIcon className="w-6 h-6" /> OMR 카드
