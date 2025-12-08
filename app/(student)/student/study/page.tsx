@@ -129,7 +129,6 @@ export default function StudentStudyPage() {
           content: p.content || "",
           imgUrl: p.imgUrl || "",
           answer: p.answer,
-          explanation: p.explanation, // 연습 모드용 해설 저장
           userAnswer: null, // 학생 답 (초기값 null)
           isCorrect: false
         }))
