@@ -401,7 +401,7 @@ export default function DrawingLayer({ initialData, onSave, disabled = false }: 
               tool === 'highlighter' ? 'bg-yellow-50 text-yellow-600 ring-2 ring-yellow-200' : 'text-slate-400 hover:bg-slate-50'
             }`}
           >
-            <HighlighterIcon className="w-6 h-6" />
+            <HighlighterIcon className="w-6 h-6" color="#fde047"/>
           </button>
 
           {/* 지우개 */}
