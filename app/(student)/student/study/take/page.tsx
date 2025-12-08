@@ -2,7 +2,7 @@
 
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import { db } from "@/lib/firebase";
@@ -13,12 +13,13 @@ import {
   ChevronRightIcon, 
   CheckCircleIcon,
   LightBulbIcon,
-  EyeIcon
+  EyeIcon,
+  Bars3BottomRightIcon
 } from "@heroicons/react/24/outline";
-import { PencilSquareIcon } from "@heroicons/react/24/solid"; // [신규] 필기 아이콘 추가
+import { PencilSquareIcon } from "@heroicons/react/24/solid";
 import { toast } from "react-hot-toast";
 
-// [신규] DrawingLayer 컴포넌트 및 타입 임포트
+// DrawingLayer 경로는 프로젝트 구조에 맞게 확인해주세요
 import DrawingLayer, { Stroke } from "@/components/DrawingLayer"; 
 
 interface ExamProblem {
@@ -36,7 +37,7 @@ interface StudentExam {
   id: string;
   title: string;
   status: string;
-  mode?: 'test' | 'practice'; // 학습 모드
+  mode?: 'test' | 'practice';
   totalQuestions: number;
   problems: ExamProblem[];
   createdAt: Timestamp;
@@ -55,13 +56,15 @@ export default function ExamTakePage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
-  // [연습 모드용] 문제별 정답 확인 여부 (true면 해설 표시)
+  // [연습 모드] 문제별 정답 확인 여부
   const [checkedProblems, setCheckedProblems] = useState<Record<number, boolean>>({});
 
-  // [신규] 필기 모드 및 데이터 상태
-  const [isPenMode, setIsPenMode] = useState(false);
-  // 문항 번호(number)를 키로 사용하여 필기 데이터 저장 (문제 이동 시 복원용)
+  // [필기] 기본 켜짐
+  const [isPenMode, setIsPenMode] = useState(true); 
   const [drawings, setDrawings] = useState<Record<number, Stroke[]>>({});
+
+  // 모바일 대응용 사이드바 토글
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
 
   // 1. 시험지 로드
   useEffect(() => {
@@ -73,20 +76,16 @@ export default function ExamTakePage() {
         const docSnap = await getDoc(docRef);
 
         if (docSnap.exists()) {
-          // [수정됨] Omit을 사용하여 data 내부에 id가 없음을 명시하여 충돌 방지
           const data = docSnap.data() as Omit<StudentExam, "id">;
           
-          // 이미 완료된 시험이면 리포트 페이지로 리다이렉트
           if (data.status === 'completed') {
             toast("이미 제출된 시험입니다.");
             router.replace(`/student/report/${examId}`);
             return;
           }
 
-          // 이제 data에는 id가 없으므로 여기서 id를 병합해도 충돌 경고가 발생하지 않음
           setExam({ id: docSnap.id, ...data });
           
-          // 실전 모드일 때만 타이머 설정 (문항당 2분)
           if (data.mode !== 'practice') {
             setTimeLeft(data.totalQuestions * 120); 
           }
@@ -105,108 +104,85 @@ export default function ExamTakePage() {
     fetchExam();
   }, [user, examId, router]);
 
-  // 2. 타이머 동작 (실전 모드)
+  // 2. 타이머
   useEffect(() => {
     if (!exam || exam.mode === 'practice' || timeLeft <= 0) return;
-
     const timer = setInterval(() => {
       setTimeLeft((prev) => {
         if (prev <= 1) {
           clearInterval(timer);
-          // 시간 초과 시 자동 제출
           return 0;
         }
         return prev - 1;
       });
     }, 1000);
-
     return () => clearInterval(timer);
   }, [timeLeft, exam]);
 
-  // 시간이 0이 되었을 때 자동 제출 트리거 (useEffect 분리)
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (exam && exam.mode !== 'practice' && timeLeft === 0 && !isLoading) {
        handleSubmit(true);
     }
-  }, [timeLeft, exam, isLoading]); // handleSubmit은 의존성에서 제외하여 루프 방지 (useCallback 사용)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [timeLeft, exam, isLoading]);
 
-
-  // 답안 마킹 핸들러
+  // 핸들러들
   const handleMark = (qNum: number, choice: number) => {
     setAnswers(prev => ({ ...prev, [qNum]: choice }));
   };
 
-  // [연습 모드] 정답 확인 핸들러
   const handleCheckAnswer = (qNum: number) => {
     if (!answers[qNum]) return toast.error("답안을 먼저 선택해주세요.");
     setCheckedProblems(prev => ({ ...prev, [qNum]: true }));
   };
 
-  // [신규] 필기 저장 핸들러
   const handleSaveDrawing = (newStrokes: Stroke[]) => {
     if (!exam) return;
     const currentNum = exam.problems[currentQIdx].number;
-    setDrawings(prev => ({
-      ...prev,
-      [currentNum]: newStrokes
-    }));
+    setDrawings(prev => ({ ...prev, [currentNum]: newStrokes }));
   };
 
-  // 제출 및 채점 로직
   const handleSubmit = useCallback(async (isTimeOut = false) => {
     if (!exam || isSubmitting) return;
 
-    // 강제 제출(시간초과)이 아니면 확인 창 띄우기
     if (!isTimeOut) {
       const answeredCount = Object.keys(answers).length;
       if (answeredCount < exam.totalQuestions) {
         if (!confirm(`아직 ${exam.totalQuestions - answeredCount}문제를 풀지 않았습니다. 정말 제출하시겠습니까?`)) return;
       } else {
-        if (!confirm(exam.mode === 'practice' ? "학습을 종료하고 결과를 저장하시겠습니까?" : "답안을 제출하시겠습니까?")) return;
+        if (!confirm(exam.mode === 'practice' ? "학습을 종료하시겠습니까?" : "답안을 제출하시겠습니까?")) return;
       }
     }
 
     setIsSubmitting(true);
-    const toastId = toast.loading("채점 및 저장 중...");
+    const toastId = toast.loading("채점 중...");
 
     try {
       let correctCount = 0;
-      
-      // 문제 배열 순회하며 채점
       const gradedProblems = exam.problems.map(p => {
-        const userAns = answers[p.number] || 0; // 미응답은 0
+        const userAns = answers[p.number] || 0;
         const isCorrect = String(userAns) === String(p.answer);
         if (isCorrect) correctCount++;
-        
-        return {
-          ...p,
-          userAnswer: userAns,
-          isCorrect
-        };
+        return { ...p, userAnswer: userAns, isCorrect };
       });
 
       const score = Math.round((correctCount / exam.totalQuestions) * 100);
 
-      // DB 업데이트
       await updateDoc(doc(db, "student_exams", exam.id), {
         problems: gradedProblems,
         score,
         correctCount,
         status: "completed",
         completedAt: serverTimestamp(),
-        // 소요 시간 저장 (실전모드: 전체시간 - 남은시간, 연습모드: null 또는 별도 측정)
         timeSpent: exam.mode !== 'practice' ? (exam.totalQuestions * 120) - timeLeft : null
       });
 
-      toast.success(`채점 완료! 점수: ${score}점`, { id: toastId });
-      
-      // 결과 페이지로 이동
+      toast.success(`완료! 점수: ${score}점`, { id: toastId });
       router.replace(`/student/report/${exam.id}`);
 
     } catch (e) {
       console.error(e);
-      toast.error("제출 중 오류가 발생했습니다.", { id: toastId });
+      toast.error("오류 발생", { id: toastId });
       setIsSubmitting(false);
     }
   }, [exam, answers, isSubmitting, timeLeft, router]);
@@ -217,268 +193,269 @@ export default function ExamTakePage() {
     return `${m}:${s < 10 ? '0' : ''}${s}`;
   };
 
-  if (isLoading || !exam) return <div className="flex h-screen items-center justify-center text-emerald-600 font-bold">시험지를 불러오는 중...</div>;
+  if (isLoading || !exam) return <div className="flex h-screen items-center justify-center font-bold text-slate-500">로딩 중...</div>;
 
   const currentQ = exam.problems[currentQIdx];
   const isPractice = exam.mode === 'practice';
-  
-  // 현재 문제 확인 여부 (연습 모드)
   const isChecked = checkedProblems[currentQ.number];
-  // 정답 여부 (화면 표시용)
   const isCorrect = String(answers[currentQ.number]) === String(currentQ.answer);
 
   return (
     <div className="flex h-screen bg-slate-100 overflow-hidden font-sans">
       
-      {/* 1. 메인 문제 영역 */}
-      <div className="flex-1 flex flex-col h-full relative">
-        
-        {/* 상단 헤더 */}
-        <header className="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-6 flex-shrink-0">
-          <div className="flex items-center gap-4">
-            <span className={`px-3 py-1 rounded-full text-xs font-bold ${isPractice ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-800 text-white'}`}>
-              {isPractice ? 'Practice Mode' : 'Real Test'}
-            </span>
-            <h1 className="text-lg font-bold text-slate-800 truncate max-w-md">{exam.title}</h1>
+      {/* [1. 메인 시험지 영역] 
+        - 왼쪽 전체를 차지
+        - 문제 텍스트/이미지 위에 DrawingLayer가 오버레이됨
+      */}
+      <div className="flex-1 flex flex-col relative h-full">
+        {/* 상단 헤더 (타이틀 & 툴바) */}
+        <header className="h-14 bg-white border-b border-slate-200 flex items-center justify-between px-4 z-20 shadow-sm flex-shrink-0">
+          <div className="flex items-center gap-3">
+            <button onClick={() => router.back()} className="text-slate-400 hover:text-slate-600">
+              <ChevronLeftIcon className="w-5 h-5" />
+            </button>
+            <h1 className="text-sm font-bold text-slate-800 truncate max-w-[200px] md:max-w-md">{exam.title}</h1>
           </div>
           
-          <div className="flex items-center gap-6">
-            {/* [신규] 필기 모드 토글 버튼 */}
+          <div className="flex items-center gap-3">
+             {/* 필기 모드 토글 */}
             <button
               onClick={() => setIsPenMode(!isPenMode)}
-              className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-bold transition-all ${
-                isPenMode 
-                  ? "bg-indigo-600 text-white shadow-md ring-2 ring-indigo-200" 
-                  : "bg-white border border-slate-200 text-slate-600 hover:bg-slate-50"
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${
+                isPenMode ? "bg-indigo-600 text-white" : "bg-slate-100 text-slate-500 hover:bg-slate-200"
               }`}
             >
-              <PencilSquareIcon className="w-5 h-5" />
-              {isPenMode ? "필기 모드 ON" : "필기 모드 OFF"}
+              <PencilSquareIcon className="w-4 h-4" />
+              {isPenMode ? "필기 ON" : "필기 OFF"}
             </button>
-
-            {!isPractice && (
-              <div className={`flex items-center gap-2 font-mono text-xl font-bold ${timeLeft < 60 ? 'text-red-500 animate-pulse' : 'text-slate-700'}`}>
-                <ClockIcon className="w-6 h-6" />
-                {formatTime(timeLeft)}
-              </div>
-            )}
+            
+            {/* 사이드바 토글 (모바일용) */}
+            <button 
+              onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+              className="md:hidden p-2 text-slate-500 bg-slate-50 rounded-lg"
+            >
+              <Bars3BottomRightIcon className="w-6 h-6" />
+            </button>
           </div>
         </header>
 
-        {/* 문제 뷰어 (스크롤 영역) */}
-        <div className="flex-1 overflow-y-auto p-4 md:p-8 flex justify-center bg-slate-50">
-          <div className="max-w-3xl w-full space-y-6">
+        {/* 시험지 컨텐츠 영역 (스크롤 가능) 
+            - Canvas와 컨텐츠가 같이 스크롤 되어야 하므로 
+              relative wrapper(overflow-auto) 안에 컨텐츠와 canvas를 absolute로 배치
+        */}
+        <div className="flex-1 relative overflow-hidden bg-white">
+          {/* 스크롤 가능한 컨테이너 */}
+          <div className="w-full h-full overflow-y-auto relative custom-scrollbar">
             
-            {/* 문제 카드 */}
-            {/* [수정] DrawingLayer가 잘리지 않도록 overflow-hidden 제거 및 relative 유지 */}
-            <div className="bg-white shadow-sm border border-slate-200 rounded-xl p-6 md:p-10 relative">
-              <div className="flex justify-between items-start mb-6">
-                <span className="text-emerald-600 font-extrabold text-2xl border-b-2 border-emerald-600 pb-1">
-                  Q{currentQ.number}.
-                </span>
-                
-                {/* [연습 모드] 정답 확인 결과 배지 */}
-                {isPractice && isChecked && (
-                  <span className={`px-3 py-1 rounded-lg text-sm font-bold flex items-center gap-1 ${isCorrect ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
-                    {isCorrect ? "정답입니다! 🎉" : "오답입니다 😅"}
-                  </span>
-                )}
-              </div>
-              
-              {/* 문제 이미지/텍스트 영역 */}
-              {/* [핵심] DrawingLayer를 오버레이하기 위해 relative wrapper 추가 */}
-              <div className="relative min-h-[250px] mb-8 flex flex-col items-center justify-center border border-transparent rounded-xl">
-                
-                {/* 원본 컨텐츠 (이미지/텍스트) */}
-                <div className="w-full h-full flex flex-col items-center justify-center select-none"> {/* 필기 중 텍스트 선택 방지 */}
-                  {currentQ.imgUrl ? (
-                    /* eslint-disable-next-line @next/next/no-img-element */
-                    <img src={currentQ.imgUrl} alt="문제" className="max-w-full object-contain max-h-[500px]" />
-                  ) : (
-                    <p className="text-slate-700 whitespace-pre-wrap leading-relaxed text-lg text-center px-4">
-                      {currentQ.content || "문제 내용이 없습니다."}
-                    </p>
+            {/* A. 문제 컨텐츠 (가장 밑바닥 레이어, z-0) */}
+            <div className="min-h-full w-full flex flex-col items-center p-8 md:p-12 pb-32">
+              <div className="max-w-3xl w-full">
+                {/* 문제 번호 */}
+                <div className="mb-6 border-b-2 border-slate-800 pb-2 flex justify-between items-end select-none">
+                  <h2 className="text-3xl font-black text-slate-800">Q.{currentQ.number}</h2>
+                  {isPractice && isChecked && (
+                    <span className={`font-bold ${isCorrect ? 'text-green-600' : 'text-red-500'}`}>
+                      {isCorrect ? "정답입니다! 🎉" : "오답입니다 😅"}
+                    </span>
                   )}
                 </div>
 
-                {/* [신규] 필기 레이어 */}
-                {/* isPenMode가 꺼져있어도 필기 내용은 보여야 하므로 pointer-events만 제어 */}
-                <div className={`absolute inset-0 w-full h-full z-10 ${!isPenMode ? 'pointer-events-none' : ''}`}>
-                   <DrawingLayer 
-                     // 현재 문제 번호에 해당하는 데이터가 없으면 빈 배열 전달
-                     initialData={drawings[currentQ.number] || []}
-                     onSave={handleSaveDrawing}
-                     disabled={!isPenMode}
-                   />
+                {/* 문제 내용 (텍스트 드래그 방지: select-none) */}
+                <div className="prose prose-slate max-w-none select-none pointer-events-none">
+                  {currentQ.imgUrl ? (
+                    /* eslint-disable-next-line @next/next/no-img-element */
+                    <img src={currentQ.imgUrl} alt="문제" className="w-full max-w-2xl mx-auto object-contain border border-slate-100 rounded-lg mb-8" />
+                  ) : (
+                    <p className="text-xl leading-loose text-slate-900 font-serif whitespace-pre-wrap mb-8">
+                      {currentQ.content}
+                    </p>
+                  )}
+                  
+                  {/* (선택지가 텍스트라면 여기에 표시할 수도 있지만, 보통은 OMR로 대체) */}
                 </div>
 
-              </div>
-
-              {/* 선택지 (5지선다) */}
-              <div className="grid grid-cols-5 gap-3 md:gap-4 pt-6 border-t border-slate-100 relative z-20">
-                {[1, 2, 3, 4, 5].map((num) => {
-                  const isSelected = answers[currentQ.number] === num;
-                  
-                  // 스타일링 로직
-                  let btnStyle = "border-slate-200 text-slate-400 hover:border-emerald-300 hover:text-emerald-600 hover:bg-slate-50";
-                  
-                  // [연습 모드 & 확인 됨]
-                  if (isPractice && isChecked) {
-                    if (String(num) === String(currentQ.answer)) {
-                      // 실제 정답 (초록색)
-                      btnStyle = "bg-green-500 text-white border-green-500 shadow-md ring-2 ring-green-200"; 
-                    } else if (isSelected) {
-                      // 내가 고른 오답 (빨간색)
-                      btnStyle = "bg-red-500 text-white border-red-500 shadow-md ring-2 ring-red-200"; 
-                    } else {
-                      // 나머지
-                      btnStyle = "border-slate-100 text-slate-300 opacity-50";
-                    }
-                  } 
-                  // [일반 선택 상태]
-                  else if (isSelected) {
-                    btnStyle = "border-emerald-500 bg-emerald-50 text-emerald-700 font-extrabold ring-1 ring-emerald-200";
-                  }
-
-                  return (
-                    <button
-                      key={num}
-                      onClick={() => !isChecked && handleMark(currentQ.number, num)}
-                      disabled={isPractice && isChecked} // 확인 후 변경 불가
-                      className={`py-3 md:py-4 rounded-xl border-2 text-lg font-bold transition-all ${btnStyle}`}
-                    >
-                      {num}
-                    </button>
-                  );
-                })}
+                {/* 연습 모드 해설 (문제 아래에 표시) */}
+                {isPractice && isChecked && (
+                   <div className="mt-12 p-6 bg-yellow-50 border border-yellow-100 rounded-xl select-text pointer-events-auto">
+                     <h3 className="font-bold text-yellow-800 flex items-center gap-2 mb-3">
+                       <LightBulbIcon className="w-5 h-5" /> 해설
+                     </h3>
+                     <p className="text-slate-700 whitespace-pre-wrap leading-relaxed">
+                       {currentQ.explanation || "해설이 없습니다."}
+                     </p>
+                   </div>
+                )}
               </div>
             </div>
 
-            {/* [연습 모드] 해설 카드 (확인 시에만 노출) */}
-            {isPractice && isChecked && (
-              <div className="bg-white border border-slate-200 rounded-xl p-6 shadow-sm animate-in slide-in-from-bottom-4 duration-500 relative z-20">
-                <h3 className="font-bold text-slate-800 mb-3 flex items-center gap-2 border-b border-slate-100 pb-2">
-                  <LightBulbIcon className="w-5 h-5 text-yellow-500" /> 해설 및 풀이
-                </h3>
-                <p className="text-slate-600 text-sm leading-relaxed whitespace-pre-wrap">
-                  {currentQ.explanation || "해설이 준비되지 않았습니다."}
-                </p>
-              </div>
-            )}
-
-            {/* [연습 모드] 정답 확인 버튼 */}
-            {isPractice && !isChecked && (
-              <div className="flex justify-center pb-10 relative z-20">
-                <button 
-                  onClick={() => handleCheckAnswer(currentQ.number)}
-                  className="px-8 py-3 bg-slate-800 text-white rounded-full font-bold shadow-lg hover:bg-slate-700 transition-transform active:scale-95 flex items-center gap-2"
-                >
-                  <EyeIcon className="w-5 h-5" /> 정답 확인하기
-                </button>
-              </div>
-            )}
+            {/* B. Drawing Layer (그 위에 덮는 레이어, z-10) */}
+            {/* inset-0으로 설정하여 컨텐츠 높이에 맞춰 늘어나게 함 */}
+            <div className={`absolute inset-0 w-full min-h-full z-10 ${!isPenMode ? 'pointer-events-none' : ''}`}>
+               <DrawingLayer 
+                  initialData={drawings[currentQ.number] || []}
+                  onSave={handleSaveDrawing}
+                  disabled={!isPenMode}
+               />
+            </div>
 
           </div>
         </div>
-
-        {/* 하단 네비게이션 */}
-        <div className="h-20 bg-white border-t border-slate-200 flex items-center justify-center gap-6 md:gap-12 flex-shrink-0 px-4 shadow-[0_-4px_20px_-5px_rgba(0,0,0,0.05)] z-30">
-          <button 
-            onClick={() => {
-              setCurrentQIdx(prev => Math.max(0, prev - 1));
-              // 페이지 이동 시 상단 스크롤 등의 처리가 필요할 수 있음
-            }}
-            disabled={currentQIdx === 0}
-            className="flex items-center gap-2 px-5 py-2.5 rounded-lg hover:bg-slate-100 disabled:opacity-30 disabled:hover:bg-transparent font-bold text-slate-600 transition-colors"
-          >
-            <ChevronLeftIcon className="w-5 h-5" /> <span className="hidden md:inline">이전 문제</span>
-          </button>
-          
-          <span className="text-slate-400 font-medium text-lg">
-            <span className="text-slate-900 font-black">{currentQIdx + 1}</span> / {exam.totalQuestions}
-          </span>
-
-          <button 
-            onClick={() => setCurrentQIdx(prev => Math.min(exam.totalQuestions - 1, prev + 1))}
-            disabled={currentQIdx === exam.totalQuestions - 1}
-            className="flex items-center gap-2 px-5 py-2.5 rounded-lg hover:bg-slate-100 disabled:opacity-30 disabled:hover:bg-transparent font-bold text-slate-600 transition-colors"
-          >
-            <span className="hidden md:inline">다음 문제</span> <ChevronRightIcon className="w-5 h-5" />
-          </button>
-        </div>
       </div>
 
-      {/* 2. OMR 카드 (PC: 사이드바) */}
-      <div className="hidden md:flex w-80 bg-white border-l border-slate-200 flex-col z-30 shadow-xl">
-        <div className="p-6 border-b border-slate-100 bg-emerald-50">
-          <h2 className="font-bold text-emerald-900 text-lg flex items-center gap-2">
-            <CheckCircleIcon className="w-6 h-6" /> OMR 카드
-          </h2>
-          <p className="text-emerald-600 text-xs mt-1 font-medium">
-            {isPractice ? "풀이 현황" : `남은 문항: ${exam.totalQuestions - Object.keys(answers).length}개`}
-          </p>
+      {/* [2. 우측 OMR 사이드바]
+        - 문제 답안 마킹 및 네비게이션
+      */}
+      <div className={`
+        fixed inset-y-0 right-0 z-30 w-80 bg-slate-50 border-l border-slate-200 shadow-xl flex flex-col transition-transform duration-300 ease-in-out
+        ${isSidebarOpen ? 'translate-x-0' : 'translate-x-full'}
+        md:relative md:translate-x-0 md:flex-shrink-0
+      `}>
+        
+        {/* 사이드바 헤더 (타이머 & 상태) */}
+        <div className="p-5 bg-white border-b border-slate-200">
+           {!isPractice ? (
+            <div className={`flex items-center justify-between font-mono font-bold text-xl ${timeLeft < 60 ? 'text-red-500 animate-pulse' : 'text-slate-800'}`}>
+              <div className="flex items-center gap-2">
+                <ClockIcon className="w-6 h-6" />
+                <span>남은 시간</span>
+              </div>
+              <span>{formatTime(timeLeft)}</span>
+            </div>
+           ) : (
+            <div className="flex items-center gap-2 text-emerald-700 font-bold text-lg">
+              <CheckCircleIcon className="w-6 h-6" />
+              <span>학습 모드</span>
+            </div>
+           )}
+           <div className="mt-2 text-xs text-slate-400 font-medium text-right">
+             진행률: {Math.round((Object.keys(answers).length / exam.totalQuestions) * 100)}%
+           </div>
         </div>
 
-        <div className="flex-1 overflow-y-auto p-5 space-y-3 custom-scrollbar bg-slate-50/50">
-          {exam.problems.map((q, idx) => {
-            const isAnsSelected = !!answers[q.number];
-            const isQChecked = isPractice && checkedProblems[q.number];
-            const isQCorrect = String(answers[q.number]) === String(q.answer);
+        {/* 현재 문제 답안 마킹 (가장 중요한 액션) */}
+        <div className="p-6 bg-white border-b border-slate-200 flex-shrink-0">
+          <div className="mb-3 flex justify-between items-center">
+            <h3 className="text-lg font-bold text-slate-800">정답 표기</h3>
+            <span className="text-sm font-bold text-indigo-600 bg-indigo-50 px-2 py-1 rounded">Q.{currentQ.number}</span>
+          </div>
+          
+          <div className="grid grid-cols-5 gap-2">
+            {[1, 2, 3, 4, 5].map((num) => {
+               const isSelected = answers[currentQ.number] === num;
+               let btnClass = "h-12 rounded-lg border-2 font-bold text-lg transition-all active:scale-95 shadow-sm ";
+               
+               if (isPractice && isChecked) {
+                 // 결과 표시
+                 if (String(num) === String(currentQ.answer)) {
+                    btnClass += "bg-green-500 border-green-500 text-white";
+                 } else if (isSelected) {
+                    btnClass += "bg-red-500 border-red-500 text-white";
+                 } else {
+                    btnClass += "bg-slate-50 border-slate-100 text-slate-300";
+                 }
+               } else {
+                 // 일반 선택
+                 if (isSelected) {
+                    btnClass += "bg-slate-800 border-slate-800 text-white";
+                 } else {
+                    btnClass += "bg-white border-slate-200 text-slate-500 hover:border-slate-400 hover:bg-slate-50";
+                 }
+               }
 
-            return (
-              <div key={q.problemId} className="flex items-center justify-between group p-2 rounded-lg hover:bg-white transition-colors">
-                <span 
+               return (
+                 <button
+                   key={num}
+                   onClick={() => !isChecked && handleMark(currentQ.number, num)}
+                   disabled={isPractice && isChecked}
+                   className={btnClass}
+                 >
+                   {num}
+                 </button>
+               )
+            })}
+          </div>
+
+          {/* 연습모드 정답확인 버튼 */}
+          {isPractice && !isChecked && (
+            <button 
+              onClick={() => handleCheckAnswer(currentQ.number)}
+              className="w-full mt-4 py-3 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 flex items-center justify-center gap-2 shadow-indigo-200 shadow-lg transition-all"
+            >
+              <EyeIcon className="w-5 h-5" /> 정답 확인
+            </button>
+          )}
+        </div>
+
+        {/* 문항 네비게이션 그리드 (스크롤) */}
+        <div className="flex-1 overflow-y-auto p-5 bg-slate-50/50">
+          <h4 className="text-xs font-bold text-slate-400 mb-3 uppercase tracking-wider">Question List</h4>
+          <div className="grid grid-cols-5 gap-2.5">
+            {exam.problems.map((q, idx) => {
+              const isActive = currentQIdx === idx;
+              const isMarked = !!answers[q.number];
+              const isQChecked = isPractice && checkedProblems[q.number];
+              const isQCorrect = isQChecked && String(answers[q.number]) === String(q.answer);
+              
+              let gridClass = "aspect-square rounded-lg text-xs font-bold border flex items-center justify-center transition-all ";
+              
+              if (isActive) {
+                 gridClass += "ring-2 ring-indigo-500 border-transparent z-10 scale-105 ";
+              } else {
+                 gridClass += "border-slate-200 ";
+              }
+
+              if (isPractice && isQChecked) {
+                 gridClass += isQCorrect ? "bg-green-100 text-green-700 border-green-200 " : "bg-red-50 text-red-500 border-red-200 ";
+              } else if (isMarked) {
+                 gridClass += isActive ? "bg-indigo-600 text-white " : "bg-slate-700 text-white border-slate-700 ";
+              } else {
+                 gridClass += "bg-white text-slate-400 hover:bg-white hover:text-slate-600 ";
+              }
+
+              return (
+                <button
+                  key={q.problemId}
                   onClick={() => setCurrentQIdx(idx)}
-                  className={`w-8 font-bold text-sm cursor-pointer ${currentQIdx === idx ? 'text-emerald-600 underline' : 'text-slate-500'}`}
+                  className={gridClass}
                 >
                   {q.number}
-                </span>
-                
-                {/* 문항별 상태 표시 */}
-                <div className="flex gap-1.5">
-                  {/* 연습 모드에서 확인 완료 시: O/X 표시 */}
-                  {isPractice && isQChecked ? (
-                    <div className={`w-full text-right text-xs font-bold ${isQCorrect ? 'text-green-600' : 'text-red-500'}`}>
-                      {isQCorrect ? "정답" : "오답"}
-                    </div>
-                  ) : (
-                    // 일반 모드 또는 확인 전: 번호 버튼들
-                    [1, 2, 3, 4, 5].map((num) => (
-                      <button
-                        key={num}
-                        onClick={() => !isQChecked && handleMark(q.number, num)}
-                        disabled={isPractice && isQChecked}
-                        className={`w-6 h-6 rounded-full text-[10px] font-bold border transition-all ${
-                          answers[q.number] === num
-                            ? "bg-slate-800 border-slate-800 text-white"
-                            : "bg-white border-slate-200 text-slate-300 hover:border-slate-400"
-                        }`}
-                      >
-                        {num}
-                      </button>
-                    ))
-                  )}
-                </div>
-              </div>
-            );
-          })}
+                </button>
+              );
+            })}
+          </div>
         </div>
+        
+        {/* 네비게이션 버튼 & 제출 */}
+        <div className="p-5 bg-white border-t border-slate-200 space-y-3">
+          <div className="flex gap-2">
+            <button 
+              onClick={() => setCurrentQIdx(prev => Math.max(0, prev - 1))}
+              disabled={currentQIdx === 0}
+              className="flex-1 py-2.5 rounded-lg border border-slate-200 flex items-center justify-center hover:bg-slate-50 disabled:opacity-50 text-slate-600"
+            >
+              <ChevronLeftIcon className="w-5 h-5" />
+            </button>
+            <button 
+              onClick={() => setCurrentQIdx(prev => Math.min(exam.totalQuestions - 1, prev + 1))}
+              disabled={currentQIdx === exam.totalQuestions - 1}
+              className="flex-1 py-2.5 rounded-lg border border-slate-200 flex items-center justify-center hover:bg-slate-50 disabled:opacity-50 text-slate-600"
+            >
+              <ChevronRightIcon className="w-5 h-5" />
+            </button>
+          </div>
 
-        <div className="p-6 border-t border-slate-200 bg-white">
           <button 
             onClick={() => handleSubmit(false)}
             disabled={isSubmitting}
-            className={`w-full py-4 rounded-xl font-bold text-lg shadow-lg transition-all active:scale-95 disabled:opacity-50 ${
-              isPractice 
-               ? "bg-slate-800 text-white hover:bg-slate-700 shadow-slate-200" 
-               : "bg-emerald-600 text-white hover:bg-emerald-700 shadow-emerald-200"
+            className={`w-full py-3.5 rounded-xl font-bold text-white shadow-lg transition-all active:scale-95 disabled:opacity-70 ${
+              isPractice ? "bg-slate-800 hover:bg-slate-700" : "bg-indigo-600 hover:bg-indigo-700"
             }`}
           >
-            {isSubmitting ? "처리 중..." : (isPractice ? "학습 종료" : "답안 제출")}
+            {isSubmitting ? "처리 중..." : (isPractice ? "학습 종료하기" : "답안 제출하기")}
           </button>
         </div>
-      </div>
 
+      </div>
     </div>
   );
 }

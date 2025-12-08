@@ -213,7 +213,7 @@ const ExamPaperLayout = forwardRef<HTMLDivElement, ExamPaperLayoutProps>(
            
            <div className="flex justify-between items-center mt-2 text-xs font-medium text-slate-500">
               <span>{instructor} 선생님</span>
-              <span>RuleMakers Problem Bank</span>
+              <span>RuleMakers</span>
            </div>
         </div>
       );
