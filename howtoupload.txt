@@ -1,1 +1,2 @@
 node scripts/upload_bulk.js
+node scripts/manage_problems.js

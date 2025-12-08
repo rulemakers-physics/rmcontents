@@ -8,7 +8,7 @@ import { SCIENCE_UNITS } from "@/types/scienceUnits";
 import { 
   Printer, Lock, ChevronDown, Filter, FileText, 
   LayoutTemplate, Image as ImageIcon, SaveIcon, ListOrdered, 
-  RotateCcw, FileCheck, CheckSquare, Settings2
+  RotateCcw, FileCheck, CheckSquare, Settings2, CheckCircle2
 } from "lucide-react";
 import ExamPaperLayout, { ExamProblem } from "@/components/ExamPaperLayout";
 import { useAuth } from "@/context/AuthContext";
@@ -41,7 +41,7 @@ function ExamBuilderContent() {
   const [activeTab, setActiveTab] = useState<'filter' | 'order'>('filter');
 
   // 필터 상태
-  const [difficulties, setDifficulties] = useState<Difficulty[]>(["중", "상"]);
+  const [difficulties, setDifficulties] = useState<Difficulty[]>(["기본", "하", "중", "상"]);
   const [questionCount, setQuestionCount] = useState(20);
   const [selectedMajorTopics, setSelectedMajorTopics] = useState<string[]>([]);
   const [selectedMinorTopics, setSelectedMinorTopics] = useState<string[]>([]);
@@ -72,6 +72,10 @@ function ExamBuilderContent() {
   const [isSaving, setIsSaving] = useState(false);
   const [isLoaded, setIsLoaded] = useState(false); 
   const [isMounted, setIsMounted] = useState(false);
+  
+  // [신규] 질문 형식 상태 관리
+  // 기본값: ['SELECTION'] (객관식만 선택됨)
+  const [targetQuestionTypes, setTargetQuestionTypes] = useState<string[]>(['SELECTION', 'ESSAY']);
 
   useEffect(() => {
     setIsMounted(true);
@@ -121,9 +125,23 @@ function ExamBuilderContent() {
     selectedMajorTopics,
     selectedMinorTopics,
     difficulties,
-    // [신규] 체크박스가 켜져있을 때만 제외할 ID 목록 전달
     excludedProblemIds: excludeUsed ? usedProblemIds : [],
+    questionTypes: targetQuestionTypes, // [신규] 전달
   });
+
+  // [신규] 체크박스 핸들러
+  const toggleQuestionType = (type: string) => {
+    setTargetQuestionTypes(prev => {
+      // 최소 1개는 선택되어 있어야 함 (모두 해제 방지 로직이 필요하다면 추가)
+      if (prev.includes(type)) {
+        // 만약 이것을 끄면 아무것도 안 남는 경우 -> 끄지 않음 (선택 사항)
+        if (prev.length === 1) return prev; 
+        return prev.filter(t => t !== type);
+      } else {
+        return [...prev, type];
+      }
+    });
+  };
 
   // [핵심 수정] 자동 생성 로직
   useEffect(() => {
@@ -452,7 +470,36 @@ function ExamBuilderContent() {
                   ))}
                 </div>
               </div>
+              
+              {/* ▼▼▼ [신규] 질문 형식 선택 UI 추가 (난이도 아래 또는 위) ▼▼▼ */}
+              <div className="pt-4 border-t border-gray-100">
+                <h3 className="text-sm font-bold text-gray-900 mb-3 flex items-center gap-2">
+                  <CheckCircle2 className="w-4 h-4"/> 문항 유형
+                </h3>
+                <div className="flex gap-4">
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input 
+                      type="checkbox" 
+                      checked={targetQuestionTypes.includes('SELECTION')}
+                      onChange={() => toggleQuestionType('SELECTION')}
+                      className="rounded text-blue-600 focus:ring-blue-500 w-4 h-4" 
+                    />
+                    <span className="text-sm text-slate-700 font-bold">객관식</span>
+                  </label>
 
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input 
+                      type="checkbox" 
+                      checked={targetQuestionTypes.includes('ESSAY')}
+                      onChange={() => toggleQuestionType('ESSAY')}
+                      className="rounded text-blue-600 focus:ring-blue-500 w-4 h-4" 
+                    />
+                    <span className="text-sm text-slate-700 font-bold">서답형</span>
+                  </label>
+                </div>
+              </div>
+              {/* ▲▲▲ [신규 끝] ▲▲▲ */}
+              
               {/* [신규] 문항 필터 (사용 문항 제외) */}
               <div className="pt-4 border-t border-gray-100">
                 <h3 className="text-sm font-bold text-gray-900 mb-3 flex items-center gap-2">

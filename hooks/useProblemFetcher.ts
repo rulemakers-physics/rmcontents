@@ -9,22 +9,24 @@ interface FilterProps {
   selectedMajorTopics: string[];
   selectedMinorTopics: string[];
   difficulties: Difficulty[];
-  // [추가] 제외할 문제 ID 목록 (선택 사항)
   excludedProblemIds?: string[];
+  // [수정] 선택적(?.) 속성으로 변경하거나, 아래 구조 분해 할당에서 기본값을 줘야 함
+  questionTypes?: string[]; 
 }
 
 export function useProblemFetcher({ 
   selectedMajorTopics, 
   selectedMinorTopics, 
   difficulties,
-  excludedProblemIds = [] // [추가] 기본값 빈 배열
+  excludedProblemIds = [],
+  // [핵심 수정] 값이 전달되지 않았을 때를 대비해 기본값 설정
+  questionTypes = ['SELECTION'] 
 }: FilterProps) {
   const [problems, setProblems] = useState<DBProblem[]>([]);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     const fetchProblems = async () => {
-      // 대주제가 선택되지 않았으면 패스
       if (selectedMajorTopics.length === 0) {
         setProblems([]);
         return;
@@ -33,16 +35,12 @@ export function useProblemFetcher({
       setLoading(true);
       try {
         const problemsRef = collection(db, 'problems');
-        
-        // 1. 과부하 방지를 위해 상위 5개의 대단원만 처리 (필요시 조정)
         const targetTopics = selectedMajorTopics.slice(0, 5);
 
-        // 2. 병렬 쿼리 실행
         const promises = targetTopics.map(async (topic) => {
-          // 난이도 필터가 있으면 쿼리에 포함
           const constraints = [
             where('majorTopic', '==', topic),
-            limit(50) // 단원별 최대 50문제
+            limit(200) 
           ];
 
           if (difficulties.length > 0) {
@@ -55,23 +53,28 @@ export function useProblemFetcher({
         });
 
         const chunkedResults = await Promise.all(promises);
-        
-        // 3. 결과 병합
         let allFetched = chunkedResults.flat();
 
-        // 4. 소단원(Minor Topic) 필터링
+        // 1. 소단원 필터링
         if (selectedMinorTopics.length > 0) {
            allFetched = allFetched.filter(p => selectedMinorTopics.includes(p.minorTopic));
         }
 
-        // ▼▼▼ [추가] 5. 이미 사용한 문항(Excluded IDs) 필터링 ▼▼▼
+        // 2. 제외 문항 필터링
         if (excludedProblemIds.length > 0) {
-          // 제외 목록에 포함되지 않은 문제만 남김
           allFetched = allFetched.filter(p => !excludedProblemIds.includes(p.id));
         }
-        // ▲▲▲ [추가 끝] ▲▲▲
 
-        // 6. 랜덤 셔플 (매번 다른 문제 나오도록)
+        // 3. [수정] 질문 형식 필터링 (안전 장치 추가)
+        // questionTypes가 배열인지 확인 후 로직 수행
+        if (Array.isArray(questionTypes) && questionTypes.length > 0) {
+          allFetched = allFetched.filter(p => {
+            const type = (p as any).questionType || 'SELECTION';
+            return questionTypes.includes(type);
+          });
+        }
+
+        // 4. 셔플
         for (let i = allFetched.length - 1; i > 0; i--) {
           const j = Math.floor(Math.random() * (i + 1));
           [allFetched[i], allFetched[j]] = [allFetched[j], allFetched[i]];
@@ -86,7 +89,7 @@ export function useProblemFetcher({
     };
 
     fetchProblems();
-  }, [selectedMajorTopics, selectedMinorTopics, difficulties, excludedProblemIds]); // [수정] 의존성 배열 추가
+  }, [selectedMajorTopics, selectedMinorTopics, difficulties, excludedProblemIds, questionTypes]);
 
   return { problems, loading };
 }
