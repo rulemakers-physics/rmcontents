@@ -17,8 +17,13 @@ import {
   FileText,
   ChevronDown,
   Save,
-  CheckSquare // [신규] 체크박스 아이콘
-} from "lucide-react";
+  CheckSquare,
+  LayoutTemplate
+ } from "lucide-react";
+ import { 
+  Squares2X2Icon, ViewColumnsIcon, QueueListIcon 
+} from "@heroicons/react/24/outline";
+
 import { DragDropContext, Droppable, Draggable, DropResult } from "@hello-pangea/dnd";
 import { useReactToPrint } from "react-to-print";
 import { toast } from "react-hot-toast";
@@ -28,7 +33,7 @@ import { useProblemFetcher } from "@/hooks/useProblemFetcher";
 import { SCIENCE_UNITS } from "@/types/scienceUnits";
 import { Difficulty, DBProblem } from "@/types/problem";
 import ExamPaperLayout, { ExamProblem as LayoutExamProblem } from "@/components/ExamPaperLayout";
-import { TEMPLATES } from "@/types/examTemplates";
+import { TEMPLATES, LayoutMode } from "@/types/examTemplates";
 
 // 학생용 Maker 페이지 내부 타입
 interface StudentExamProblem {
@@ -50,29 +55,33 @@ export default function StudentMakerPage() {
   const { user, userData } = useAuth();
   const router = useRouter();
   
-  // 학생 플랜 확인 (STD_PREMIUM인지 확인)
   const isPremium = userData?.plan === 'STD_PREMIUM';
 
-  // --- 상태 관리 ---
   const [activeTab, setActiveTab] = useState<'filter' | 'list'>('filter');
   
-  // 필터 상태
   const [selectedMajorTopics, setSelectedMajorTopics] = useState<string[]>([]);
   const [selectedMinorTopics, setSelectedMinorTopics] = useState<string[]>([]); 
   const [difficulties, setDifficulties] = useState<Difficulty[]>(["중"]);
   const [questionCount, setQuestionCount] = useState(10); 
 
-  // [신규] 사용 문항 필터링 상태
-  const [excludeUsed, setExcludeUsed] = useState(true); // 기본값: 제외함
+  const [excludeUsed, setExcludeUsed] = useState(true);
   const [usedProblemIds, setUsedProblemIds] = useState<string[]>([]);
 
-  // 생성된 문제 목록
+  // [신규] 레이아웃 및 인쇄 옵션 상태 추가
+  const [layoutMode, setLayoutMode] = useState<LayoutMode>('dense');
+  const [printOptions, setPrintOptions] = useState({
+    questions: true,
+    answers: true,
+    solutions: true,
+    questionPadding: 40,
+    solutionPadding: 20
+  });
+
   const [examProblems, setExamProblems] = useState<StudentExamProblem[]>([]);
   const [examTitle, setExamTitle] = useState("나만의 모의고사");
   const [isCreating, setIsCreating] = useState(false);
-  const [isSavingAndPrinting, setIsSavingAndPrinting] = useState(false); // [신규] 저장 및 출력 상태
+  const [isSavingAndPrinting, setIsSavingAndPrinting] = useState(false);
 
-  // PDF 출력용 Ref
   const printRef = useRef<HTMLDivElement>(null);
 
   // [신규] 최근 1개월 내 사용된 문제 ID 조회 (학습 기록 기준)
@@ -257,51 +266,54 @@ export default function StudentMakerPage() {
   });
 
   // [수정] 4. 기록 저장 및 보관함 이동 핸들러
-// (기존의 handleSaveAndPrint 대체)
-const handleSaveToStorage = async () => {
-  if (examProblems.length === 0) return toast.error("문제가 없습니다.");
-  if (!examTitle.trim()) return toast.error("시험지 제목을 입력해주세요.");
-  if (!user) return toast.error("로그인이 필요합니다.");
+  const handleSaveToStorage = async () => {
+    if (examProblems.length === 0) return toast.error("문제가 없습니다.");
+    if (!examTitle.trim()) return toast.error("시험지 제목을 입력해주세요.");
+    if (!user) return toast.error("로그인이 필요합니다.");
 
-  setIsSavingAndPrinting(true); // 로딩 상태 재사용
-  const toastId = toast.loading("보관함에 저장 중...");
+    setIsSavingAndPrinting(true);
+    const toastId = toast.loading("보관함에 저장 중...");
 
-  try {
-    // student_exams에 'saved' 상태로 저장
-    await addDoc(collection(db, "student_exams"), {
-      userId: user.uid,
-      userName: userData?.name || "학생",
-      title: examTitle,
-      createdAt: serverTimestamp(),
-      status: "saved", // 아직 안 풂
-      mode: "print",   // 출력용으로 생성됨 (하지만 CBT로도 풀 수 있음)
-      totalQuestions: examProblems.length,
-      difficulty: difficulties.join(", "),
-      problems: examProblems.map((p, idx) => ({
-        problemId: p.id,
-        number: idx + 1,
-        content: p.content || "",
-        imgUrl: p.imageUrl || "",
-        answer: p.answer || "",
-        majorTopic: p.majorTopic || "기타",
-        minorTopic: p.minorTopic || "",
-        solutionUrl: p.solutionUrl || null,
-        // 필요시 height 정보 등 추가
-      }))
-    });
+    try {
+      await addDoc(collection(db, "student_exams"), { // student_exams 컬렉션 사용 (학생용)
+        userId: user.uid,
+        userName: userData?.name || "학생",
+        title: examTitle,
+        createdAt: serverTimestamp(),
+        status: "saved",
+        mode: "print",
+        totalQuestions: examProblems.length,
+        difficulty: difficulties.join(", "),
+        
+        // [신규] 레이아웃 정보 저장
+        layoutMode: layoutMode,
+        questionPadding: printOptions.questionPadding,
+        templateId: TEMPLATES[0].id, // 기본 템플릿 ID 명시
 
-    toast.success("저장 완료! 보관함으로 이동합니다.", { id: toastId });
-    
-    // [중요] 저장 후 보관함으로 이동
-    router.push("/student/storage");
+        problems: examProblems.map((p, idx) => ({
+          problemId: p.id,
+          number: idx + 1,
+          content: p.content || "",
+          imgUrl: p.imageUrl || "",
+          answer: p.answer || "",
+          majorTopic: p.majorTopic || "기타",
+          minorTopic: p.minorTopic || "",
+          solutionUrl: p.solutionUrl || null,
+          height: p.height,
+          solutionHeight: p.solutionHeight
+        }))
+      });
 
-  } catch (e) {
-    console.error(e);
-    toast.error("저장 중 오류가 발생했습니다.", { id: toastId });
-  } finally {
-    setIsSavingAndPrinting(false);
-  }
-};
+      toast.success("저장 완료! 보관함으로 이동합니다.", { id: toastId });
+      router.push("/student/storage");
+
+    } catch (e) {
+      console.error(e);
+      toast.error("저장 중 오류가 발생했습니다.", { id: toastId });
+    } finally {
+      setIsSavingAndPrinting(false);
+    }
+  };
 
   const onDragEnd = (result: DropResult) => {
     if (!result.destination) return;
@@ -457,7 +469,53 @@ const handleSaveToStorage = async () => {
         </div>
       </aside>
 
-      {/* === [Right] 메인 편집 영역 === */}
+
+          <div className="pt-4 border-t border-slate-100">
+            <h3 className="text-sm font-bold text-slate-800 mb-3 flex items-center gap-2">
+              <LayoutTemplate className="w-4 h-4"/> 배치 모드
+            </h3>
+            <div className="grid grid-cols-3 gap-2">
+              <button 
+                onClick={() => setLayoutMode('dense')}
+                className={`flex flex-col items-center justify-center p-2 rounded-lg border text-xs transition-all ${layoutMode === 'dense' ? 'bg-blue-50 border-blue-500 text-blue-700' : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'}`}
+              >
+                <QueueListIcon className="w-5 h-5 mb-1" />
+                기본(빼곡)
+              </button>
+              <button 
+                onClick={() => setLayoutMode('split-2')}
+                className={`flex flex-col items-center justify-center p-2 rounded-lg border text-xs transition-all ${layoutMode === 'split-2' ? 'bg-blue-50 border-blue-500 text-blue-700' : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'}`}
+              >
+                <ViewColumnsIcon className="w-5 h-5 mb-1" />
+                2분할
+              </button>
+              <button 
+                onClick={() => setLayoutMode('split-4')}
+                className={`flex flex-col items-center justify-center p-2 rounded-lg border text-xs transition-all ${layoutMode === 'split-4' ? 'bg-blue-50 border-blue-500 text-blue-700' : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'}`}
+              >
+                <Squares2X2Icon className="w-5 h-5 mb-1" />
+                4분할
+              </button>
+            </div>
+
+            {/* 기본 모드일 때만 간격 조절 표시 */}
+            {layoutMode === 'dense' && (
+              <div className="mt-4 bg-slate-50 p-3 rounded-lg border border-slate-200">
+                <div className="flex justify-between text-xs mb-1 text-slate-600">
+                   <span>문제 간격</span>
+                   <span className="font-bold text-blue-600">{printOptions.questionPadding}px</span>
+                </div>
+                <input 
+                  type="range" min="10" max="100" step="5" 
+                  value={printOptions.questionPadding} 
+                  onChange={(e) => setPrintOptions(prev => ({...prev, questionPadding: Number(e.target.value)}))}
+                  className="w-full h-1.5 bg-gray-300 rounded-lg appearance-none cursor-pointer accent-blue-600" 
+                />
+              </div>
+            )}
+          </div>
+
+
       <main className="flex-1 flex flex-col h-full relative bg-slate-100/50">
         
         {/* 상단 툴바 */}
@@ -594,23 +652,17 @@ const handleSaveToStorage = async () => {
           )}
         </div>
 
-        {/* === [Hidden] PDF 출력용 컴포넌트 === 
-          화면에는 보이지 않지만(handleSaveAndPrint 실행 시) 렌더링되어 인쇄됨.
-          학생용이므로 정답지 포함, 해설지 포함 여부는 기본값으로 설정 (필요시 UI 추가 가능)
-        */}
+        {/* === [Hidden] PDF 출력용 컴포넌트 === */}
         <div style={{ display: "none" }}>
           <ExamPaperLayout
             ref={printRef}
             problems={layoutProblems}
             title={examTitle}
             instructor={userData?.name || "학생"}
-            template={TEMPLATES[0]} // 기본 심플 템플릿 사용
+            template={TEMPLATES[0]}
             printOptions={{
-              questions: true,
-              answers: true,  
-              solutions: true, // 학생용은 해설지 포함 기본
-              questionPadding: 40,
-              solutionPadding: 20
+              ...printOptions,
+              layoutMode: layoutMode // [신규] 선택된 레이아웃 모드 전달
             }}
             isTeacherVersion={false}
           />

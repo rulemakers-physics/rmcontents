@@ -230,7 +230,8 @@ export default function ScrapbookPage() {
             solutions: true,
             // [수정] 필수값 추가
             questionPadding: 40,
-            solutionPadding: 20
+            solutionPadding: 20,
+            layoutMode: 'dense'
           }} 
           isTeacherVersion={false}
         />

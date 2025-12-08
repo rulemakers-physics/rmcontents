@@ -105,13 +105,13 @@ export function useProblemFetcher({
     fetchProblems();
   }, [
     // 의존성 배열 관리
-    // 배열 내용이 같아도 참조가 다르면 재실행되므로, 상위 컴포넌트에서 useMemo 사용 권장
-    // 혹은 JSON.stringify(selectedMajorTopics) 등으로 비교 가능
-    selectedMajorTopics, 
-    selectedMinorTopics, 
-    difficulties, 
-    excludedProblemIds, 
-    questionTypes
+    // [수정] 배열 참조값이 변경되어 무한 루프가 발생하는 것을 방지하기 위해
+    // JSON.stringify를 사용하여 배열의 '내용'이 바뀔 때만 실행되도록 수정
+    JSON.stringify(selectedMajorTopics), 
+    JSON.stringify(selectedMinorTopics), 
+    JSON.stringify(difficulties), 
+    JSON.stringify(excludedProblemIds), 
+    JSON.stringify(questionTypes)
   ]);
 
   return { problems, loading };

@@ -15,17 +15,16 @@ import {
   XMarkIcon, 
   FireIcon,
   RocketLaunchIcon,
-  BookmarkIcon as BookmarkIconSolid // 채워진 아이콘
+  BookmarkIcon as BookmarkIconSolid 
 } from "@heroicons/react/24/solid";
 import { 
   ChevronDownIcon, 
-  BookmarkIcon as BookmarkIconOutline // 빈 아이콘
+  BookmarkIcon as BookmarkIconOutline 
 } from "@heroicons/react/24/outline";
 import { toast } from "react-hot-toast";
 import { useAuth } from "@/context/AuthContext";
 import { DBProblem } from "@/types/problem";
 
-// 오답 원인 옵션 정의
 const WRONG_REASONS = [
   { label: "몰라서", value: "concept", color: "bg-red-100 text-red-700 border-red-200" },
   { label: "실수", value: "mistake", color: "bg-orange-100 text-orange-700 border-orange-200" },
@@ -70,10 +69,8 @@ export default function ExamResultDetailPage() {
   const [filterMode, setFilterMode] = useState<'all' | 'wrong'>('wrong');
   const [openExplanation, setOpenExplanation] = useState<number | null>(null);
   
-  // 스크랩 상태 관리 (Scrapped IDs)
   const [scrappedIds, setScrappedIds] = useState<Set<string>>(new Set());
 
-  // 모달 상태
   const [reviewModal, setReviewModal] = useState<{
     isOpen: boolean;
     type: 'retry' | 'similar' | null;
@@ -82,7 +79,6 @@ export default function ExamResultDetailPage() {
 
   const [isCreatingReview, setIsCreatingReview] = useState(false);
 
-  // 1. 시험 정보 로드
   useEffect(() => {
     if (!examId) return;
     const fetchExam = async () => {
@@ -104,35 +100,26 @@ export default function ExamResultDetailPage() {
     fetchExam();
   }, [examId]);
 
-  // 2. [신규] 스크랩 상태 실시간 동기화
   useEffect(() => {
     if (!user) return;
-    
-    // 사용자의 모든 스크랩 ID를 구독 (개수가 많지 않다고 가정)
-    // 최적화가 필요하면 'where problemId in [...]' 쿼리를 사용하거나 별도 로직 적용
     const q = collection(db, "users", user.uid, "scraps");
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const ids = new Set(snapshot.docs.map(doc => doc.id));
       setScrappedIds(ids);
     });
-
     return () => unsubscribe();
   }, [user]);
 
-  // 3. [신규] 스크랩 토글 핸들러
   const handleToggleScrap = async (problem: ExamProblem) => {
     if (!user) return;
-
     const scrapRef = doc(db, "users", user.uid, "scraps", problem.problemId);
     const isScrapped = scrappedIds.has(problem.problemId);
 
     try {
       if (isScrapped) {
-        // 스크랩 취소 (삭제)
         await deleteDoc(scrapRef);
         toast.success("스크랩북에서 삭제되었습니다.");
       } else {
-        // 스크랩 저장 (추가)
         await setDoc(scrapRef, {
           problemId: problem.problemId,
           content: problem.content,
@@ -142,7 +129,7 @@ export default function ExamResultDetailPage() {
           solutionUrl: problem.solutionUrl || null,
           majorTopic: problem.majorTopic || null,
           scrappedAt: serverTimestamp(),
-          sourceExamId: examId, // 출처 시험지 ID
+          sourceExamId: examId,
           sourceExamTitle: exam?.title || "알 수 없음"
         });
         toast.success("스크랩북에 저장되었습니다.");
@@ -153,7 +140,6 @@ export default function ExamResultDetailPage() {
     }
   };
 
-  // 오답 원인 태깅
   const handleTagReason = async (problemNumber: number, reasonValue: string) => {
     if (!exam) return;
     const updatedProblems = exam.problems.map(p => 
@@ -170,7 +156,6 @@ export default function ExamResultDetailPage() {
     }
   };
 
-  // 모달 트리거
   const triggerReviewModal = (type: 'retry' | 'similar') => {
     if (!exam) return;
     const wrongCount = exam.problems.filter(p => !p.isCorrect).length;
@@ -180,7 +165,6 @@ export default function ExamResultDetailPage() {
     setReviewModal({ isOpen: true, type, count: wrongCount });
   };
 
-  // 학습 세션 실행 (다시 풀기 / 유사 문제)
   const executeReview = async () => {
     if (!exam || !user || !reviewModal.type) return;
     
@@ -327,7 +311,6 @@ export default function ExamResultDetailPage() {
           </div>
         </div>
 
-        {/* 액션 버튼 (오답이 있을 때만 표시) */}
         {exam.problems.some(p => !p.isCorrect) && (
           <div className="mt-8 pt-6 border-t border-slate-100 flex flex-col sm:flex-row gap-3">
             <button 
@@ -449,7 +432,29 @@ export default function ExamResultDetailPage() {
                   </div>
                 )}
 
-                {/* 해설 및 스크랩 버튼 */}
+                {/* [수정] 스크랩 버튼 이동: 문제 본문 하단에 항상 노출 */}
+                <div className="mt-4 flex justify-end border-t border-slate-100 pt-4">
+                  <button 
+                    onClick={() => handleToggleScrap(problem)}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition-all border ${
+                      scrappedIds.has(problem.problemId)
+                        ? "bg-blue-50 text-blue-600 border-blue-200"
+                        : "bg-white text-slate-400 border-slate-200 hover:border-slate-300"
+                    }`}
+                  >
+                    {scrappedIds.has(problem.problemId) ? (
+                      <>
+                        <BookmarkIconSolid className="w-4 h-4" /> 저장됨 (스크랩북)
+                      </>
+                    ) : (
+                      <>
+                        <BookmarkIconOutline className="w-4 h-4" /> 스크랩하기
+                      </>
+                    )}
+                  </button>
+                </div>
+
+                {/* 해설 영역 */}
                 {openExplanation === problem.number && (
                   <div className="mt-6 pt-6 border-t border-slate-100 animate-in fade-in slide-in-from-top-2">
                     <div className="flex items-start gap-3">
@@ -458,6 +463,7 @@ export default function ExamResultDetailPage() {
                       </div>
                       <div className="w-full">
                         <h4 className="text-sm font-bold text-slate-800 mb-2">해설 및 풀이</h4>
+                        {/* [핵심] solutionUrl이 있으면 이미지 우선 표시 */}
                         {problem.solutionUrl ? (
                           <div className="mt-2">
                             {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -469,32 +475,10 @@ export default function ExamResultDetailPage() {
                           </div>
                         ) : (
                           <p className="text-sm text-slate-600 leading-relaxed whitespace-pre-wrap">
-                            {problem.explanation || "해설이 준비되지 않았습니다."}
+                            {problem.explanation || "해설이 없습니다."}
                           </p>
                         )}
                       </div>
-                    </div>
-                    
-                    {/* [신규] 스크랩 토글 버튼 */}
-                    <div className="mt-4 flex justify-end">
-                      <button 
-                        onClick={() => handleToggleScrap(problem)}
-                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition-all border ${
-                          scrappedIds.has(problem.problemId)
-                            ? "bg-blue-50 text-blue-600 border-blue-200"
-                            : "bg-white text-slate-400 border-slate-200 hover:border-slate-300"
-                        }`}
-                      >
-                        {scrappedIds.has(problem.problemId) ? (
-                          <>
-                            <BookmarkIconSolid className="w-4 h-4" /> 저장됨 (스크랩북)
-                          </>
-                        ) : (
-                          <>
-                            <BookmarkIconOutline className="w-4 h-4" /> 스크랩하기
-                          </>
-                        )}
-                      </button>
                     </div>
                   </div>
                 )}
@@ -504,7 +488,6 @@ export default function ExamResultDetailPage() {
         )}
       </div>
 
-      {/* 학습 준비 모달 */}
       {reviewModal.isOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
           <div className="w-full max-w-sm bg-white rounded-2xl shadow-2xl p-6 relative">

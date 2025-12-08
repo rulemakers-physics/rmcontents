@@ -97,7 +97,7 @@ export default function StudentStudyPage() {
         difficulty: doc.data().difficulty,
         majorTopic: doc.data().majorTopic,
         minorTopic: doc.data().minorTopic,
-        explanation: doc.data().explanation || "해설이 준비중입니다.",
+        solutionUrl: doc.data().solutionUrl || null,
       }));
 
       // 2. 소단원 필터링 및 랜덤 셔플

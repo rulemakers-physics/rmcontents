@@ -30,6 +30,9 @@ interface StudentExam {
   status: string;
   mode: string;
   problems?: any[];
+  layoutMode?: LayoutMode;
+  questionPadding?: number;
+  solutionPadding?: number;
 }
 
 export default function StudentStoragePage() {
@@ -79,7 +82,26 @@ export default function StudentStoragePage() {
 
   // 인쇄 모달 열기 (데이터 매핑)
   const handleOpenPrint = (exam: StudentExam) => {
-    setPrintTarget(exam);
+    // ExamPrintModal은 'SavedExam' 타입을 받으므로 호환되게 매핑
+    const printData = {
+      id: exam.id,
+      title: exam.title,
+      instructorName: exam.userName, // 학생 이름
+      problems: exam.problems?.map((p: any) => ({
+        ...p,
+        id: p.problemId || p.id,
+        imageUrl: p.imgUrl || p.imageUrl,
+        solutionUrl: p.solutionUrl,
+        // 필요시 높이 정보 등도 매핑
+      })),
+      // [중요] 레이아웃 정보 전달
+      layoutMode: (exam.layoutMode as LayoutMode) || 'dense', 
+      questionPadding: exam.questionPadding || 40,
+      solutionPadding: exam.solutionPadding || 20,
+      templateId: 'math-pro' // 기본 템플릿
+    };
+    
+    setPrintTarget(printData as any); // 타입 단언 (SavedExam과 StudentExam 구조 차이 해소)
   };
 
   // CBT 응시 페이지로 이동 (재응시 or 이어서 풀기)

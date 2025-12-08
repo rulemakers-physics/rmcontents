@@ -13,7 +13,7 @@ import {
 import { 
   Squares2X2Icon, ViewColumnsIcon, QueueListIcon // [신규] 레이아웃 아이콘
 } from "@heroicons/react/24/outline";
-import ExamPaperLayout, { ExamProblem as LayoutExamProblem } from "@/components/ExamPaperLayout";
+import ExamPaperLayout, { ExamProblem, PrintOptions } from "@/components/ExamPaperLayout";
 import { useAuth } from "@/context/AuthContext";
 import { DragDropContext, Droppable, Draggable, DropResult } from "@hello-pangea/dnd"; 
 import { toast } from "react-hot-toast"; 
@@ -24,15 +24,6 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useProblemFetcher } from "@/hooks/useProblemFetcher";
 import { Difficulty, DBProblem } from "@/types/problem"; 
 import { TEMPLATES, ExamTemplateStyle, LayoutMode } from "@/types/examTemplates";
-
-// 인쇄 옵션 인터페이스
-export interface PrintOptions {
-  questions: boolean;
-  answers: boolean;
-  solutions: boolean;
-  questionPadding: number;
-  solutionPadding: number;
-}
 
 function ExamBuilderContent() {
   const { userData, user } = useAuth();
@@ -59,7 +50,7 @@ function ExamBuilderContent() {
   const [academyLogo, setAcademyLogo] = useState<string | null>(null);
   
   // [설정] 기본값 설정: 문제 간격 40, 해설 간격 20
-  const [printOptions, setPrintOptions] = useState<any>({ // 타입 오류 방지 위해 any 사용 or interface 업데이트 필요
+  const [printOptions, setPrintOptions] = useState<Omit<PrintOptions, "layoutMode">>({
     questions: true,
     answers: true,
     solutions: true,
