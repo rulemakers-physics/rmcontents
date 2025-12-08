@@ -8,8 +8,19 @@ import ReportIssueModal from "./ReportIssueModal";
 // --- [상수 설정] A4 및 레이아웃 (96DPI 기준) ---
 const A4_HEIGHT_PX = 1123; // A4 높이 (297mm)
 const PADDING_X_MM = 20; // 좌우 여백
-// 이미지 스케일링 팩터 (원본 해상도가 클 경우 화면/출력물 컬럼 너비에 맞춰 줄임)
-const IMG_SCALE_FACTOR = 0.28; 
+
+// [수정 1] 이미지 스케일 팩터 재조정 (0.22 -> 0.245)
+// 설명: 0.22는 너무 작아서 실제 렌더링 높이가 계산보다 커져 푸터를 밀어내는 문제가 발생.
+// 0.28은 너무 커서 여백이 많음. 그 중간값인 0.245로 최적화.
+const IMG_SCALE_FACTOR = 0.245; 
+
+// 원문자 변환 헬퍼 (1~15 지원)
+const toCircled = (str: string | null) => {
+  if (!str) return "";
+  const num = parseInt(str, 10);
+  if (isNaN(num) || num < 1 || num > 15) return str;
+  return String.fromCharCode(9311 + num);
+};
 
 export interface ExamProblem {
   id: string;
@@ -21,18 +32,19 @@ export interface ExamProblem {
   difficulty?: string;
   majorTopic?: string;
   minorTopic?: string;
-  // [신규] DB에서 가져온 높이 정보
   height?: number; 
   solutionHeight?: number;
 }
+
+export type LayoutMode = 'dense' | 'split-2' | 'split-4';
 
 export interface PrintOptions {
   questions: boolean;
   answers: boolean;
   solutions: boolean;
-  // [신규] 사용자 지정 패딩
   questionPadding: number;
   solutionPadding: number;
+  layoutMode: LayoutMode;
 }
 
 interface ExamPaperLayoutProps {
@@ -50,72 +62,111 @@ function distributeItems(
   type: 'question' | 'solution',
   options: {
     pageHeight: number;
-    headerHeightFirst: number; // 1페이지 헤더 높이
-    headerHeightNormal: number; // 2페이지부터 헤더 높이
+    headerHeightFirst: number;
+    headerHeightNormal: number;
     footerHeight: number;
     paddingTop: number;
     paddingBottom: number;
-    itemGap: number; // 문항 간 간격
+    itemGap: number;
+    layoutMode: LayoutMode;
   }
 ) {
-  // [안전 장치] items가 undefined/null인 경우 빈 배열 반환하여 에러 방지
   if (!items || items.length === 0) return [];
 
-  // 3차원 배열: Pages -> Columns(2) -> Items
   const pages: ExamProblem[][][] = []; 
   
   let currentPageIdx = 0;
-  let currentColIdx = 0; // 0: 좌측, 1: 우측
+  let currentColIdx = 0;
   let currentY = 0;
 
-  // 새 페이지 생성 헬퍼
+  // [수정 2] 안전 여백 (Safety Buffer) 추가
+  // 설명: 브라우저 렌더링 오차를 대비해 하단에 20px 정도의 여유를 강제로 둡니다.
+  // 이 공간을 침범하면 무조건 다음 단으로 넘깁니다. (푸터 보호)
+  const SAFETY_MARGIN_BOTTOM = 20;
+
+  // 페이지 초기화
   const createNewPage = () => {
-    pages.push([[], []]); // 좌/우 컬럼 초기화
+    pages.push([[], []]); // 좌/우 컬럼
     currentPageIdx = pages.length - 1;
     currentColIdx = 0;
     
-    // 헤더 높이만큼 시작점 확보
     const hHeight = currentPageIdx === 0 ? options.headerHeightFirst : options.headerHeightNormal;
     currentY = options.paddingTop + hHeight;
   };
 
-  // 첫 페이지 시작
   createNewPage();
 
-  items.forEach((item) => {
-    // 1. 아이템의 렌더링 높이 추산
-    // DB값이 있으면 스케일 적용, 없으면 기본값(텍스트 문항 등) 150px/100px + 여유분
-    const rawHeight = type === 'question' 
-      ? (item.height ? item.height * IMG_SCALE_FACTOR : 150)
-      : (item.solutionHeight ? item.solutionHeight * IMG_SCALE_FACTOR : 100);
+  const isSplitMode = type === 'question' && options.layoutMode !== 'dense';
+  const targetPerCol = options.layoutMode === 'split-2' ? 1 : 2;
+
+  let itemIdx = 0;
+  while (itemIdx < items.length) {
+    const item = items[itemIdx];
     
-    // 실제 차지하는 높이 = 컨텐츠 높이 + 사용자 지정 패딩
+    // 높이 추산
+    const rawHeight = type === 'question' 
+      ? (item.height ? item.height * IMG_SCALE_FACTOR : 10)
+      : (item.solutionHeight ? item.solutionHeight * IMG_SCALE_FACTOR : 10);
+    
     const itemTotalHeight = rawHeight + options.itemGap;
+    
+    // [핵심] 가용 높이 계산 시 안전 여백을 미리 뺍니다.
+    const maxContentY = options.pageHeight - options.footerHeight - options.paddingBottom - SAFETY_MARGIN_BOTTOM;
+    
+    if (isSplitMode) {
+      // --- 분할 배치 로직 ---
+      const currentItemsInCol = pages[currentPageIdx][currentColIdx];
+      let shouldPushToNextCol = false;
 
-    // 2. 현재 페이지의 가용 높이 (전체 - 푸터 - 하단여백)
-    const maxContentY = options.pageHeight - options.footerHeight - options.paddingBottom;
-
-    // 3. 넘침 체크
-    if (currentY + itemTotalHeight > maxContentY) {
-      // 현재 단(Column)이 꽉 참 -> 다음 단으로 이동
-      currentColIdx++;
-      
-      // 해당 페이지의 헤더 높이 다시 계산 (Y축 초기화)
-      const hHeight = currentPageIdx === 0 ? options.headerHeightFirst : options.headerHeightNormal;
-      currentY = options.paddingTop + hHeight;
-
-      // 만약 2단(0, 1)을 넘어 2가 되면 -> 다음 페이지로
-      if (currentColIdx > 1) {
-        createNewPage();
+      if (currentItemsInCol.length >= targetPerCol) {
+        shouldPushToNextCol = true;
+      } else if (options.layoutMode === 'split-4' && currentItemsInCol.length === 1) {
+        // 이미 1개가 있을 때 높이 체크 (엄격하게)
+        if (currentY + itemTotalHeight > maxContentY) {
+          shouldPushToNextCol = true;
+        }
       }
-    }
 
-    // 4. 배치 및 Y축 증가
-    if (pages[currentPageIdx] && pages[currentPageIdx][currentColIdx]) {
-        pages[currentPageIdx][currentColIdx].push(item);
+      if (shouldPushToNextCol) {
+        currentColIdx++;
+        currentY = options.paddingTop + (currentPageIdx === 0 ? options.headerHeightFirst : options.headerHeightNormal);
+        
+        if (currentColIdx > 1) {
+          createNewPage();
+        }
+      }
+
+      pages[currentPageIdx][currentColIdx].push(item);
+      currentY += itemTotalHeight;
+      itemIdx++;
+
+    } else {
+      // --- Dense (기본) 배치 로직 ---
+      // [수정 3] Tolerance 제거 및 엄격한 체크
+      // 현재 위치 + 아이템 높이가 가용 범위를 단 1px이라도 넘으면 다음 단으로 보냅니다.
+      const isOverflow = (currentY + rawHeight) > maxContentY;
+
+      if (isOverflow) {
+        // 다음 단으로 이동
+        currentColIdx++;
+        
+        const hHeight = currentPageIdx === 0 ? options.headerHeightFirst : options.headerHeightNormal;
+        currentY = options.paddingTop + hHeight;
+
+        if (currentColIdx > 1) {
+          createNewPage();
+        }
+      }
+
+      // 배치 확정
+      if (pages[currentPageIdx] && pages[currentPageIdx][currentColIdx]) {
+          pages[currentPageIdx][currentColIdx].push(item);
+      }
+      
+      currentY += itemTotalHeight;
+      itemIdx++;
     }
-    currentY += itemTotalHeight;
-  });
+  }
 
   return pages;
 }
@@ -125,49 +176,51 @@ const ExamPaperLayout = forwardRef<HTMLDivElement, ExamPaperLayoutProps>(
     
     const [reportTarget, setReportTarget] = React.useState<ExamProblem | null>(null);
 
-    // 템플릿 값 파싱 (대략적인 px 변환)
     const headerH = parseInt(template.headerHeight) || 100; 
-    const paddingY = 60; // 상하 여백 (px)
+    const paddingY = 5; 
 
-    // 1. [계산] 문제지 페이지네이션
+    // 문제지 페이지네이션
     const questionPages = useMemo(() => {
       if (!printOptions.questions) return [];
       
       return distributeItems(problems, 'question', {
         pageHeight: A4_HEIGHT_PX,
         headerHeightFirst: headerH + 20, 
-        headerHeightNormal: 50, // 2페이지부터 심플 헤더
+        headerHeightNormal: 50, 
         footerHeight: 40,
         paddingTop: paddingY,
         paddingBottom: paddingY,
-        itemGap: printOptions.questionPadding
+        itemGap: printOptions.questionPadding,
+        layoutMode: printOptions.layoutMode
       });
-    }, [problems, printOptions.questions, printOptions.questionPadding, headerH]);
+    }, [problems, printOptions.questions, printOptions.questionPadding, printOptions.layoutMode, headerH]);
 
-    // 2. [계산] 해설지 페이지네이션
+    // [수정] 해설지 페이지네이션 (여백 확보 강화)
     const solutionPages = useMemo(() => {
       if (!printOptions.solutions) return [];
       
-      // 해설이 있는 문항만 필터링
       const solutionItems = (problems || []).filter(p => p.solutionUrl || p.content);
       
       return distributeItems(solutionItems, 'solution', {
         pageHeight: A4_HEIGHT_PX,
-        headerHeightFirst: 70, // 해설지 헤더는 작게
+        headerHeightFirst: 70, 
         headerHeightNormal: 50,
-        footerHeight: 40,
+        // [핵심 수정] footerHeight를 40 -> 250으로 대폭 늘려 잡음
+        // 이유: 해설 텍스트 줄바꿈 등으로 인한 높이 오차를 방지하고, 
+        // 하단 푸터 영역(40px) + 안전 여백(210px)을 미리 확보하여 푸터 밀림 원천 차단
+        footerHeight: 250, 
         paddingTop: paddingY,
         paddingBottom: paddingY,
-        itemGap: printOptions.solutionPadding
+        itemGap: 10, 
+        layoutMode: 'dense' 
       });
-    }, [problems, printOptions.solutions, printOptions.solutionPadding]);
+    }, [problems, printOptions.solutions]);
 
 
     // --- 헤더 렌더링 ---
     const renderHeader = (pageNum: number, isSolution = false) => {
       const displayTitle = isSolution ? `${title} [정답 및 해설]` : title;
 
-      // 2페이지 이후 or 해설지 헤더 (심플형)
       if (pageNum > 0 || isSolution) {
          return (
            <div className="w-full h-[50px] border-b border-gray-400 flex justify-between items-end pb-1 mb-2 shrink-0">
@@ -184,7 +237,6 @@ const ExamPaperLayout = forwardRef<HTMLDivElement, ExamPaperLayoutProps>(
          );
       }
 
-      // 1페이지 메인 헤더 (템플릿 적용)
       return (
         <div 
           className="w-full border-b-2 border-slate-900 pb-2 mb-4 flex flex-col justify-end shrink-0" 
@@ -200,7 +252,6 @@ const ExamPaperLayout = forwardRef<HTMLDivElement, ExamPaperLayoutProps>(
                  </h1>
               </div>
               
-              {/* 점수 박스 (템플릿 옵션) */}
               {template.showScoreBox && (
                 <div className="flex border border-slate-800 text-xs">
                    <div className="bg-slate-50 px-2 py-1 border-r border-slate-800 font-bold flex items-center">성명</div>
@@ -221,7 +272,6 @@ const ExamPaperLayout = forwardRef<HTMLDivElement, ExamPaperLayoutProps>(
 
     return (
       <>
-        {/* 인쇄 대상 컨테이너 */}
         <div ref={ref} className="w-full bg-gray-100 flex flex-col items-center gap-10 py-10 print:p-0 print:bg-white print:gap-0">
           
           {/* === [1] 문제지 영역 === */}
@@ -237,7 +287,6 @@ const ExamPaperLayout = forwardRef<HTMLDivElement, ExamPaperLayoutProps>(
                 fontFamily: template.fontFamily
               }}
             >
-              {/* 워터마크 */}
               {template.watermarkOpacity > 0 && (
                  <div className="absolute inset-0 flex items-center justify-center pointer-events-none select-none z-0" style={{ opacity: template.watermarkOpacity }}>
                    <span className="text-9xl font-black text-slate-900 transform -rotate-45 opacity-10">RuleMakers</span>
@@ -246,18 +295,16 @@ const ExamPaperLayout = forwardRef<HTMLDivElement, ExamPaperLayoutProps>(
 
               {renderHeader(pageIdx, false)}
 
-              {/* 2단 컬럼 바디 */}
-              <div className="flex-1 flex gap-[10mm] relative z-10">
+              {/* [수정] flex-1 유지하되, 내부 콘텐츠가 늘어나도 부모(페이지) 크기를 넘지 않도록 주의 */}
+              <div className="flex-1 flex gap-[10mm] relative z-10 items-start content-start">
                 {columns.map((items, colIdx) => (
-                  <div key={colIdx} className="flex-1 flex flex-col h-full">
+                  <div key={colIdx} className={`flex-1 flex flex-col h-full ${printOptions.layoutMode !== 'dense' ? 'justify-start gap-8' : ''}`}>
                     {items.map((prob) => (
                       <div 
-                        // [수정] id 중복 방지를 위해 번호를 key에 포함
                         key={`${prob.id}-${prob.number}`} 
-                        className="relative w-full group break-inside-avoid"
-                        style={{ marginBottom: printOptions.questionPadding }}
+                        className={`relative w-full group break-inside-avoid ${printOptions.layoutMode !== 'dense' ? 'flex-1' : ''}`}
+                        style={{ marginBottom: printOptions.layoutMode === 'dense' ? printOptions.questionPadding : 0 }}
                       >
-                        {/* 오류 신고 버튼 (화면에서만 보임) */}
                         <button
                           onClick={() => setReportTarget(prob)}
                           className="absolute -top-1 right-0 text-slate-200 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity print:hidden z-20"
@@ -265,8 +312,7 @@ const ExamPaperLayout = forwardRef<HTMLDivElement, ExamPaperLayoutProps>(
                           <ExclamationCircleIcon className="w-4 h-4" />
                         </button>
 
-                        <div className="flex items-start">
-                           {/* 문제 번호 */}
+                        <div className="flex items-start h-full">
                            <span 
                              className="font-extrabold text-lg mr-2 leading-none shrink-0" 
                              style={{ color: template.borderColor }}
@@ -274,14 +320,13 @@ const ExamPaperLayout = forwardRef<HTMLDivElement, ExamPaperLayoutProps>(
                              {prob.number}.
                            </span>
                            
-                           {/* 문제 본문 (이미지 or 텍스트) */}
                            <div className="flex-1">
                               {prob.imageUrl ? (
                                 /* eslint-disable-next-line @next/next/no-img-element */
                                 <img 
                                   src={prob.imageUrl} 
                                   alt={`Problem ${prob.number}`} 
-                                  className="w-full h-auto object-contain" 
+                                  className="w-full h-auto object-contain max-h-[800px]" 
                                 />
                               ) : (
                                 <p className={`whitespace-pre-wrap leading-relaxed ${template.problemFontSize} text-slate-800`}>
@@ -291,7 +336,6 @@ const ExamPaperLayout = forwardRef<HTMLDivElement, ExamPaperLayoutProps>(
                            </div>
                         </div>
 
-                        {/* 교사용 오버레이 */}
                         {isTeacherVersion && (
                            <div className="absolute bottom-0 right-0 z-10 pointer-events-none select-none print:block">
                               <span className="text-red-600 font-bold opacity-60 text-sm border border-red-200 bg-white/80 px-1 rounded">
@@ -305,14 +349,14 @@ const ExamPaperLayout = forwardRef<HTMLDivElement, ExamPaperLayoutProps>(
                 ))}
               </div>
 
-              {/* 푸터 */}
-              <div className="h-[40px] flex justify-center items-center border-t border-gray-200 text-xs text-gray-400 shrink-0">
+              {/* 푸터 영역: flex layout에서 맨 아래에 위치. 위 콘텐츠가 커지면 밀려날 수 있으므로 distributeItems에서 엄격하게 제한함 */}
+              <div className="h-[40px] flex justify-center items-center border-t border-gray-200 text-xs text-gray-400 shrink-0 mt-auto">
                  RuleMakers - {pageIdx + 1} -
               </div>
             </div>
           ))}
 
-          {/* === [2] 정답표 (옵션) === */}
+          {/* === [2] 정답표 === */}
           {printOptions.answers && problems.length > 0 && (
              <div className="bg-white shadow-xl print:shadow-none relative flex flex-col" 
                   style={{ width: "210mm", height: "297mm", padding: `0 ${PADDING_X_MM}mm`, pageBreakAfter: "always" }}>
@@ -321,14 +365,50 @@ const ExamPaperLayout = forwardRef<HTMLDivElement, ExamPaperLayoutProps>(
                    <h2 className="text-2xl font-extrabold text-slate-900">빠른 정답표</h2>
                 </div>
 
-                <div className="grid grid-cols-5 gap-4 content-start">
-                   {problems.sort((a,b) => a.number - b.number).map((prob) => (
-                     <div key={`ans-${prob.id}-${prob.number}`} className="flex justify-between items-center p-2 border-b border-gray-200 text-sm">
-                        <span className="font-bold text-slate-500">{String(prob.number).padStart(2, '0')}</span>
-                        <span className="font-extrabold text-slate-900 text-base">{prob.answer}</span>
-                     </div>
-                   ))}
-                </div>
+                {Array.from({ length: Math.ceil(problems.length / 25) }).map((_, chunkIdx) => {
+                  const chunkStart = chunkIdx * 25;
+                  const chunkEnd = Math.min((chunkIdx + 1) * 25, problems.length);
+                  const chunkProblems = problems.slice(chunkStart, chunkEnd);
+                  
+                  const rows = 5;
+                  
+                  return (
+                    <div key={`ans-chunk-${chunkIdx}`} className="mb-8 pb-8 border-b-2 border-dashed border-slate-300 last:border-0">
+                      <div className="grid grid-cols-5 gap-x-4 gap-y-2">
+                        {Array.from({ length: 5 }).map((_, colIdx) => (
+                          <div key={`col-${colIdx}`} className="flex flex-col gap-1">
+                            {Array.from({ length: rows }).map((_, rowIdx) => {
+                              const localIdx = colIdx * rows + rowIdx;
+                              if (localIdx >= chunkProblems.length) return <div key={rowIdx} className="h-6"></div>;
+                              
+                              const prob = chunkProblems[localIdx];
+                              const displayAnswer = prob.answer || "";
+                              const isTextAnswer = isNaN(Number(displayAnswer));
+
+                              return (
+                                <div 
+                                  key={prob.id} 
+                                  className="flex items-center justify-start gap-2 border-b border-slate-200 pb-1 mb-1"
+                                >
+                                  <span className="font-bold text-slate-500 w-6 text-base shrink-0 text-right">
+                                    {prob.number}
+                                  </span>
+                                  <span className={`font-extrabold text-slate-900 shrink-0 ${
+                                    isTextAnswer 
+                                      ? "text-base whitespace-nowrap tracking-tighter scale-90 origin-left"
+                                      : "text-lg"
+                                  }`}>
+                                    {displayAnswer || "-"}
+                                  </span>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })}
              </div>
           )}
 
@@ -347,15 +427,15 @@ const ExamPaperLayout = forwardRef<HTMLDivElement, ExamPaperLayoutProps>(
             >
               {renderHeader(pageIdx, true)}
 
-              <div className="flex-1 flex gap-[10mm] relative z-10 mt-2">
+              {/* [수정] min-h-0 추가: Flex 자식 요소가 부모 높이를 뚫고 나가는 현상 방지 */}
+              <div className="flex-1 flex gap-[10mm] relative z-10 mt-2 min-h-0">
                 {columns.map((items, colIdx) => (
                   <div key={colIdx} className="flex-1 flex flex-col h-full">
                     {items.map((prob) => (
                       <div 
-                        // [수정] 해설지 영역도 키 충돌 방지
                         key={`sol-${prob.id}-${prob.number}`} 
                         className="w-full mb-0 border-b border-dashed border-gray-200 pb-2 last:border-0 break-inside-avoid"
-                        style={{ marginBottom: printOptions.solutionPadding }}
+                        style={{ marginBottom: 10 }}
                       >
                         <div className="flex items-center mb-1 gap-2">
                            <span className="text-xs font-bold bg-gray-100 px-2 py-0.5 rounded text-slate-700">
@@ -365,12 +445,13 @@ const ExamPaperLayout = forwardRef<HTMLDivElement, ExamPaperLayoutProps>(
                              정답: {prob.answer}
                            </span>
                         </div>
-                        <div className="text-sm text-gray-700 mt-1">
+                        <div className="text-sm text-gray-700 mt-1 leading-relaxed">
                            {prob.solutionUrl ? (
                              /* eslint-disable-next-line @next/next/no-img-element */
                              <img src={prob.solutionUrl} alt="해설" className="w-full h-auto object-contain" />
                            ) : (
-                             <p className="text-xs text-slate-400 italic">해설 이미지가 없습니다.</p>
+                             // 해설 텍스트가 너무 길 경우를 대비해 스타일 조정
+                             <p className="whitespace-pre-wrap">{prob.content || "해설 없음"}</p>
                            )}
                         </div>
                       </div>
@@ -379,15 +460,14 @@ const ExamPaperLayout = forwardRef<HTMLDivElement, ExamPaperLayoutProps>(
                 ))}
               </div>
 
-              <div className="h-[40px] flex justify-center items-center border-t border-gray-200 text-xs text-gray-400 shrink-0">
+              {/* 푸터 영역: mt-auto로 하단 고정하되, 위 로직 덕분에 밀려나지 않음 */}
+              <div className="h-[40px] flex justify-center items-center border-t border-gray-200 text-xs text-gray-400 shrink-0 mt-auto">
                  - {pageIdx + 1} (정답 및 해설) -
               </div>
             </div>
           ))}
-
         </div>
 
-        {/* 오류 신고 모달 */}
         {reportTarget && (
           <ReportIssueModal 
             problemId={reportTarget.id}

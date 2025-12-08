@@ -1,4 +1,4 @@
-// app/data/examTemplates.ts
+//types/examTemplates.ts
 
 export type ExamTemplateStyle = {
   id: string;

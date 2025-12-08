@@ -10,7 +10,10 @@ import {
   LayoutTemplate, Image as ImageIcon, SaveIcon, ListOrdered, 
   RotateCcw, FileCheck, CheckSquare, Settings2, CheckCircle2
 } from "lucide-react";
-import ExamPaperLayout, { ExamProblem } from "@/components/ExamPaperLayout";
+import { 
+  Squares2X2Icon, ViewColumnsIcon, QueueListIcon // [신규] 레이아웃 아이콘
+} from "@heroicons/react/24/outline";
+import ExamPaperLayout, { ExamProblem, LayoutMode } from "@/components/ExamPaperLayout";
 import { useAuth } from "@/context/AuthContext";
 import { DragDropContext, Droppable, Draggable, DropResult } from "@hello-pangea/dnd"; 
 import { toast } from "react-hot-toast"; 
@@ -51,12 +54,12 @@ function ExamBuilderContent() {
   const [usedProblemIds, setUsedProblemIds] = useState<string[]>([]);
 
   // 메타데이터 & 옵션
-  const [examTitle, setExamTitle] = useState("2025 1학기 중간고사 대비");
-  const [instructorName, setInstructorName] = useState(userData?.name || "김룰메 선생님");
+  const [examTitle, setExamTitle] = useState("제목을 입력해주세요");
+  const [instructorName, setInstructorName] = useState(userData?.name || "선생님 성함");
   const [academyLogo, setAcademyLogo] = useState<string | null>(null);
   
   // [설정] 기본값 설정: 문제 간격 40, 해설 간격 20
-  const [printOptions, setPrintOptions] = useState<PrintOptions>({
+  const [printOptions, setPrintOptions] = useState<any>({ // 타입 오류 방지 위해 any 사용 or interface 업데이트 필요
     questions: true,
     answers: true,
     solutions: true,
@@ -76,6 +79,9 @@ function ExamBuilderContent() {
   // [신규] 질문 형식 상태 관리
   // 기본값: ['SELECTION'] (객관식만 선택됨)
   const [targetQuestionTypes, setTargetQuestionTypes] = useState<string[]>(['SELECTION', 'ESSAY']);
+
+  // [신규] 레이아웃 모드 상태
+  const [layoutMode, setLayoutMode] = useState<LayoutMode>('dense');
 
   useEffect(() => {
     setIsMounted(true);
@@ -528,6 +534,36 @@ function ExamBuilderContent() {
                 <input type="range" min="4" max="50" step="1" value={questionCount} onChange={(e) => setQuestionCount(Number(e.target.value))} className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600" />
               </div>
 
+              {/* [신규] 레이아웃 설정 섹션 */}
+              <div className="pt-4 border-t border-gray-100">
+                <h3 className="text-sm font-bold text-gray-900 mb-3 flex items-center gap-2">
+                  <LayoutTemplate className="w-4 h-4"/> 배치 모드
+                </h3>
+                <div className="grid grid-cols-3 gap-2">
+                  <button 
+                    onClick={() => setLayoutMode('dense')}
+                    className={`flex flex-col items-center justify-center p-2 rounded-lg border text-xs transition-all ${layoutMode === 'dense' ? 'bg-blue-50 border-blue-500 text-blue-700' : 'bg-white border-slate-200 text-slate-500 hover:bg-slate-50'}`}
+                  >
+                    <QueueListIcon className="w-5 h-5 mb-1" />
+                    기본(빼곡)
+                  </button>
+                  <button 
+                    onClick={() => setLayoutMode('split-2')}
+                    className={`flex flex-col items-center justify-center p-2 rounded-lg border text-xs transition-all ${layoutMode === 'split-2' ? 'bg-blue-50 border-blue-500 text-blue-700' : 'bg-white border-slate-200 text-slate-500 hover:bg-slate-50'}`}
+                  >
+                    <ViewColumnsIcon className="w-5 h-5 mb-1" />
+                    2분할
+                  </button>
+                  <button 
+                    onClick={() => setLayoutMode('split-4')}
+                    className={`flex flex-col items-center justify-center p-2 rounded-lg border text-xs transition-all ${layoutMode === 'split-4' ? 'bg-blue-50 border-blue-500 text-blue-700' : 'bg-white border-slate-200 text-slate-500 hover:bg-slate-50'}`}
+                  >
+                    <Squares2X2Icon className="w-5 h-5 mb-1" />
+                    4분할
+                  </button>
+                </div>
+              </div>
+
               {/* 옵션 및 여백 */}
               <div className="pt-4 border-t border-gray-100">
                 <h3 className="text-sm font-bold text-gray-900 mb-3 flex items-center gap-2">
@@ -550,37 +586,21 @@ function ExamBuilderContent() {
                 </div>
 
                 <div className="bg-slate-50 p-3 rounded-lg space-y-3 border border-slate-200">
-                   <div>
-                      <div className="flex justify-between text-xs mb-1 text-slate-600">
-                         <span>문제 간격 (px)</span>
-                         <span className="font-bold text-blue-600">{printOptions.questionPadding}</span>
-                      </div>
-                      <input 
-                        type="range" min="10" max="100" step="5" 
-                        value={printOptions.questionPadding} 
-                        onChange={(e) => setPrintOptions(prev => ({...prev, questionPadding: Number(e.target.value)}))}
-                        className="w-full h-1.5 bg-gray-300 rounded-lg appearance-none cursor-pointer accent-blue-600" 
-                      />
-                   </div>
-                   <div>
-                      <div className="flex justify-between text-xs mb-1 text-slate-600">
-                         <span>해설 간격 (px)</span>
-                         <span className="font-bold text-blue-600">{printOptions.solutionPadding}</span>
-                      </div>
-                      <input 
-                        type="range" min="5" max="50" step="5" 
-                        value={printOptions.solutionPadding} 
-                        onChange={(e) => setPrintOptions(prev => ({...prev, solutionPadding: Number(e.target.value)}))}
-                        className="w-full h-1.5 bg-gray-300 rounded-lg appearance-none cursor-pointer accent-blue-600" 
-                      />
-                   </div>
-                </div>
-
-                <div className="mt-3 pt-3 border-t border-dashed border-gray-200">
-                  <label className="flex items-center gap-2 cursor-pointer p-2 rounded-lg bg-red-50 border border-red-100 hover:bg-red-100">
-                    <input type="checkbox" checked={isTeacherMode} onChange={(e) => setIsTeacherMode(e.target.checked)} className="rounded text-red-500 accent-red-500" />
-                    <span className="text-sm font-bold text-red-700">교사용 지도서 모드</span>
-                  </label>
+                   {/* [수정] 기본(Dense) 모드일 때만 문항 간격 조절 표시 */}
+                   {layoutMode === 'dense' && (
+                     <div>
+                        <div className="flex justify-between text-xs mb-1 text-slate-600">
+                           <span>문제 간격 (px)</span>
+                           <span className="font-bold text-blue-600">{printOptions.questionPadding}</span>
+                        </div>
+                        <input 
+                          type="range" min="10" max="100" step="5" 
+                          value={printOptions.questionPadding} 
+                          onChange={(e) => setPrintOptions(prev => ({...prev, questionPadding: Number(e.target.value)}))}
+                          className="w-full h-1.5 bg-gray-300 rounded-lg appearance-none cursor-pointer accent-blue-600" 
+                        />
+                     </div>
+                   )}
                 </div>
               </div>
 
@@ -667,7 +687,10 @@ function ExamBuilderContent() {
                title={examTitle}
                instructor={instructorName}
                template={currentTemplate}
-               printOptions={printOptions}
+               printOptions={{
+                 ...printOptions,
+                 layoutMode: layoutMode
+               }}
                isTeacherVersion={isTeacherMode} 
              />
           </div>

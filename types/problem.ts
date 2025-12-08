@@ -1,7 +1,7 @@
 // types/problem.ts
 
 export type Difficulty = '기본' | '하' | '중' | '상' | '킬러';
-export type QuestionType = '객관식' | '서답형';
+export type QuestionType = 'SELECTION' | 'ESSAY';
 
 // [신규] 유사 문항 정보 타입
 export interface SimilarProblemInfo {
@@ -18,6 +18,8 @@ export interface DBProblem {
   minorTopic: string;
   difficulty: Difficulty;
   difficultyScore: number;
+  questionType: QuestionType | string; // "SELECTION"
+  questionTypeLabel?: string;          // "객관식" (UI 표시용)
   imgUrl: string;
   solutionUrl?: string;
   answer?: string;
@@ -28,7 +30,7 @@ export interface DBProblem {
   createdAt: any;
 }
 
-// 화면용 데이터 (변경 없음)
+// 화면용 데이터
 export interface ExamProblem {
   id: string;
   number: number;
@@ -39,4 +41,6 @@ export interface ExamProblem {
   minorTopic?: string;
   answer?: string | null;
   solutionUrl?: string | null;
+  height?: number; // [추가] 높이 정보 전달용
+  solutionHeight?: number;
 }

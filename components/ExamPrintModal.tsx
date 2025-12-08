@@ -4,8 +4,8 @@
 
 import { useRef, useState, useMemo } from "react";
 import { useReactToPrint } from "react-to-print";
-import { XMarkIcon, PrinterIcon, CheckCircleIcon, Cog6ToothIcon } from "@heroicons/react/24/outline";
-import ExamPaperLayout, { PrintOptions } from "@/components/ExamPaperLayout";
+import { XMarkIcon, PrinterIcon, CheckCircleIcon } from "@heroicons/react/24/outline";
+import ExamPaperLayout, { PrintOptions, LayoutMode } from "@/components/ExamPaperLayout";
 import { TEMPLATES } from "@/types/examTemplates";
 
 interface SavedExam {
@@ -13,7 +13,10 @@ interface SavedExam {
   title: string;
   instructorName: string;
   problems?: any[];
-  templateId?: string; // 저장된 템플릿 ID
+  templateId?: string;
+  // [신규] 저장된 시험지의 레이아웃 설정 (없을 경우 기본값 사용)
+  layoutMode?: LayoutMode;
+  questionPadding?: number;
 }
 
 interface Props {
@@ -24,16 +27,30 @@ interface Props {
 export default function ExamPrintModal({ exam, onClose }: Props) {
   const printRef = useRef<HTMLDivElement>(null);
   
-  // 인쇄 옵션 상태 (기본값 설정)
-  const [printOptions, setPrintOptions] = useState<PrintOptions>({
+  // [수정] 인쇄 요소(섹션) 체크박스 상태만 관리
+  const [sections, setSections] = useState({
     questions: true,
     answers: true,
     solutions: true,
-    questionPadding: 40,
-    solutionPadding: 20
   });
 
-  // 저장된 템플릿이 있으면 적용, 없으면 기본값
+  // [핵심] 레이아웃 옵션은 exam prop에서 상속받거나 고정값 사용
+  const printOptions: PrintOptions = {
+    questions: sections.questions,
+    answers: sections.answers,
+    solutions: sections.solutions,
+    
+    // 저장된 값이 있으면 사용, 없으면 기본값 (40px)
+    questionPadding: exam.questionPadding ?? 40,
+    
+    // 해설 간격은 10px로 고정 (요청사항 반영)
+    solutionPadding: 10, 
+    
+    // 저장된 모드가 있으면 사용, 없으면 'dense'(기본)
+    layoutMode: exam.layoutMode ?? 'dense' 
+  };
+
+  // 템플릿 로드
   const template = useMemo(() => {
     return TEMPLATES.find(t => t.id === exam.templateId) || TEMPLATES[0];
   }, [exam.templateId]);
@@ -43,8 +60,15 @@ export default function ExamPrintModal({ exam, onClose }: Props) {
     documentTitle: exam.title,
   });
 
-  const toggleOption = (key: keyof PrintOptions) => {
-    setPrintOptions(prev => ({ ...prev, [key]: !prev[key] }));
+  const toggleSection = (key: keyof typeof sections) => {
+    setSections(prev => ({ ...prev, [key]: !prev[key] }));
+  };
+
+  // 현재 레이아웃 모드 이름 (UI 표시용)
+  const getLayoutName = (mode: LayoutMode) => {
+    if (mode === 'split-2') return '2단 분할';
+    if (mode === 'split-4') return '4단 분할';
+    return '기본(빼곡)';
   };
 
   return (
@@ -56,10 +80,10 @@ export default function ExamPrintModal({ exam, onClose }: Props) {
           <div>
             <h2 className="text-xl font-bold text-slate-900 flex items-center gap-2">
               <PrinterIcon className="w-6 h-6 text-indigo-600" />
-              인쇄 미리보기 & 옵션 설정
+              인쇄 미리보기
             </h2>
             <p className="text-sm text-slate-500 mt-1 pl-8">
-              {exam.title} <span className="text-slate-300">|</span> 총 {exam.problems?.length || 0}문항
+              {exam.title} <span className="text-slate-300">|</span> {getLayoutName(printOptions.layoutMode)} 모드
             </p>
           </div>
           <div className="flex gap-2">
@@ -80,76 +104,46 @@ export default function ExamPrintModal({ exam, onClose }: Props) {
 
         <div className="flex flex-1 overflow-hidden">
           
-          {/* 2. 사이드바: 옵션 설정 */}
-          <div className="w-80 bg-slate-50 border-r border-slate-200 p-6 flex flex-col gap-8 overflow-y-auto shrink-0">
+          {/* 2. 사이드바: 옵션 설정 (간소화됨) */}
+          <div className="w-72 bg-slate-50 border-r border-slate-200 p-6 flex flex-col gap-8 overflow-y-auto shrink-0">
             
             {/* 출력 요소 선택 */}
             <div>
               <h3 className="text-sm font-bold text-slate-900 mb-4 flex items-center gap-2 uppercase tracking-wider">
-                <CheckCircleIcon className="w-4 h-4 text-indigo-600" /> 출력 요소
+                <CheckCircleIcon className="w-4 h-4 text-indigo-600" /> 출력 요소 선택
               </h3>
               <div className="space-y-3">
                 <OptionCheckbox 
                   label="문제지 (Questions)" 
-                  checked={printOptions.questions} 
-                  onChange={() => toggleOption('questions')} 
+                  checked={sections.questions} 
+                  onChange={() => toggleSection('questions')} 
                 />
                 <OptionCheckbox 
                   label="정답표 (Answers)" 
-                  checked={printOptions.answers} 
-                  onChange={() => toggleOption('answers')} 
+                  checked={sections.answers} 
+                  onChange={() => toggleSection('answers')} 
                 />
                 <OptionCheckbox 
                   label="해설지 (Solutions)" 
-                  checked={printOptions.solutions} 
-                  onChange={() => toggleOption('solutions')} 
+                  checked={sections.solutions} 
+                  onChange={() => toggleSection('solutions')} 
                 />
               </div>
             </div>
 
-            {/* 여백 설정 */}
-            <div>
-              <h3 className="text-sm font-bold text-slate-900 mb-4 flex items-center gap-2 uppercase tracking-wider">
-                <Cog6ToothIcon className="w-4 h-4 text-slate-500" /> 레이아웃 조정
-              </h3>
-              <div className="space-y-6 bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
-                <div>
-                  <div className="flex justify-between text-xs mb-2 text-slate-600 font-medium">
-                    <span>문제 간격</span>
-                    <span className="text-indigo-600">{printOptions.questionPadding}px</span>
-                  </div>
-                  <input 
-                    type="range" min="10" max="100" step="5" 
-                    value={printOptions.questionPadding} 
-                    onChange={(e) => setPrintOptions(prev => ({...prev, questionPadding: Number(e.target.value)}))}
-                    className="w-full h-1.5 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-indigo-600" 
-                  />
-                </div>
-                <div>
-                  <div className="flex justify-between text-xs mb-2 text-slate-600 font-medium">
-                    <span>해설 간격</span>
-                    <span className="text-indigo-600">{printOptions.solutionPadding}px</span>
-                  </div>
-                  <input 
-                    type="range" min="5" max="100" step="5" 
-                    value={printOptions.solutionPadding} 
-                    onChange={(e) => setPrintOptions(prev => ({...prev, solutionPadding: Number(e.target.value)}))}
-                    className="w-full h-1.5 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-indigo-600" 
-                  />
-                </div>
-              </div>
-            </div>
-
-            <div className="mt-auto p-4 bg-indigo-50 border border-indigo-100 rounded-xl text-xs text-indigo-800 leading-relaxed">
-              <p className="font-bold mb-1">💡 Tip</p>
-              오른쪽 미리보기 화면에서 레이아웃이 깨지지 않는지 확인한 후 인쇄하세요.
+            {/* 안내 문구 */}
+            <div className="mt-auto p-4 bg-blue-50 border border-blue-100 rounded-xl text-xs text-blue-800 leading-relaxed">
+              <p className="font-bold mb-1">ℹ️ Layout Info</p>
+              이 시험지는 <strong>{getLayoutName(printOptions.layoutMode)}</strong>로 설정되어 있습니다.
+              <br/><br/>
+              문항 간격과 배치는 시험지 생성 시 설정된 값을 따르며, 여기서는 수정할 수 없습니다.
             </div>
           </div>
 
           {/* 3. 메인: 미리보기 영역 */}
           <div className="flex-1 bg-slate-200/50 overflow-y-auto p-8 flex justify-center custom-scrollbar">
             <div className="shadow-2xl h-fit bg-white">
-               {/* 실제 출력될 컴포넌트 */}
+               {/* 실제 출력될 컴포넌트 (설정값 전달) */}
                <ExamPaperLayout 
                  ref={printRef}
                  problems={exam.problems || []}
