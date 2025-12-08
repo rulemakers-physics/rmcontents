@@ -1,5 +1,3 @@
-// app/(student)/student/scrap/page.tsx
-
 "use client";
 
 import { useEffect, useState, useRef } from "react";
@@ -94,7 +92,7 @@ export default function ScrapbookPage() {
     documentTitle: "나만의_스크랩북",
   });
 
-  // 5. PDF용 데이터 변환
+  // 5. PDF용 데이터 변환 (페이지네이션 제거)
   const pdfProblems = scraps.map((s, idx) => ({
     id: s.problemId,
     number: idx + 1,
@@ -105,12 +103,6 @@ export default function ScrapbookPage() {
     difficulty: "Scrap",
     majorTopic: s.majorTopic || ""
   }));
-
-  // 페이지네이션 (4문제씩)
-  const pdfPages = [];
-  for (let i = 0; i < pdfProblems.length; i += 4) {
-    pdfPages.push(pdfProblems.slice(i, i + 4));
-  }
 
   if (loading) return <div className="p-10 text-center text-slate-400">불러오는 중...</div>;
 
@@ -228,11 +220,18 @@ export default function ScrapbookPage() {
       <div style={{ display: "none" }}>
         <ExamPaperLayout
           ref={printRef}
-          pages={pdfPages}
+          problems={pdfProblems} // [수정] pages -> problems
           title="나만의 스크랩북 (오답노트)"
           instructor={user?.displayName || "학생"}
           template={TEMPLATES[0]}
-          printOptions={{ questions: true, answers: true, solutions: true }} // 해설 포함 출력
+          printOptions={{ 
+            questions: true, 
+            answers: true, 
+            solutions: true,
+            // [수정] 필수값 추가
+            questionPadding: 40,
+            solutionPadding: 20
+          }} 
           isTeacherVersion={false}
         />
       </div>

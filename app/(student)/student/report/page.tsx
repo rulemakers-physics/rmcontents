@@ -78,7 +78,7 @@ export default function ReportDashboard() {
   }, [history]);
 
   // 2. [PDF] 오답노트 데이터 미리 준비 (useMemo)
-  // 렌더링 시점에 미리 계산하여 Hidden Div에 뿌려둠 -> 출력 시 바로 사용
+  // [수정] 페이지네이션 로직 제거하고 전체 문제 배열 반환 (ExamPaperLayout이 내부에서 처리)
   const wrongAnswersForPdf = useMemo(() => {
     // 모든 시험에서 틀린 문제만 수집
     const allWrongProblems = history.flatMap(exam => 
@@ -91,12 +91,11 @@ export default function ReportDashboard() {
       }))
     );
 
-    // 4문제씩 페이지네이션
-    const pages = [];
-    for (let i = 0; i < allWrongProblems.length; i += 4) {
-      pages.push(allWrongProblems.slice(i, i + 4));
-    }
-    return pages;
+    // 번호 재정렬 (1번부터 순차적으로)
+    return allWrongProblems.map((p, i) => ({
+      ...p,
+      number: i + 1
+    }));
   }, [history]);
 
   // 3. [PDF] 출력 훅 설정 (contentRef 사용)
@@ -230,15 +229,21 @@ export default function ReportDashboard() {
       </div>
 
       {/* [Hidden] 오답노트 출력용 컴포넌트 */}
-      {/* display: none으로 숨겨져 있지만, wrongAnswersForPdf 데이터가 바뀌면 리렌더링되어 최신 상태 유지 */}
       <div style={{ display: "none" }}>
         <ExamPaperLayout
           ref={printRef}
-          pages={wrongAnswersForPdf}
+          problems={wrongAnswersForPdf} // [수정] pages -> problems (flat array)
           title="나만의 오답노트"
           instructor={user?.displayName || "학생"}
           template={TEMPLATES[0]}
-          printOptions={{ questions: true, answers: true, solutions: false }}
+          printOptions={{ 
+            questions: true, 
+            answers: true, 
+            solutions: false,
+            // [수정] 필수값 추가
+            questionPadding: 40,
+            solutionPadding: 20
+          }}
           isTeacherVersion={false}
         />
       </div>
