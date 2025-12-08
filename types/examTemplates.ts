@@ -1,4 +1,7 @@
-//types/examTemplates.ts
+// types/examTemplates.ts
+
+// [추가] LayoutMode 타입 정의 이동
+export type LayoutMode = 'dense' | 'split-2' | 'split-4';
 
 export type ExamTemplateStyle = {
   id: string;

@@ -13,7 +13,7 @@ import {
 import { 
   Squares2X2Icon, ViewColumnsIcon, QueueListIcon // [신규] 레이아웃 아이콘
 } from "@heroicons/react/24/outline";
-import ExamPaperLayout, { ExamProblem, LayoutMode } from "@/components/ExamPaperLayout";
+import ExamPaperLayout, { ExamProblem as LayoutExamProblem } from "@/components/ExamPaperLayout";
 import { useAuth } from "@/context/AuthContext";
 import { DragDropContext, Droppable, Draggable, DropResult } from "@hello-pangea/dnd"; 
 import { toast } from "react-hot-toast"; 
@@ -23,7 +23,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 
 import { useProblemFetcher } from "@/hooks/useProblemFetcher";
 import { Difficulty, DBProblem } from "@/types/problem"; 
-import { TEMPLATES, ExamTemplateStyle } from "@/types/examTemplates";
+import { TEMPLATES, ExamTemplateStyle, LayoutMode } from "@/types/examTemplates";
 
 // 인쇄 옵션 인터페이스
 export interface PrintOptions {
@@ -281,7 +281,7 @@ function ExamBuilderContent() {
     }
   }, [examId, isMounted]);
 
-  // DB 로드 (저장된 시험지)
+  // 1. [수정] DB 로드 (저장된 시험지 불러오기) - layoutMode 복원 추가
   useEffect(() => {
     if (!examId) return;
     const loadExam = async () => {
@@ -293,8 +293,18 @@ function ExamBuilderContent() {
           setExamTitle(data.title);
           setExamProblems(data.problems || []);
           setInstructorName(data.instructorName);
+          
           const savedTemplate = TEMPLATES.find(t => t.id === data.templateId);
           if (savedTemplate) setCurrentTemplate(savedTemplate);
+
+          // [추가] 저장된 layoutMode와 padding이 있다면 복원
+          if (data.layoutMode) {
+            setLayoutMode(data.layoutMode as LayoutMode);
+          }
+          if (data.questionPadding) {
+            setPrintOptions((prev: any) => ({ ...prev, questionPadding: data.questionPadding }));
+          }
+
           toast.success("시험지를 불러왔습니다.");
         }
       } catch (error) {
@@ -356,6 +366,9 @@ function ExamBuilderContent() {
         title: examTitle,
         problems: cleanProblems,
         templateId: currentTemplate.id,
+        // [추가] 현재 설정된 레이아웃 모드와 여백 저장
+        layoutMode: layoutMode,
+        questionPadding: printOptions.questionPadding,
         createdAt: serverTimestamp(),
         problemCount: examProblems.length,
       });

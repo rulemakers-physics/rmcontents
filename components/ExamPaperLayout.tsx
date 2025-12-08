@@ -1,7 +1,7 @@
 "use client";
 
 import React, { forwardRef, useMemo } from "react";
-import { ExamTemplateStyle } from "@/types/examTemplates";
+import { ExamTemplateStyle, LayoutMode } from "@/types/examTemplates";
 import { ExclamationCircleIcon } from "@heroicons/react/24/outline";
 import ReportIssueModal from "./ReportIssueModal";
 
@@ -36,7 +36,6 @@ export interface ExamProblem {
   solutionHeight?: number;
 }
 
-export type LayoutMode = 'dense' | 'split-2' | 'split-4';
 
 export interface PrintOptions {
   questions: boolean;

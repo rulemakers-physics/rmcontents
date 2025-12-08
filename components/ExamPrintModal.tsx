@@ -5,8 +5,8 @@
 import { useRef, useState, useMemo } from "react";
 import { useReactToPrint } from "react-to-print";
 import { XMarkIcon, PrinterIcon, CheckCircleIcon } from "@heroicons/react/24/outline";
-import ExamPaperLayout, { PrintOptions, LayoutMode } from "@/components/ExamPaperLayout";
-import { TEMPLATES } from "@/types/examTemplates";
+import ExamPaperLayout, { PrintOptions } from "@/components/ExamPaperLayout";
+import { TEMPLATES, LayoutMode } from "@/types/examTemplates";
 
 interface SavedExam {
   id: string;
