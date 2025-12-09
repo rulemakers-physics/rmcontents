@@ -82,7 +82,7 @@ export default function MakerGuidePage() {
           <div className="grid md:grid-cols-2 gap-12 items-center mb-24">
             <div className="bg-white rounded-2xl shadow-xl border border-slate-200 p-3 transform md:-rotate-2 transition-transform hover:rotate-0">
               <div className="aspect-[4/3] bg-slate-100 rounded-xl overflow-hidden relative">
-                 <Image src="/images/editfeature.png" alt="Editor UI" fill className="object-cover object-top" />
+                 <Image src="/images/dndfeature.png" alt="Editor UI" fill className="object-cover object-top" />
               </div>
             </div>
             <div>

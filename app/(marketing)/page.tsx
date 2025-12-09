@@ -402,13 +402,14 @@ export default function HomePage() {
                 className="flex-1"
               >
                 <div className="flex items-center gap-2 mb-4">
-                  <div className="p-2 bg-blue-100 rounded-lg text-blue-600">
-                    <BeakerIcon className="w-6 h-6" />
-                  </div>
-                  <span className="text-blue-600 font-bold tracking-wide uppercase">Perfect Answer for Studying Science</span>
+                  <span className="text-blue-600 font-bold tracking-wide uppercase"><strong>P</strong>erfect <strong>A</strong>nswer for <strong>S</strong>tudying <strong>S</strong>cience</span>
                 </div>
                 <h2 className="text-4xl font-extrabold text-slate-900 mb-6 leading-tight">
-                  PASS 문제은행<br/>
+                  PASS 문제은행
+                  <span className="text-sm text-gray-500 ml-2">
+                    by RuleMakers
+                  </span>
+                  <br/>
                   <span className="text-slate-400">필요한 문제만 골라 담으세요</span>
                 </h2>
                 <p className="text-lg text-slate-600 leading-relaxed mb-8 break-keep">
@@ -444,7 +445,7 @@ export default function HomePage() {
                 <div className="relative rounded-2xl shadow-2xl border border-slate-200 overflow-hidden bg-slate-50 aspect-[4/3] group transform transition-transform hover:scale-[1.01] hover:shadow-blue-200/50">
                    <div className="absolute inset-0 bg-gradient-to-tr from-blue-500/10 to-transparent" />
                    <Image 
-                     src="/images/maker.png" 
+                     src="/images/maker1.png" 
                      alt="PASS Question Bank UI" 
                      fill 
                      className="object-cover object-top"
@@ -628,9 +629,6 @@ export default function HomePage() {
                 className="flex-1"
               >
                 <div className="flex items-center gap-2 mb-4">
-                  <div className="p-2 bg-indigo-500/20 border border-indigo-500/30 rounded-lg text-indigo-300">
-                    <SparklesIcon className="w-6 h-6" />
-                  </div>
                   <span className="text-indigo-400 font-bold tracking-wide uppercase">Full Concierge Service</span>
                 </div>
                 <h2 className="text-4xl font-extrabold text-white mb-6 leading-tight">
@@ -684,7 +682,7 @@ export default function HomePage() {
                    
                    {/* Image */}
                    <Image 
-                     src="/images/request.png" // n-set or high-difficulty image
+                     src="/images/request1.png" // n-set or high-difficulty image
                      alt="Custom Production Service" 
                      fill 
                      className="object-cover object-top opacity-90 transition-transform duration-700 group-hover:scale-105"
