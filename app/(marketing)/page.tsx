@@ -330,7 +330,7 @@ export default function HomePage() {
                 프리미엄 컨텐츠
               </span>,
               <br />
-              이제 간편하게 요청하세요.
+              이제 간편하게 제작하세요.
             </motion.h1>
             
             <motion.p
@@ -339,9 +339,8 @@ export default function HomePage() {
               transition={{ duration: 0.6, delay: 0.2 }}
               className="mt-8 max-w-2xl text-lg text-slate-300 sm:text-xl leading-relaxed"
             >
-              RuleMakers는 High End 자체 제작 컨텐츠와 학교별 기출 분석을 통해
-              <br className="hidden sm:block" />
-              선생님만의 <strong>프리미엄 커스텀 교재</strong>를 신속하게 제작합니다.
+              직접 만드는 <strong>문제은행</strong>부터 전문가에게 맡기는 <strong>맞춤 제작</strong>까지.<br/>
+              RuleMakers는 선생님의 수업 준비를 위한 가장 완벽한 파트너입니다.
             </motion.p>
             
             <motion.div
@@ -391,7 +390,7 @@ export default function HomePage() {
             </motion.div>
           </div>
         </section>
-        {/* ▼▼▼ [추가] 데스크탑용 PASS Question Bank 섹션 ▼▼▼ */}
+         {/* --- 2. PASS Question Bank (Light Theme, Text Left - Image Right) --- */}
         <section className="py-32 bg-white relative overflow-hidden">
           <div className="container mx-auto px-6 max-w-6xl">
             <div className="flex flex-col md:flex-row items-center gap-16">
@@ -405,18 +404,18 @@ export default function HomePage() {
                   <div className="p-2 bg-blue-100 rounded-lg text-blue-600">
                     <BeakerIcon className="w-6 h-6" />
                   </div>
-                  <span className="text-blue-600 font-bold tracking-wide uppercase">High-End Question Bank</span>
+                  <span className="text-blue-600 font-bold tracking-wide uppercase">Perfect Answer for Studying Science</span>
                 </div>
                 <h2 className="text-4xl font-extrabold text-slate-900 mb-6 leading-tight">
-                  PASS Question Bank<br/>
-                  <span className="text-slate-400">by RuleMakers</span>
+                  PASS 문제은행<br/>
+                  <span className="text-slate-400">필요한 문제만 골라 담으세요</span>
                 </h2>
                 <p className="text-lg text-slate-600 leading-relaxed mb-8 break-keep">
                   서울대 연구진이 개발한 <strong>검증된 킬러 문항</strong>과 <strong>최신 기출 변형 문항</strong>을
                   선생님이 원하는 조건대로 자유롭게 골라 담으세요.
                   <br/><br/>
-                  단원, 난이도, 유형별 필터링은 물론, HWP 작업 없이 클릭 몇 번으로
-                  완벽한 디자인의 PDF 시험지를 생성할 수 있습니다.
+                  단원, 난이도, 객관식/서술형 필터링은 물론, 
+                  <br/>클릭 몇 번으로완벽한 디자인의 PDF 시험지를 생성할 수 있습니다.
                 </p>
                 <ul className="space-y-4 mb-10">
                   {[
@@ -430,7 +429,7 @@ export default function HomePage() {
                     </li>
                   ))}
                 </ul>
-                <Link href="/maker-guide" className="inline-flex items-center text-blue-600 font-bold hover:underline underline-offset-4">
+                <Link href="/maker-guide" className="inline-flex items-center text-blue-600 font-bold hover:underline underline-offset-4 text-lg">
                   문제은행 기능 자세히 보기 &rarr;
                 </Link>
               </motion.div>
@@ -440,14 +439,13 @@ export default function HomePage() {
                 initial={{ opacity: 0, x: 30 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true }} transition={{ duration: 0.6, delay: 0.2 }}
                 className="flex-1 relative"
               >
-                <div className="relative rounded-2xl shadow-2xl border border-slate-200 overflow-hidden bg-slate-50 aspect-[4/3] group">
+                <div className="relative rounded-2xl shadow-2xl border border-slate-200 overflow-hidden bg-slate-50 aspect-[4/3] group transform transition-transform hover:scale-[1.01] hover:shadow-blue-200/50">
                    <div className="absolute inset-0 bg-gradient-to-tr from-blue-500/10 to-transparent" />
-                   {/* UI Mockup Image */}
                    <Image 
                      src="/images/mock-exam.png" 
                      alt="PASS Question Bank UI" 
                      fill 
-                     className="object-cover object-top transition-transform duration-700 group-hover:scale-105"
+                     className="object-cover object-top"
                    />
                    {/* Floating Badges */}
                    <div className="absolute top-6 right-6 bg-white/90 backdrop-blur px-4 py-2 rounded-lg shadow-lg border border-slate-100 flex items-center gap-2 animate-bounce-slow">
@@ -536,7 +534,7 @@ export default function HomePage() {
               </h2>
               <p className="mt-4 text-lg text-slate-600 max-w-2xl mx-auto">
                 출석, 과제, 테스트 성적 관리부터 학부모 리포트 전송까지.<br />
-                흩어져 있던 학원 관리 업무를 RuleMakers 하나로 통합하세요.
+                흩어져 있던 학원 관리 업무를 하나로 통합하였습니다.
               </p>
             </div>
 
@@ -615,7 +613,95 @@ export default function HomePage() {
             </div>
           </div>
         </section>
+       {/* --- 3. [NEW] Custom Production (Dark Theme, Image Left - Text Right) --- */}
+        <section className="py-32 bg-slate-900 text-white relative overflow-hidden">
+          {/* Background Decorative */}
+          <div className="absolute top-0 right-0 w-1/2 h-full bg-slate-800/50 skew-x-12 translate-x-1/4 pointer-events-none" />
+          
+          <div className="container mx-auto px-6 max-w-6xl relative z-10">
+            <div className="flex flex-col md:flex-row-reverse items-center gap-16">
+              
+              {/* Right: Text Info */}
+              <motion.div 
+                initial={{ opacity: 0, x: 30 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true }} transition={{ duration: 0.6 }}
+                className="flex-1"
+              >
+                <div className="flex items-center gap-2 mb-4">
+                  <div className="p-2 bg-indigo-500/20 border border-indigo-500/30 rounded-lg text-indigo-300">
+                    <SparklesIcon className="w-6 h-6" />
+                  </div>
+                  <span className="text-indigo-400 font-bold tracking-wide uppercase">Full Concierge Service</span>
+                </div>
+                <h2 className="text-4xl font-extrabold text-white mb-6 leading-tight">
+                  복잡한 제작은 맡기세요<br/>
+                  <span className="text-slate-400">맞춤형 제작 서비스</span>
+                </h2>
+                <p className="text-lg text-slate-300 leading-relaxed mb-8 break-keep">
+                  시간은 부족하고, 퀄리티는 놓칠 수 없다면?<br/>
+                  학교별 기출 분석부터 교재 제작까지, 전문 연구진에게 맡겨주세요.
+                  요청사항을 남겨주시면 <strong>단 3일</strong> 안에 완벽한 결과물을 드립니다.
+                </p>
 
+                {/* 3 Steps Visualized in Text Area */}
+                <div className="space-y-6 mb-10">
+                  <div className="flex items-start gap-4">
+                    <div className="flex-shrink-0 w-8 h-8 rounded-full bg-indigo-600 text-white flex items-center justify-center font-bold text-sm ring-4 ring-indigo-900">1</div>
+                    <div>
+                      <h4 className="text-lg font-bold text-white">작업 요청 및 자료 업로드</h4>
+                      <p className="text-sm text-slate-400">기출 문제, 참고 자료를 업로드하고 원하는 스타일을 알려주세요.</p>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-4">
+                    <div className="flex-shrink-0 w-8 h-8 rounded-full bg-slate-700 text-slate-300 flex items-center justify-center font-bold text-sm ring-4 ring-slate-800">2</div>
+                    <div>
+                      <h4 className="text-lg font-bold text-slate-200">전문가 분석 및 제작</h4>
+                      <p className="text-sm text-slate-400">서울대 출신 연구진이 문항을 선별하고 교차 검수를 진행합니다.</p>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-4">
+                    <div className="flex-shrink-0 w-8 h-8 rounded-full bg-slate-700 text-slate-300 flex items-center justify-center font-bold text-sm ring-4 ring-slate-800">3</div>
+                    <div>
+                      <h4 className="text-lg font-bold text-slate-200">결과물 수령 (PDF)</h4>
+                      <p className="text-sm text-slate-400">대시보드에서 완성된 고화질 PDF 파일을 즉시 다운로드하세요.</p>
+                    </div>
+                  </div>
+                </div>
+
+                <Link href="/request" className="inline-flex items-center text-indigo-400 font-bold hover:text-indigo-300 underline underline-offset-4 text-lg">
+                  제작 요청하러 가기 &rarr;
+                </Link>
+              </motion.div>
+
+              {/* Left: Visual Mockup */}
+              <motion.div 
+                initial={{ opacity: 0, x: -30 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true }} transition={{ duration: 0.6, delay: 0.2 }}
+                className="flex-1 relative"
+              >
+                <div className="relative rounded-2xl shadow-2xl border border-slate-700/50 overflow-hidden bg-slate-800 aspect-[4/3] group hover:border-indigo-500/30 transition-colors">
+                   {/* Background Glow */}
+                   <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/10 to-transparent" />
+                   
+                   {/* Image */}
+                   <Image 
+                     src="/images/n-set.png" // n-set or high-difficulty image
+                     alt="Custom Production Service" 
+                     fill 
+                     className="object-cover object-top opacity-90 transition-transform duration-700 group-hover:scale-105"
+                   />
+                   
+                   {/* Overlay Text */}
+                   <div className="absolute bottom-0 left-0 w-full p-6 bg-gradient-to-t from-slate-950/90 to-transparent">
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="px-2 py-0.5 rounded bg-indigo-600 text-[10px] font-bold text-white">3 Days</span>
+                        <span className="px-2 py-0.5 rounded bg-slate-700 text-[10px] font-bold text-slate-300">Premium Quality</span>
+                      </div>
+                      <p className="text-white font-medium text-sm">전문가가 만드는 나만의 교재</p>
+                   </div>
+                </div>
+              </motion.div>
+            </div>
+          </div>
+        </section>
         {/* --- 2. 핵심 역량 섹션 (Clean Bento-like Grid) --- */}
         <motion.section
           variants={staggerContainer}

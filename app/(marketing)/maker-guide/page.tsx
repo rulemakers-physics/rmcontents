@@ -57,17 +57,17 @@ export default function MakerGuidePage() {
               </div>
               <h3 className="text-2xl font-bold text-slate-900 mb-4">초정밀 문항 필터링</h3>
               <p className="text-slate-600 leading-relaxed mb-6">
-                대단원, 중단원은 물론 <strong>난이도(상/중/하/킬러)</strong>와 <strong>문항 유형(객관식/서술형)</strong>까지.
+                대단원, 중단원은 물론 <strong>난이도(기본/하/중/상/킬러)</strong>와 <strong>문항 유형(객관식/서술형)</strong>까지.
                 선생님이 원하는 조건에 딱 맞는 문제들만 AI가 즉시 선별하여 추천해 드립니다.
               </p>
               <ul className="space-y-3 text-sm text-slate-500">
                 <li className="flex items-center gap-3">
                   <CheckBadgeIcon className="w-5 h-5 text-blue-500" />
-                  <span>15/22개정 교육과정 완벽 반영</span>
+                  <span>22개정 교육과정 완벽 반영</span>
                 </li>
                 <li className="flex items-center gap-3">
                   <CheckBadgeIcon className="w-5 h-5 text-blue-500" />
-                  <span>최근 출제된 적 없는 신선한 문항 우선 노출</span>
+                  <span>출제된 적 없는 문항 선별 기능</span>
                 </li>
               </ul>
             </div>
@@ -92,8 +92,8 @@ export default function MakerGuidePage() {
               <h3 className="text-2xl font-bold text-slate-900 mb-4">자유로운 문항 배치 & 편집</h3>
               <p className="text-slate-600 leading-relaxed mb-6">
                 마우스 드래그로 문항 순서를 자유롭게 변경하세요.
-                마음에 들지 않는 문제는 <strong>'유사 문항 교체'</strong> 버튼 하나로
-                동일한 유형과 난이도의 다른 문제로 즉시 변경할 수 있습니다.
+                <br/>마음에 들지 않는 문제는 <strong>'유사 문항 교체'</strong> 버튼 하나로
+                <br/>동일한 유형과 난이도의 다른 문제로 즉시 변경할 수 있습니다.
               </p>
               <ul className="space-y-3 text-sm text-slate-500">
                 <li className="flex items-center gap-3">
@@ -116,9 +116,9 @@ export default function MakerGuidePage() {
               </div>
               <h3 className="text-2xl font-bold text-slate-900 mb-4">완벽한 인쇄 레이아웃</h3>
               <p className="text-slate-600 leading-relaxed mb-6">
-                더 이상 한글(HWP) 파일로 편집하며 시간 낭비하지 마세요.
-                <strong>다단 편집(2단/4단)</strong>부터 문제 간격 조절까지,
-                가장 보기 편한 시험지 양식을 자동으로 생성해 드립니다.
+                더 이상 문서 작업으로 낭비되는 시간은 없습니다.
+                <br/><strong>다단 편집(2단/4단)</strong>부터 문제 간격 조절까지,
+                <br/>원하시는 시험지 양식을 자동으로 생성해 드립니다.
               </p>
               <ul className="space-y-3 text-sm text-slate-500">
                 <li className="flex items-center gap-3">

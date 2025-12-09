@@ -224,9 +224,6 @@ export default function CompanyPage() {
                 </h2>
                 
                 <div className="prose prose-lg text-slate-600 leading-loose space-y-6 break-keep font-light">
-                  <p>
-                    안녕하십니까, <strong>RuleMakers 대표이사 이승용</strong>입니다.
-                  </p>
 
                   <div className="bg-white p-6 rounded-xl border-l-4 border-blue-600 shadow-sm text-slate-800">
                     <p className="font-bold mb-4 not-italic">
