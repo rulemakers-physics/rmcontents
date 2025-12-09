@@ -8,7 +8,8 @@ import { SCIENCE_UNITS } from "@/types/scienceUnits";
 import { 
   Printer, Lock, ChevronDown, Filter, FileText, 
   LayoutTemplate, Image as ImageIcon, SaveIcon, ListOrdered, 
-  RotateCcw, FileCheck, CheckSquare, Settings2, CheckCircle2
+  RotateCcw, FileCheck, CheckSquare, Settings2, CheckCircle2,
+  Undo
 } from "lucide-react";
 import { 
   Squares2X2Icon, ViewColumnsIcon, QueueListIcon // [신규] 레이아웃 아이콘
@@ -67,6 +68,8 @@ function ExamBuilderContent() {
 
   // [중요] 초기값을 빈 배열로 명시
   const [examProblems, setExamProblems] = useState<ExamPaperProblem[]>([]);
+  // [추가] 실행 취소를 위한 히스토리 상태 (이전 문제 배열들을 저장)
+  const [history, setHistory] = useState<ExamPaperProblem[][]>([]);
   const [isSaving, setIsSaving] = useState(false);
   const [isLoaded, setIsLoaded] = useState(false); 
   const [isMounted, setIsMounted] = useState(false);
@@ -77,6 +80,25 @@ function ExamBuilderContent() {
 
   // [신규] 레이아웃 모드 상태
   const [layoutMode, setLayoutMode] = useState<LayoutMode>('dense');
+
+  // [추가] 되돌리기(Undo) 핸들러
+  const handleUndo = useCallback(() => {
+    if (history.length === 0) {
+      toast.error("이전 상태가 없습니다.");
+      return;
+    }
+
+    // 1. 가장 최근 상태 가져오기
+    const previousState = history[history.length - 1];
+
+    // 2. 현재 문제 리스트를 이전 상태로 복구
+    setExamProblems(previousState);
+
+    // 3. 히스토리에서 복구한 상태 제거
+    setHistory(prev => prev.slice(0, -1));
+
+    toast.success("실행 취소되었습니다.");
+  }, [history]);
 
   useEffect(() => {
     setIsMounted(true);
@@ -225,6 +247,10 @@ function ExamBuilderContent() {
       }
 
       if (newProblemData) {
+        // ▼▼▼ [수정] 교체 전 현재 상태를 히스토리에 저장 ▼▼▼
+        setHistory(prev => [...prev, examProblems]); 
+        // ▲▲▲ --------------------------------------- ▲▲▲
+
         setExamProblems(prev => prev.map(p => {
           if (p.id === problemId) {
             return {
@@ -236,7 +262,6 @@ function ExamBuilderContent() {
               solutionUrl: newProblemData!.solutionUrl,
               minorTopic: newProblemData!.minorTopic,
               difficulty: newProblemData!.difficulty,
-              // 높이 정보 교체
               height: (newProblemData as any).imgHeight,
               solutionHeight: (newProblemData as any).solutionHeight
             };
@@ -251,7 +276,7 @@ function ExamBuilderContent() {
       console.error(e);
       toast.error("오류가 발생했습니다.", { id: toastId });
     }
-  }, [examProblems]);
+  }, [examProblems]); // examProblems 의존성 필수
 
   // 임시 저장 불러오기
   useEffect(() => {
@@ -329,6 +354,8 @@ function ExamBuilderContent() {
 
   const onDragEnd = (result: DropResult) => {
     if (!result.destination) return;
+    // [추가] 변경 전 상태 저장
+    setHistory(prev => [...prev, examProblems]);
     const items = Array.from(examProblems);
     const [reorderedItem] = items.splice(result.source.index, 1);
     items.splice(result.destination.index, 0, reorderedItem);
@@ -657,7 +684,27 @@ function ExamBuilderContent() {
 
           {activeTab === 'order' && (
             <div className="animate-in fade-in slide-in-from-right-4 duration-300">
-              <h3 className="text-sm font-bold text-gray-900 mb-3 flex items-center gap-2"><ListOrdered className="w-4 h-4"/> 문항 순서 및 교체</h3>
+              {/* ▼▼▼ [수정] 헤더 영역을 Flex로 변경하여 버튼 추가 ▼▼▼ */}
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="text-sm font-bold text-gray-900 flex items-center gap-2">
+                  <ListOrdered className="w-4 h-4"/> 문항 순서 및 교체
+                </h3>
+                
+                {/* 되돌리기 버튼 */}
+                <button 
+                  onClick={handleUndo}
+                  disabled={history.length === 0}
+                  className={`flex items-center gap-1 px-2 py-1.5 rounded text-xs font-bold transition-colors ${
+                    history.length > 0 
+                      ? "bg-slate-100 text-slate-700 hover:bg-slate-200 hover:text-blue-600" 
+                      : "bg-slate-50 text-slate-300 cursor-not-allowed"
+                  }`}
+                  title="마지막 변경 취소 (Ctrl+Z)"
+                >
+                  <Undo className="w-3.5 h-3.5" /> 되돌리기
+                </button>
+              </div>
+              {/* ▲▲▲ --------------------------------------- ▲▲▲ */}
               
               {isMounted && (
                 <DragDropContext onDragEnd={onDragEnd}>
