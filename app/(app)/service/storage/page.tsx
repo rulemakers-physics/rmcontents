@@ -45,18 +45,20 @@ import {
 // 인쇄 모달 임포트
 import ExamPrintModal from "@/components/ExamPrintModal";
 
-// --- 타입 정의 ---
-interface SavedExam {
-  id: string;
-  title: string;
-  createdAt: Timestamp;
-  problemCount: number;
-  instructorName: string;
-  folderId?: string; 
-  problems?: any[];
-  templateId?: string; 
-}
+// [수정] 중앙 타입 임포트 (로컬 인터페이스 삭제 후 교체)
+import { SavedExam } from "@/types/exam";
+import { LayoutMode } from "@/types/examTemplates"; // LayoutMode도 필요 시 임포트
 
+// [신규] 날짜 포맷팅 헬퍼 함수 (Timestamp | Date 처리)
+const formatDate = (dateValue: any) => {
+  if (!dateValue) return "-";
+  // Firestore Timestamp인 경우 toDate() 호출
+  if (dateValue.toDate) return dateValue.toDate().toLocaleDateString();
+  // JS Date 객체이거나 문자열인 경우 바로 처리
+  return new Date(dateValue).toLocaleDateString();
+};
+
+// --- 타입 정의 ---
 interface Folder {
   id: string;
   name: string;
@@ -335,6 +337,34 @@ export default function StoragePage() {
     router.push(`/manage/reports?action=input&examId=${examId}`);
   };
 
+  // [수정] 인쇄 모달 열기 핸들러
+  const handleOpenPrint = (exam: SavedExam) => {
+    // ExamPrintModal용 데이터 매핑
+    const printData = {
+      id: exam.id,
+      title: exam.title,
+      instructorName: exam.instructorName, // 학생 이름 or 강사 이름
+      academyLogo: exam.academyLogo, // [신규] 로고 전달
+      
+      problems: exam.problems?.map((p: any) => ({
+        ...p,
+        id: p.problemId || p.id,
+        imageUrl: p.imgUrl || p.imageUrl,
+        solutionUrl: p.solutionUrl,
+      })),
+      layoutMode: (exam.layoutMode as LayoutMode) || 'dense', 
+      questionPadding: exam.questionPadding || 40,
+      templateId: exam.templateId || 'math-pro'
+    };
+    
+    // 타입 단언 수정 (SavedExam interface가 이제 academyLogo를 포함하므로 호환됨)
+    // 하지만 ExamPrintModal이 받는 SavedExam 타입과 여기서의 SavedExam 타입이 일치하는지 확인 필요
+    // 여기서는 printTargetExam state를 사용하므로, setPrintTargetExam을 직접 호출하거나 printData를 사용
+    
+    // 만약 ExamPrintModal을 직접 사용한다면:
+    setPrintTargetExam(printData as any); 
+  };
+
   const handleOpenPrintModal = (exam: SavedExam) => {
     setPrintTargetExam(exam);
   };
@@ -487,7 +517,7 @@ export default function StoragePage() {
                           <div className="flex items-center gap-3 text-xs text-slate-500 mb-4">
                             <span className="flex items-center gap-1">
                               <CalendarDaysIcon className="w-3.5 h-3.5" />
-                              {exam.createdAt?.toDate().toLocaleDateString()}
+                              {formatDate(exam.createdAt)}
                             </span>
                             <span className="w-1 h-1 bg-slate-300 rounded-full" />
                             <span>{exam.problemCount}문항</span>

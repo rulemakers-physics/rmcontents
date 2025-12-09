@@ -5,19 +5,9 @@
 import { useRef, useState, useMemo } from "react";
 import { useReactToPrint } from "react-to-print";
 import { XMarkIcon, PrinterIcon, CheckCircleIcon } from "@heroicons/react/24/outline";
-import ExamPaperLayout, { PrintOptions } from "@/components/ExamPaperLayout";
+import ExamPaperLayout from "@/components/ExamPaperLayout";
 import { TEMPLATES, LayoutMode } from "@/types/examTemplates";
-
-interface SavedExam {
-  id: string;
-  title: string;
-  instructorName: string;
-  problems?: any[];
-  templateId?: string;
-  // [신규] 저장된 시험지의 레이아웃 설정 (없을 경우 기본값 사용)
-  layoutMode?: LayoutMode;
-  questionPadding?: number;
-}
+import { SavedExam, PrintOptions } from "@/types/exam";
 
 interface Props {
   exam: SavedExam;
@@ -42,9 +32,6 @@ export default function ExamPrintModal({ exam, onClose }: Props) {
     
     // 저장된 값이 있으면 사용, 없으면 기본값 (40px)
     questionPadding: exam.questionPadding ?? 40,
-    
-    // 해설 간격은 10px로 고정 (요청사항 반영)
-    solutionPadding: 10, 
     
     // 저장된 모드가 있으면 사용, 없으면 'dense'(기본)
     layoutMode: exam.layoutMode ?? 'dense' 
@@ -144,6 +131,7 @@ export default function ExamPrintModal({ exam, onClose }: Props) {
           <div className="flex-1 bg-slate-200/50 overflow-y-auto p-8 flex justify-center custom-scrollbar">
             <div className="shadow-2xl h-fit bg-white">
                {/* 실제 출력될 컴포넌트 (설정값 전달) */}
+               {/* [수정] academyLogo 전달 */}
                <ExamPaperLayout 
                  ref={printRef}
                  problems={exam.problems || []}
@@ -152,6 +140,7 @@ export default function ExamPrintModal({ exam, onClose }: Props) {
                  template={template}
                  printOptions={printOptions}
                  isTeacherVersion={false} 
+                 academyLogo={exam.academyLogo} // [신규] 전달
                />
             </div>
           </div>

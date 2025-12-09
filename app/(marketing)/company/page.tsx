@@ -286,7 +286,7 @@ export default function CompanyPage() {
                       { year: "2021~", desc: "(주) RuleBreakersBooks 법인 설립" },
                       { year: "2019~", desc: "RuleBreakers Contents Team 설립" },
                       { year: "2018", desc: "시대인재 컨텐츠팀 출제위원" },
-                      { year: "2017", desc: "서울대학교 화학교육과 입학" },
+                      { year: "2017", desc: "서울대학교 화학교육과 입학" }, 
                     ].map((item, i) => (
                       <div key={i} className="relative pl-6 text-sm flex flex-col sm:flex-row sm:gap-4">
                         <span className="absolute left-0 top-1.5 w-3 h-3 bg-white border-2 border-blue-400 rounded-full z-10"></span>

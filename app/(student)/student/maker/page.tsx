@@ -13,7 +13,9 @@ import {
 import { 
   Squares2X2Icon, ViewColumnsIcon, QueueListIcon 
 } from "@heroicons/react/24/outline";
-import ExamPaperLayout, { ExamProblem, PrintOptions } from "@/components/ExamPaperLayout";
+import ExamPaperLayout from "@/components/ExamPaperLayout";
+// [신규] 중앙 타입 임포트
+import { ExamPaperProblem, PrintOptions } from "@/types/exam";
 import { useAuth } from "@/context/AuthContext";
 import { DragDropContext, Droppable, Draggable, DropResult } from "@hello-pangea/dnd"; 
 import { toast } from "react-hot-toast"; 
@@ -54,15 +56,14 @@ function ExamBuilderContent() {
     questions: true,
     answers: true,
     solutions: true,
-    questionPadding: 40,
-    solutionPadding: 20
+    questionPadding: 40
   });
 
   const [isTeacherMode, setIsTeacherMode] = useState(false);
   const [currentTemplate, setCurrentTemplate] = useState<ExamTemplateStyle>(TEMPLATES[0]);
 
   // [중요] 초기값을 빈 배열로 명시
-  const [examProblems, setExamProblems] = useState<ExamProblem[]>([]);
+  const [examProblems, setExamProblems] = useState<ExamPaperProblem[]>([]);
   const [isSaving, setIsSaving] = useState(false);
   const [isLoaded, setIsLoaded] = useState(false); 
   const [isMounted, setIsMounted] = useState(false);
@@ -136,7 +137,7 @@ function ExamBuilderContent() {
     if (!isLoaded || isFetching) return;
 
     if (fetchedProblems.length > 0) {
-      const formatted: ExamProblem[] = fetchedProblems
+      const formatted: ExamPaperProblem[] = fetchedProblems
         .slice(0, questionCount)
         .map((p, idx) => ({
           id: p.id,

@@ -20,6 +20,7 @@ import {
 import { toast } from "react-hot-toast";
 import ExamPrintModal from "@/components/ExamPrintModal";
 import { LayoutMode } from "@/types/examTemplates";
+import { SavedExam } from "@/types/exam";
 
 interface StudentExam {
   id: string;
@@ -33,7 +34,6 @@ interface StudentExam {
   problems?: any[];
   layoutMode?: LayoutMode;
   questionPadding?: number;
-  solutionPadding?: number;
 }
 
 export default function StudentStoragePage() {
@@ -42,7 +42,8 @@ export default function StudentStoragePage() {
   
   const [exams, setExams] = useState<StudentExam[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [printTarget, setPrintTarget] = useState<StudentExam | null>(null);
+  // [수정] printTarget을 SavedExam 타입으로 지정
+  const [printTarget, setPrintTarget] = useState<SavedExam | null>(null);
 
   // 데이터 로드
   useEffect(() => {
@@ -81,25 +82,33 @@ export default function StudentStoragePage() {
     }
   };
 
-  // 인쇄 모달 열기 (데이터 매핑)
+  // [핵심 수정] 인쇄 모달 열기 (StudentExam -> SavedExam 변환)
   const handleOpenPrint = (exam: StudentExam) => {
-    // ExamPrintModal은 'SavedExam' 타입을 받으므로 호환되게 매핑
-    const printData = {
+    const printData: SavedExam = {
       id: exam.id,
+      userId: user!.uid,
       title: exam.title,
-      instructorName: exam.userName, // 학생 이름
+      instructorName: exam.userName, // 학생 이름을 강사명 자리에 매핑
+      createdAt: exam.createdAt,
+      problemCount: exam.totalQuestions,
+      // [수정] map 결과가 없을 경우 빈 배열([]) 할당하여 타입 에러 방지
       problems: exam.problems?.map((p: any) => ({
-        ...p,
         id: p.problemId || p.id,
+        number: p.number,
+        content: p.content,
         imageUrl: p.imgUrl || p.imageUrl,
+        answer: p.answer,
         solutionUrl: p.solutionUrl,
-        // 필요시 높이 정보 등도 매핑
-      })),
-      // [중요] 레이아웃 정보 전달
-      layoutMode: (exam.layoutMode as LayoutMode) || 'dense', 
+        difficulty: p.difficulty,
+        majorTopic: p.majorTopic,
+        minorTopic: p.minorTopic,
+        height: p.height,
+        solutionHeight: p.solutionHeight
+      })) || [], 
+      templateId: 'math-pro', // 기본 템플릿
+      layoutMode: exam.layoutMode || 'dense',
       questionPadding: exam.questionPadding || 40,
-      solutionPadding: exam.solutionPadding || 20,
-      templateId: 'math-pro' // 기본 템플릿
+      academyLogo: null // 학생용은 로고 없음
     };
     
     setPrintTarget(printData as any); // 타입 단언 (SavedExam과 StudentExam 구조 차이 해소)
@@ -217,17 +226,7 @@ export default function StudentStoragePage() {
       {/* 인쇄 모달 (재사용) */}
       {printTarget && (
         <ExamPrintModal 
-          exam={{
-            ...printTarget,
-            instructorName: printTarget.userName, // 학생 이름을 강사 이름 위치에 매핑
-            // [수정] DB의 imgUrl을 출력 컴포넌트용 imageUrl로 매핑
-            problems: printTarget.problems?.map((p: any) => ({
-              ...p,
-              id: p.problemId || p.id,       // ID 안전 장치
-              imageUrl: p.imgUrl || p.imageUrl, // [핵심] 필드명 변환
-              solutionUrl: p.solutionUrl
-            }))
-          }}
+          exam={printTarget} 
           onClose={() => setPrintTarget(null)} 
         />
       )}

@@ -16,7 +16,8 @@ import {
 import { BookmarkIcon as BookmarkSolid } from "@heroicons/react/24/solid";
 import { useReactToPrint } from "react-to-print";
 import { toast } from "react-hot-toast";
-import ExamPaperLayout, { ExamProblem } from "@/components/ExamPaperLayout";
+import ExamPaperLayout from "@/components/ExamPaperLayout";
+import { ExamPaperProblem } from "@/types/exam";
 import { TEMPLATES } from "@/types/examTemplates";
 
 interface ScrappedProblem {
@@ -230,7 +231,6 @@ export default function ScrapbookPage() {
             solutions: true,
             // [수정] 필수값 추가
             questionPadding: 40,
-            solutionPadding: 20,
             layoutMode: 'dense'
           }} 
           isTeacherVersion={false}

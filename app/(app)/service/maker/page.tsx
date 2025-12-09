@@ -13,7 +13,7 @@ import {
 import { 
   Squares2X2Icon, ViewColumnsIcon, QueueListIcon // [신규] 레이아웃 아이콘
 } from "@heroicons/react/24/outline";
-import ExamPaperLayout, { ExamProblem, PrintOptions } from "@/components/ExamPaperLayout";
+import ExamPaperLayout from "@/components/ExamPaperLayout";
 import { useAuth } from "@/context/AuthContext";
 import { DragDropContext, Droppable, Draggable, DropResult } from "@hello-pangea/dnd"; 
 import { toast } from "react-hot-toast"; 
@@ -24,6 +24,10 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useProblemFetcher } from "@/hooks/useProblemFetcher";
 import { Difficulty, DBProblem } from "@/types/problem"; 
 import { TEMPLATES, ExamTemplateStyle, LayoutMode } from "@/types/examTemplates";
+import { ref, uploadBytes, getDownloadURL } from "firebase/storage"; // [신규] Storage 함수 추가
+import { storage } from "@/lib/firebase"; // [신규] storage 인스턴스 추가
+import { v4 as uuidv4 } from "uuid"; // [신규] 파일명 생성을 위해 uuid 필요 (없으면 설치 필요, 혹은 Date.now() 사용)
+import { ExamPaperProblem, PrintOptions } from "@/types/exam";
 
 function ExamBuilderContent() {
   const { userData, user } = useAuth();
@@ -48,21 +52,21 @@ function ExamBuilderContent() {
   const [examTitle, setExamTitle] = useState("제목을 입력해주세요");
   const [instructorName, setInstructorName] = useState(userData?.name || "선생님 성함");
   const [academyLogo, setAcademyLogo] = useState<string | null>(null);
+  const [isUploadingLogo, setIsUploadingLogo] = useState(false); // [신규] 로고 업로드 상태
   
   // [설정] 기본값 설정: 문제 간격 40, 해설 간격 20
   const [printOptions, setPrintOptions] = useState<Omit<PrintOptions, "layoutMode">>({
     questions: true,
     answers: true,
     solutions: true,
-    questionPadding: 40,
-    solutionPadding: 20
+    questionPadding: 40
   });
 
   const [isTeacherMode, setIsTeacherMode] = useState(false);
   const [currentTemplate, setCurrentTemplate] = useState<ExamTemplateStyle>(TEMPLATES[0]);
 
   // [중요] 초기값을 빈 배열로 명시
-  const [examProblems, setExamProblems] = useState<ExamProblem[]>([]);
+  const [examProblems, setExamProblems] = useState<ExamPaperProblem[]>([]);
   const [isSaving, setIsSaving] = useState(false);
   const [isLoaded, setIsLoaded] = useState(false); 
   const [isMounted, setIsMounted] = useState(false);
@@ -147,7 +151,7 @@ function ExamBuilderContent() {
 
     // 2. 불러온 데이터가 있으면 가공해서 상태 업데이트
     if (fetchedProblems.length > 0) {
-      const formatted: ExamProblem[] = fetchedProblems
+      const formatted: ExamPaperProblem[] = fetchedProblems
         .slice(0, questionCount)
         .map((p, idx) => ({
           id: p.id,
@@ -284,6 +288,10 @@ function ExamBuilderContent() {
           setExamTitle(data.title);
           setExamProblems(data.problems || []);
           setInstructorName(data.instructorName);
+          // [추가] 저장된 로고 URL 불러오기
+          if (data.academyLogo) {
+            setAcademyLogo(data.academyLogo);
+          }
           
           const savedTemplate = TEMPLATES.find(t => t.id === data.templateId);
           if (savedTemplate) setCurrentTemplate(savedTemplate);
@@ -334,6 +342,7 @@ function ExamBuilderContent() {
   // 하지만 미리보기용으로 ref는 유지해야 함.
 
   // [수정] 저장 핸들러: 저장 후 보관함 이동 유도
+  // [수정] 시험지 저장 핸들러 (로고 포함)
   const handleSaveExam = async () => {
     if (!user) { toast.error("로그인 필요"); return; }
     if (examProblems.length === 0) { toast.error("문제가 없습니다."); return; }
@@ -341,6 +350,7 @@ function ExamBuilderContent() {
     setIsSaving(true);
     try {
       const cleanProblems = examProblems.map(p => ({
+        // ... existing problem cleaning ...
         ...p,
         imageUrl: p.imageUrl || null,
         content: p.content || null,
@@ -357,16 +367,17 @@ function ExamBuilderContent() {
         title: examTitle,
         problems: cleanProblems,
         templateId: currentTemplate.id,
-        // [추가] 현재 설정된 레이아웃 모드와 여백 저장
         layoutMode: layoutMode,
         questionPadding: printOptions.questionPadding,
+        
+        // [추가] 로고 URL 저장
+        academyLogo: academyLogo, 
+        
         createdAt: serverTimestamp(),
         problemCount: examProblems.length,
       });
       
       toast.success("시험지가 보관함에 저장되었습니다!");
-      
-      // [중요] 저장 후 보관함으로 자동 이동하여 출력을 유도
       router.push("/service/storage");
       
     } catch (e) {
@@ -376,17 +387,38 @@ function ExamBuilderContent() {
     setIsSaving(false);
   };
 
+  // [수정] 로고 업로드 핸들러 (Storage 연동)
+  const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files?.[0] || !user) return;
+    
+    setIsUploadingLogo(true);
+    const file = e.target.files[0];
+    
+    try {
+      // 1. Storage 경로 설정 (logos/유저ID/파일명)
+      const uniqueName = `${Date.now()}_${file.name}`;
+      const storageRef = ref(storage, `logos/${user.uid}/${uniqueName}`);
+      
+      // 2. 파일 업로드
+      await uploadBytes(storageRef, file);
+      
+      // 3. 다운로드 URL 획득
+      const url = await getDownloadURL(storageRef);
+      
+      // 4. 상태 업데이트
+      setAcademyLogo(url);
+      toast.success("로고가 등록되었습니다.");
+    } catch (error) {
+      console.error("Logo upload failed:", error);
+      toast.error("로고 업로드에 실패했습니다.");
+    } finally {
+      setIsUploadingLogo(false);
+    }
+  };
+
   const toggleDifficulty = (d: Difficulty) => {
     if (d === '킬러' && userPlan !== 'MAKERS') { toast.error("Maker's Plan 전용입니다."); return; }
     setDifficulties(prev => prev.includes(d) ? prev.filter(x => x !== d) : [...prev, d]);
-  };
-  
-  const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files?.[0]) {
-      const reader = new FileReader();
-      reader.onload = (ev) => setAcademyLogo(ev.target?.result as string);
-      reader.readAsDataURL(e.target.files![0]);
-    }
   };
 
   if (!isLoaded || !isMounted) return <div className="flex h-screen items-center justify-center">로딩 중...</div>;
@@ -668,11 +700,19 @@ function ExamBuilderContent() {
           <div className="flex items-center gap-6">
             <input type="text" value={examTitle} onChange={(e) => setExamTitle(e.target.value)} className="font-bold text-lg text-gray-800 outline-none bg-transparent placeholder-gray-300 min-w-[200px]" placeholder="시험지 제목 입력" />
             <input type="text" value={instructorName} onChange={(e) => setInstructorName(e.target.value)} className="text-sm font-medium text-gray-600 outline-none bg-transparent" placeholder="선생님 성함" />
-            <label className="cursor-pointer flex items-center gap-2 px-3 py-1.5 rounded-md bg-gray-100 hover:bg-gray-200 text-xs text-gray-700 transition-colors">
-              <ImageIcon className="w-3 h-3" /> {academyLogo ? "로고 변경" : "학원 로고"}
-              <input type="file" accept="image/*" onChange={handleLogoUpload} className="hidden" />
-            </label>
-          </div>
+            {/* [수정] 로고 업로드 버튼 UI 개선 */}
+        <label className={`cursor-pointer flex items-center gap-2 px-3 py-1.5 rounded-md bg-gray-100 hover:bg-gray-200 text-xs text-gray-700 transition-colors ${isUploadingLogo ? 'opacity-50 cursor-not-allowed' : ''}`}>
+          <ImageIcon className="w-3 h-3" /> 
+          {isUploadingLogo ? "업로드 중..." : (academyLogo ? "로고 변경" : "학원 로고")}
+          <input 
+            type="file" 
+            accept="image/*" 
+            onChange={handleLogoUpload} 
+            className="hidden" 
+            disabled={isUploadingLogo}
+          />
+        </label>
+      </div>
           <div className="flex gap-3">
              {/* [수정] PDF 출력 버튼 제거하고, 저장 버튼 강조 */}
              <button onClick={handleSaveExam} disabled={isSaving} className="flex items-center gap-2 px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-bold text-sm shadow-md transition-all active:scale-95 disabled:opacity-50">
@@ -695,7 +735,8 @@ function ExamBuilderContent() {
                  ...printOptions,
                  layoutMode: layoutMode
                }}
-               isTeacherVersion={isTeacherMode} 
+               isTeacherVersion={isTeacherMode}
+               academyLogo={academyLogo} 
              />
           </div>
         </div>

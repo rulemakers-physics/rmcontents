@@ -242,7 +242,6 @@ export default function ReportDashboard() {
             solutions: false,
             // [수정] 필수값 추가
             questionPadding: 40,
-            solutionPadding: 20,
             layoutMode: 'dense'
           }}
           isTeacherVersion={false}

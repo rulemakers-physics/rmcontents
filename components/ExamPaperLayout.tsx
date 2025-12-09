@@ -6,6 +6,7 @@ import React, { forwardRef, useMemo } from "react";
 import { ExamTemplateStyle, LayoutMode } from "@/types/examTemplates";
 import { ExclamationCircleIcon } from "@heroicons/react/24/outline";
 import ReportIssueModal from "./ReportIssueModal";
+import { ExamPaperProblem, PrintOptions } from "@/types/exam";
 
 // --- [상수 설정] A4 및 레이아웃 (96DPI 기준) ---
 const A4_HEIGHT_PX = 1123; // A4 높이 (297mm)
@@ -19,42 +20,19 @@ const formatNumber = (num: number) => {
   return num.toString().padStart(2, '0');
 };
 
-export interface ExamProblem {
-  id: string;
-  number: number;
-  content?: string;
-  imageUrl?: string | null;
-  answer?: string | null;
-  solutionUrl?: string | null;
-  difficulty?: string;
-  majorTopic?: string;
-  minorTopic?: string;
-  height?: number; 
-  solutionHeight?: number;
-}
-
-export interface PrintOptions {
-  questions: boolean;
-  answers: boolean;
-  solutions: boolean;
-  questionPadding: number;
-  solutionPadding: number;
-  layoutMode: LayoutMode;
-}
-
 interface ExamPaperLayoutProps {
-  problems: ExamProblem[]; 
+  problems: ExamPaperProblem[]; 
   title: string;
   instructor: string;
   template: ExamTemplateStyle;
   printOptions: PrintOptions;
   isTeacherVersion?: boolean;
-  academyLogo?: string | null; // 학원 로고 (헤더용)
+  academyLogo?: string | null; // 로고 Prop 명시
 }
 
 // --- [알고리즘] 문항 분배 함수 ---
 function distributeItems(
-  items: ExamProblem[],
+  items: ExamPaperProblem[],
   type: 'question' | 'solution',
   options: {
     pageHeight: number;
@@ -69,7 +47,7 @@ function distributeItems(
 ) {
   if (!items || items.length === 0) return [];
 
-  const pages: ExamProblem[][][] = []; 
+  const pages: ExamPaperProblem[][][] = []; 
   
   let currentPageIdx = 0;
   let currentColIdx = 0;
@@ -164,7 +142,7 @@ function distributeItems(
 const ExamPaperLayout = forwardRef<HTMLDivElement, ExamPaperLayoutProps>(
   ({ problems = [], title, instructor, template, printOptions, isTeacherVersion, academyLogo }, ref) => {
     
-    const [reportTarget, setReportTarget] = React.useState<ExamProblem | null>(null);
+    const [reportTarget, setReportTarget] = React.useState<ExamPaperProblem | null>(null);
 
     // 템플릿의 헤더 높이 파싱
     const headerH = parseInt(template.headerHeight) || 100; 
@@ -220,19 +198,14 @@ const ExamPaperLayout = forwardRef<HTMLDivElement, ExamPaperLayoutProps>(
                 <span className="text-sm font-bold text-slate-600 truncate max-w-[70%]">
                   {displayTitle}
                 </span>
-                <div className="flex flex-col items-end">
+                <div className="flex flex-col items-end gap-2">
                   {/* 해설지에도 로고 표시 (선택사항) */}
                   {academyLogo && (
-                    <img src={academyLogo} alt="Logo" className="h-6 mb-1 object-contain" />
+                    <img src={academyLogo} alt="Academy Logo" className="h-12 object-contain" />
                   )}
-                  <div className="flex items-center gap-2 text-xs text-slate-400">
-                    <span className="pl-2 border-l border-slate-300 font-bold text-slate-500">
-                      {pageNum + 1}
-                    </span>
                   </div>
                 </div>
               </div>
-           </div>
          );
       }
 
@@ -261,7 +234,7 @@ const ExamPaperLayout = forwardRef<HTMLDivElement, ExamPaperLayoutProps>(
                 <div className="flex flex-col items-end gap-2">
                   {/* [헤더] 학원 로고: 성명란 위에 배치 */}
                   {academyLogo && (
-                    <img src={academyLogo} alt="Academy Logo" className="h-10 object-contain" />
+                    <img src={academyLogo} alt="Academy Logo" className="h-12 object-contain" />
                   )}
 
                   {template.showScoreBox && (
@@ -278,7 +251,7 @@ const ExamPaperLayout = forwardRef<HTMLDivElement, ExamPaperLayoutProps>(
         );
       }
 
-      // 3. 문제지 헤더 (2페이지 이후)
+      // 3. [수정] 문제지 2페이지 이후 헤더 (페이지 번호 제거 -> 로고로 대체)
       return (
         <div 
           className="w-full flex flex-col justify-end shrink-0 border-b border-gray-300 pb-2 mb-4"
@@ -289,15 +262,17 @@ const ExamPaperLayout = forwardRef<HTMLDivElement, ExamPaperLayoutProps>(
                 {title}
               </span>
               <div className="flex flex-col items-end">
-                {/* [헤더] 2페이지 이후: 로고를 페이지 번호 위에 배치 */}
-                {academyLogo && (
-                  <img src={academyLogo} alt="Logo" className="h-6 mb-1 object-contain" />
+                {/* [수정] 로고가 있으면 페이지 번호 대신 로고를 크게 표시 */}
+                {academyLogo ? (
+                  <img src={academyLogo} alt="Academy Logo" className="h-12 object-contain" />
+                ) : (
+                  // 로고가 없을 때만 페이지 번호 표시 (기존 방식 유지)
+                  <div className="flex items-center gap-2 text-xs text-slate-400">
+                    <span className="pl-2 border-l border-slate-300 font-bold text-slate-500">
+                      {pageNum + 1}
+                    </span>
+                  </div>
                 )}
-                <div className="flex items-center gap-2 text-xs text-slate-400">
-                  <span className="pl-2 border-l border-slate-300 font-bold text-slate-500">
-                    {pageNum + 1}
-                  </span>
-                </div>
               </div>
            </div>
         </div>
@@ -312,7 +287,7 @@ const ExamPaperLayout = forwardRef<HTMLDivElement, ExamPaperLayoutProps>(
           - {pageIdx + 1} -
         </span>
         {/* 오른쪽 정렬: PASS by RuleMakers */}
-        <span className="absolute right-0 font-bold text-slate-300">
+        <span className="absolute right-0 font-bold text-slate-500">
           PASS by RuleMakers
         </span>
       </div>
@@ -372,7 +347,7 @@ const ExamPaperLayout = forwardRef<HTMLDivElement, ExamPaperLayoutProps>(
                               />
                               {/* 문항 번호 (00 형식) */}
                               <span 
-                                className="font-extrabold text-xl leading-none" 
+                                className="font-semibold text-xl leading-none" 
                                 style={{ color: template.borderColor }}
                               >
                                 {formatNumber(prob.number)}
