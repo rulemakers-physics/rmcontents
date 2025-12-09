@@ -448,8 +448,14 @@ export default function HomePage() {
                      src="/images/maker1.png" 
                      alt="PASS Question Bank UI" 
                      fill 
+                     // ▼ [수정] 퀄리티 100으로 설정하여 압축 방지
+                     quality={100}
+                     // ▼ [수정] 브라우저에게 현재 이미지가 화면의 절반(50vw) 정도 차지한다고 알려줌
+                     sizes="(max-width: 768px) 100vw, 50vw"
                      className="object-cover object-top"
-                   />
+                     // ▼ [선택] 중요한 이미지라면 우선 로딩하여 선명하게 빨리 뜨도록 설정
+                      priority
+                    />
                    {/* Floating Badges */}
                    <div className="absolute top-6 right-6 bg-white/90 backdrop-blur px-4 py-2 rounded-lg shadow-lg border border-slate-100 flex items-center gap-2 animate-bounce-slow">
                       <CursorArrowRaysIcon className="w-5 h-5 text-blue-500" />
@@ -681,12 +687,15 @@ export default function HomePage() {
                    <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/10 to-transparent" />
                    
                    {/* Image */}
-                   <Image 
-                     src="/images/request1.png" // n-set or high-difficulty image
-                     alt="Custom Production Service" 
-                     fill 
-                     className="object-cover object-top opacity-90 transition-transform duration-700 group-hover:scale-105"
-                   />
+                  <Image 
+                    src="/images/request1.png" 
+                    alt="Custom Production Service" 
+                    fill 
+                    // ▼ [수정] 동일하게 퀄리티와 사이즈 명시
+                    quality={100}
+                    sizes="(max-width: 768px) 100vw, 50vw"
+                    className="object-cover object-top opacity-90 transition-transform duration-700 group-hover:scale-105"
+                  />
                    
                    {/* Overlay Text */}
                    <div className="absolute bottom-0 left-0 w-full p-6 bg-gradient-to-t from-slate-950/90 to-transparent">
