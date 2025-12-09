@@ -1,3 +1,5 @@
+// components/ExamPaperLayout.tsx
+
 "use client";
 
 import React, { forwardRef, useMemo } from "react";
@@ -9,15 +11,12 @@ import ReportIssueModal from "./ReportIssueModal";
 const A4_HEIGHT_PX = 1123; // A4 높이 (297mm)
 const PADDING_X_MM = 20; // 좌우 여백
 
-// [수정 1] 이미지 스케일 팩터 재조정 (0.22 -> 0.245)
+// 이미지 스케일 팩터
 const IMG_SCALE_FACTOR = 0.245; 
 
-// 원문자 변환 헬퍼 (1~15 지원)
-const toCircled = (str: string | null) => {
-  if (!str) return "";
-  const num = parseInt(str, 10);
-  if (isNaN(num) || num < 1 || num > 15) return str;
-  return String.fromCharCode(9311 + num);
+// [신규] 문항 번호 포맷팅 (1 -> 01, 10 -> 10)
+const formatNumber = (num: number) => {
+  return num.toString().padStart(2, '0');
 };
 
 export interface ExamProblem {
@@ -33,7 +32,6 @@ export interface ExamProblem {
   height?: number; 
   solutionHeight?: number;
 }
-
 
 export interface PrintOptions {
   questions: boolean;
@@ -51,6 +49,7 @@ interface ExamPaperLayoutProps {
   template: ExamTemplateStyle;
   printOptions: PrintOptions;
   isTeacherVersion?: boolean;
+  academyLogo?: string | null; // 학원 로고 (헤더용)
 }
 
 // --- [알고리즘] 문항 분배 함수 ---
@@ -76,7 +75,6 @@ function distributeItems(
   let currentColIdx = 0;
   let currentY = 0;
 
-  // [수정 2] 안전 여백 (Safety Buffer) 추가
   const SAFETY_MARGIN_BOTTOM = 20;
 
   // 페이지 초기화
@@ -85,8 +83,7 @@ function distributeItems(
     currentPageIdx = pages.length - 1;
     currentColIdx = 0;
     
-    // [핵심 수정] 첫 페이지와 그 이후 페이지 모두 동일한 헤더 높이 적용
-    // options.headerHeightFirst와 headerHeightNormal을 동일한 값으로 넘기면 됩니다.
+    // 헤더 높이 적용
     const hHeight = currentPageIdx === 0 ? options.headerHeightFirst : options.headerHeightNormal;
     currentY = options.paddingTop + hHeight;
   };
@@ -105,9 +102,10 @@ function distributeItems(
       ? (item.height ? item.height * IMG_SCALE_FACTOR : 10)
       : (item.solutionHeight ? item.solutionHeight * IMG_SCALE_FACTOR : 10);
     
-    const itemTotalHeight = rawHeight + options.itemGap;
+    // [수정] 문항 번호가 상단으로 이동했으므로, 문항별 기본 높이(번호 영역)를 추가로 고려해야 함 (약 30px)
+    const headerOffset = type === 'question' ? 40 : 25; 
+    const itemTotalHeight = rawHeight + options.itemGap + headerOffset;
     
-    // [핵심] 가용 높이 계산 시 안전 여백을 미리 뺍니다.
     const maxContentY = options.pageHeight - options.footerHeight - options.paddingBottom - SAFETY_MARGIN_BOTTOM;
     
     if (isSplitMode) {
@@ -118,7 +116,6 @@ function distributeItems(
       if (currentItemsInCol.length >= targetPerCol) {
         shouldPushToNextCol = true;
       } else if (options.layoutMode === 'split-4' && currentItemsInCol.length === 1) {
-        // 이미 1개가 있을 때 높이 체크 (엄격하게)
         if (currentY + itemTotalHeight > maxContentY) {
           shouldPushToNextCol = true;
         }
@@ -126,7 +123,6 @@ function distributeItems(
 
       if (shouldPushToNextCol) {
         currentColIdx++;
-        // [핵심 수정] 다음 단으로 넘어갈 때도 동일한 헤더 높이 적용
         const hHeight = currentPageIdx === 0 ? options.headerHeightFirst : options.headerHeightNormal;
         currentY = options.paddingTop + hHeight;
         
@@ -141,13 +137,10 @@ function distributeItems(
 
     } else {
       // --- Dense (기본) 배치 로직 ---
-      const isOverflow = (currentY + rawHeight) > maxContentY;
+      const isOverflow = (currentY + itemTotalHeight) > maxContentY;
 
       if (isOverflow) {
-        // 다음 단으로 이동
         currentColIdx++;
-        
-        // [핵심 수정] 다음 단으로 넘어갈 때도 동일한 헤더 높이 적용
         const hHeight = currentPageIdx === 0 ? options.headerHeightFirst : options.headerHeightNormal;
         currentY = options.paddingTop + hHeight;
 
@@ -156,7 +149,6 @@ function distributeItems(
         }
       }
 
-      // 배치 확정
       if (pages[currentPageIdx] && pages[currentPageIdx][currentColIdx]) {
           pages[currentPageIdx][currentColIdx].push(item);
       }
@@ -170,11 +162,11 @@ function distributeItems(
 }
 
 const ExamPaperLayout = forwardRef<HTMLDivElement, ExamPaperLayoutProps>(
-  ({ problems = [], title, instructor, template, printOptions, isTeacherVersion }, ref) => {
+  ({ problems = [], title, instructor, template, printOptions, isTeacherVersion, academyLogo }, ref) => {
     
     const [reportTarget, setReportTarget] = React.useState<ExamProblem | null>(null);
 
-    // 템플릿의 헤더 높이 파싱 (예: "110px" -> 110)
+    // 템플릿의 헤더 높이 파싱
     const headerH = parseInt(template.headerHeight) || 100; 
     const paddingY = 5; 
 
@@ -184,7 +176,6 @@ const ExamPaperLayout = forwardRef<HTMLDivElement, ExamPaperLayoutProps>(
       
       return distributeItems(problems, 'question', {
         pageHeight: A4_HEIGHT_PX,
-        // [핵심 수정] 1페이지와 그 외 페이지의 헤더 높이를 동일하게 맞춤
         headerHeightFirst: headerH + 20, 
         headerHeightNormal: headerH + 20, 
         footerHeight: 40,
@@ -203,46 +194,57 @@ const ExamPaperLayout = forwardRef<HTMLDivElement, ExamPaperLayoutProps>(
       
       return distributeItems(solutionItems, 'solution', {
         pageHeight: A4_HEIGHT_PX,
-        headerHeightFirst: 70, 
-        headerHeightNormal: 70, // 해설지도 동일하게 맞춤 (선택사항)
-        footerHeight: 250, 
+        headerHeightFirst: headerH + 20, 
+        headerHeightNormal: headerH + 20, 
+        footerHeight: 40, 
         paddingTop: paddingY,
         paddingBottom: paddingY,
         itemGap: 10, 
         layoutMode: 'dense' 
       });
-    }, [problems, printOptions.solutions]);
+    }, [problems, printOptions.solutions, headerH]);
 
 
     // --- 헤더 렌더링 ---
     const renderHeader = (pageNum: number, isSolution = false) => {
       const displayTitle = isSolution ? `${title} [정답 및 해설]` : title;
 
-      // 1. 해설지 헤더는 얇은 형태 유지
+      // 1. 해설지 헤더
       if (isSolution) {
          return (
-           <div className="w-full h-[50px] border-b border-gray-400 flex justify-between items-end pb-1 mb-2 shrink-0">
-              <span className="text-sm font-bold text-slate-600 truncate max-w-[70%]">
-                {displayTitle}
-              </span>
-              <div className="flex items-center gap-2 text-xs text-slate-400">
-                <span>RuleMakers</span>
-                <span className="pl-2 border-l border-slate-300 font-bold text-slate-500">
-                  {pageNum + 1}
+           <div 
+             className="w-full flex flex-col justify-end shrink-0 border-b border-gray-300 pb-2 mb-4"
+             style={{ height: template.headerHeight }}
+           >
+              <div className="flex justify-between items-end">
+                <span className="text-sm font-bold text-slate-600 truncate max-w-[70%]">
+                  {displayTitle}
                 </span>
+                <div className="flex flex-col items-end">
+                  {/* 해설지에도 로고 표시 (선택사항) */}
+                  {academyLogo && (
+                    <img src={academyLogo} alt="Logo" className="h-6 mb-1 object-contain" />
+                  )}
+                  <div className="flex items-center gap-2 text-xs text-slate-400">
+                    <span className="pl-2 border-l border-slate-300 font-bold text-slate-500">
+                      {pageNum + 1}
+                    </span>
+                  </div>
+                </div>
               </div>
            </div>
          );
       }
 
-      // 2. 문제지 헤더 (1페이지) - 전체 디자인 노출
+      // 2. 문제지 헤더 (1페이지)
       if (pageNum === 0) {
         return (
           <div 
-            className="w-full border-b-2 border-slate-900 pb-2 mb-4 flex flex-col justify-end shrink-0" 
-            style={{ height: template.headerHeight, borderColor: template.borderColor }}
+            className="w-full border-b border-gray-300 pb-2 mb-4 flex flex-col justify-end shrink-0" 
+            style={{ height: template.headerHeight }}
           >
              <div className="flex justify-between items-end">
+                {/* 좌측: 타이틀 */}
                 <div>
                    <span className="text-xs text-slate-500 font-bold tracking-widest mb-1 block">
                      2025학년도 1학기 대비
@@ -250,50 +252,71 @@ const ExamPaperLayout = forwardRef<HTMLDivElement, ExamPaperLayoutProps>(
                    <h1 className={`font-extrabold tracking-tight text-slate-900 ${template.titleSize}`}>
                      {title}
                    </h1>
+                   <div className="mt-1 text-xs font-medium text-slate-500">
+                      {instructor} 선생님
+                   </div>
                 </div>
                 
-                {template.showScoreBox && (
-                  <div className="flex border border-slate-800 text-xs">
-                     <div className="bg-slate-50 px-2 py-1 border-r border-slate-800 font-bold flex items-center">성명</div>
-                     <div className="w-16 border-r border-slate-800"></div>
-                     <div className="bg-slate-50 px-2 py-1 border-r border-slate-800 font-bold flex items-center">점수</div>
-                     <div className="w-12"></div>
-                  </div>
-                )}
-             </div>
-             
-             <div className="flex justify-between items-center mt-2 text-xs font-medium text-slate-500">
-                <span>{instructor} 선생님</span>
-                <span>RuleMakers</span>
+                {/* 우측: 로고 및 점수 박스 */}
+                <div className="flex flex-col items-end gap-2">
+                  {/* [헤더] 학원 로고: 성명란 위에 배치 */}
+                  {academyLogo && (
+                    <img src={academyLogo} alt="Academy Logo" className="h-10 object-contain" />
+                  )}
+
+                  {template.showScoreBox && (
+                    <div className="flex border border-slate-800 text-xs">
+                       <div className="bg-slate-50 px-2 py-1 border-r border-slate-800 font-bold flex items-center">성명</div>
+                       <div className="w-16 border-r border-slate-800"></div>
+                       <div className="bg-slate-50 px-2 py-1 border-r border-slate-800 font-bold flex items-center">점수</div>
+                       <div className="w-12"></div>
+                    </div>
+                  )}
+                </div>
              </div>
           </div>
         );
       }
 
-      // 3. 문제지 헤더 (2페이지 이후) - 높이는 1페이지와 같게 하되, 내용은 간소화하거나 비움
-      // [핵심 수정] 2페이지 이후 헤더를 그릴 때, 1페이지 헤더의 높이만큼 '빈 공간'을 강제로 만들어줍니다.
-      // 이렇게 하면 본문 시작 위치(y값)가 1페이지와 정확히 일치하게 됩니다.
+      // 3. 문제지 헤더 (2페이지 이후)
       return (
         <div 
           className="w-full flex flex-col justify-end shrink-0 border-b border-gray-300 pb-2 mb-4"
-          // 템플릿 높이 그대로 적용
           style={{ height: template.headerHeight }} 
         >
-           {/* 간소화된 내용 (페이지 번호 등)만 하단에 표시 */}
            <div className="flex justify-between items-end h-full">
               <span className="text-sm font-bold text-slate-400 truncate max-w-[70%]">
                 {title}
               </span>
-              <div className="flex items-center gap-2 text-xs text-slate-400">
-                <span>RuleMakers</span>
-                <span className="pl-2 border-l border-slate-300 font-bold text-slate-500">
-                  {pageNum + 1}
-                </span>
+              <div className="flex flex-col items-end">
+                {/* [헤더] 2페이지 이후: 로고를 페이지 번호 위에 배치 */}
+                {academyLogo && (
+                  <img src={academyLogo} alt="Logo" className="h-6 mb-1 object-contain" />
+                )}
+                <div className="flex items-center gap-2 text-xs text-slate-400">
+                  <span className="pl-2 border-l border-slate-300 font-bold text-slate-500">
+                    {pageNum + 1}
+                  </span>
+                </div>
               </div>
            </div>
         </div>
       );
     };
+
+    // --- [수정] 푸터 렌더링 (RuleMakers 로고 오른쪽 배치) ---
+    const renderFooter = (pageIdx: number) => (
+      <div className="h-[40px] relative flex items-center justify-center border-t border-gray-200 text-xs text-gray-400 shrink-0 mt-auto w-full">
+        {/* 가운데 정렬: 페이지 번호 */}
+        <span className="absolute left-1/2 -translate-x-1/2 font-medium">
+          - {pageIdx + 1} -
+        </span>
+        {/* 오른쪽 정렬: PASS by RuleMakers */}
+        <span className="absolute right-0 font-bold text-slate-300">
+          PASS by RuleMakers
+        </span>
+      </div>
+    );
 
     return (
       <>
@@ -336,14 +359,27 @@ const ExamPaperLayout = forwardRef<HTMLDivElement, ExamPaperLayoutProps>(
                           <ExclamationCircleIcon className="w-4 h-4" />
                         </button>
 
-                        <div className="flex items-start h-full">
-                           <span 
-                             className="font-extrabold text-lg mr-2 leading-none shrink-0" 
-                             style={{ color: template.borderColor }}
-                           >
-                             {prob.number}.
-                           </span>
+                        {/* [수정] 문항 레이아웃: 번호 상단 배치 + 룰메이커스 로고 */}
+                        <div className="flex flex-col h-full gap-2">
                            
+                           {/* 문항 번호 Header */}
+                           <div className="flex items-center gap-1">
+                              {/* 룰메이커스 로고 (문항 번호 크기에 맞춤) */}
+                              <img 
+                                src="/images/logo.png" 
+                                alt="RM" 
+                                className="h-5 w-5 object-contain" 
+                              />
+                              {/* 문항 번호 (00 형식) */}
+                              <span 
+                                className="font-extrabold text-xl leading-none" 
+                                style={{ color: template.borderColor }}
+                              >
+                                {formatNumber(prob.number)}
+                              </span>
+                           </div>
+                           
+                           {/* 문항 본문 */}
                            <div className="flex-1">
                               {prob.imageUrl ? (
                                 /* eslint-disable-next-line @next/next/no-img-element */
@@ -373,10 +409,7 @@ const ExamPaperLayout = forwardRef<HTMLDivElement, ExamPaperLayoutProps>(
                 ))}
               </div>
 
-              {/* 푸터 영역 */}
-              <div className="h-[40px] flex justify-center items-center border-t border-gray-200 text-xs text-gray-400 shrink-0 mt-auto">
-              - {pageIdx + 1} -
-              </div>
+              {renderFooter(pageIdx)}
             </div>
           ))}
 
@@ -385,7 +418,10 @@ const ExamPaperLayout = forwardRef<HTMLDivElement, ExamPaperLayoutProps>(
              <div className="bg-white shadow-xl print:shadow-none relative flex flex-col" 
                   style={{ width: "210mm", height: "297mm", padding: `0 ${PADDING_X_MM}mm`, pageBreakAfter: "always" }}>
                 
-                <div className="h-[80px] flex items-center border-b-2 border-black mb-8">
+                <div 
+                  className="w-full border-b border-gray-300 pb-2 mb-4 flex flex-col justify-end shrink-0" 
+                  style={{ height: template.headerHeight }}
+                >
                    <h2 className="text-2xl font-extrabold text-slate-900">빠른 정답표</h2>
                 </div>
 
@@ -403,7 +439,6 @@ const ExamPaperLayout = forwardRef<HTMLDivElement, ExamPaperLayoutProps>(
                           <div key={`col-${colIdx}`} className="flex flex-col gap-1">
                             {Array.from({ length: rows }).map((_, rowIdx) => {
                               const localIdx = colIdx * rows + rowIdx;
-                              // [수정] 빈 공간도 h-9 높이 유지
                               if (localIdx >= chunkProblems.length) return <div key={rowIdx} className="h-9"></div>;
                               
                               const prob = chunkProblems[localIdx];
@@ -413,11 +448,11 @@ const ExamPaperLayout = forwardRef<HTMLDivElement, ExamPaperLayoutProps>(
                               return (
                                 <div 
                                   key={prob.id} 
-                                  // [수정] h-9 클래스 추가로 줄간격(높이) 통일
                                   className="flex items-center justify-start gap-2 border-b border-slate-200 pb-1 mb-1 h-9"
                                 >
-                                  <span className="font-bold text-slate-500 w-6 text-base shrink-0 text-right">
-                                    {prob.number}
+                                  {/* [수정] 정답표에서도 00 형식 적용 */}
+                                  <span className="font-bold text-slate-500 w-8 text-base shrink-0 text-right">
+                                    {formatNumber(prob.number)}
                                   </span>
                                   <span className={`font-extrabold text-slate-900 shrink-0 ${
                                     isTextAnswer 
@@ -463,8 +498,9 @@ const ExamPaperLayout = forwardRef<HTMLDivElement, ExamPaperLayoutProps>(
                         style={{ marginBottom: 10 }}
                       >
                         <div className="flex items-center mb-1 gap-2">
+                           {/* [수정] 해설지 문항 번호도 00 형식 */}
                            <span className="text-xs font-bold bg-gray-100 px-2 py-0.5 rounded text-slate-700">
-                             {prob.number}번
+                             {formatNumber(prob.number)}번
                            </span>
                            <span className="text-xs font-bold text-slate-500">
                              정답: {prob.answer}
@@ -475,7 +511,6 @@ const ExamPaperLayout = forwardRef<HTMLDivElement, ExamPaperLayoutProps>(
                              /* eslint-disable-next-line @next/next/no-img-element */
                              <img src={prob.solutionUrl} alt="해설" className="w-full h-auto object-contain" />
                            ) : (
-                             // 해설 텍스트가 너무 길 경우를 대비해 스타일 조정
                              <p className="whitespace-pre-wrap">{prob.content || "해설 없음"}</p>
                            )}
                         </div>
@@ -485,10 +520,7 @@ const ExamPaperLayout = forwardRef<HTMLDivElement, ExamPaperLayoutProps>(
                 ))}
               </div>
 
-              {/* 푸터 영역: mt-auto로 하단 고정하되, 위 로직 덕분에 밀려나지 않음 */}
-              <div className="h-[40px] flex justify-center items-center border-t border-gray-200 text-xs text-gray-400 shrink-0 mt-auto">
-                 - {pageIdx + 1} -
-              </div>
+              {renderFooter(pageIdx)}
             </div>
           ))}
         </div>
