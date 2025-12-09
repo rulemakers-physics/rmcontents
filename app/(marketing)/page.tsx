@@ -18,7 +18,9 @@ import {
   AcademicCapIcon,
   ChatBubbleBottomCenterTextIcon,
   ChevronRightIcon,
-  StarIcon
+  ChartBarIcon, // [신규] 아이콘
+  ClipboardDocumentCheckIcon,
+  DevicePhoneMobileIcon
 } from "@heroicons/react/24/solid";
 import { motion, Variants } from "framer-motion";
 import { ArrowRight } from "lucide-react";
@@ -484,6 +486,97 @@ export default function HomePage() {
             </div>
           </div>
         </motion.section>
+
+{/* --- [NEW] All-in-One LMS Section --- */}
+<section className="py-24 bg-slate-50 overflow-hidden">
+  <div className="container mx-auto px-6 max-w-6xl">
+    <div className="text-center mb-16">
+      <span className="text-indigo-600 font-bold tracking-widest text-xs uppercase">Academy LMS</span>
+      <h2 className="mt-3 text-3xl font-bold text-slate-900 sm:text-4xl">
+        수업 관리는 <span className="text-indigo-600">더 간편하게</span>,<br />
+        분석은 <span className="text-indigo-600">더 정교하게</span>
+      </h2>
+      <p className="mt-4 text-lg text-slate-600 max-w-2xl mx-auto">
+        출석, 과제, 테스트 성적 관리부터 학부모 리포트 전송까지.<br />
+        흩어져 있던 학원 관리 업무를 RuleMakers 하나로 통합하세요.
+      </p>
+    </div>
+
+    <div className="grid md:grid-cols-3 gap-8">
+      {/* Feature 1: Weekly Report */}
+      <motion.div 
+        variants={fadeInUp}
+        initial="initial"
+        whileInView="animate"
+        viewport={{ once: true }}
+        className="bg-white p-8 rounded-3xl border border-slate-200 shadow-sm hover:shadow-lg transition-all"
+      >
+        <div className="w-12 h-12 bg-blue-50 rounded-2xl flex items-center justify-center text-blue-600 mb-6">
+          <SparklesIcon className="w-6 h-6" />
+        </div>
+        <h3 className="text-xl font-bold text-slate-900 mb-3">자동화된 주간 리포트</h3>
+        <p className="text-slate-600 text-sm leading-relaxed mb-6">
+          매주 반복되는 학부모 상담 준비, 이제 클릭 한 번이면 끝납니다. 
+          출석, 과제 수행률, 테스트 점수가 자동으로 집계되어 보기 편한 리포트로 생성됩니다.
+        </p>
+        <div className="bg-slate-50 p-4 rounded-xl border border-slate-100 text-xs text-slate-500">
+          <div className="flex justify-between mb-2">
+            <span>출석률</span>
+            <span className="font-bold text-blue-600">100%</span>
+          </div>
+          <div className="w-full h-1.5 bg-slate-200 rounded-full overflow-hidden">
+            <div className="w-full h-full bg-blue-500 rounded-full" />
+          </div>
+        </div>
+      </motion.div>
+
+      {/* Feature 2: Mistake Note */}
+      <motion.div 
+        variants={fadeInUp}
+        initial="initial"
+        whileInView="animate"
+        viewport={{ once: true }}
+        transition={{ delay: 0.1 }}
+        className="bg-white p-8 rounded-3xl border border-slate-200 shadow-sm hover:shadow-lg transition-all"
+      >
+        <div className="w-12 h-12 bg-emerald-50 rounded-2xl flex items-center justify-center text-emerald-600 mb-6">
+          <CheckCircleIcon className="w-6 h-6" />
+        </div>
+        <h3 className="text-xl font-bold text-slate-900 mb-3">학생별 오답 유형 분석</h3>
+        <p className="text-slate-600 text-sm leading-relaxed mb-6">
+          단순히 틀린 개수만 세지 않습니다. '몰라서', '실수', '시간부족' 등 
+          오답 원인을 태그하여 학생의 약점을 정밀하게 진단합니다.
+        </p>
+        <div className="flex gap-2">
+          <span className="px-2 py-1 bg-red-50 text-red-600 text-[10px] font-bold rounded">개념 부족</span>
+          <span className="px-2 py-1 bg-orange-50 text-orange-600 text-[10px] font-bold rounded">계산 실수</span>
+        </div>
+      </motion.div>
+
+      {/* Feature 3: Student App */}
+      <motion.div 
+        variants={fadeInUp}
+        initial="initial"
+        whileInView="animate"
+        viewport={{ once: true }}
+        transition={{ delay: 0.2 }}
+        className="bg-white p-8 rounded-3xl border border-slate-200 shadow-sm hover:shadow-lg transition-all"
+      >
+        <div className="w-12 h-12 bg-purple-50 rounded-2xl flex items-center justify-center text-purple-600 mb-6">
+          <DevicePhoneMobileIcon className="w-6 h-6" /> {/* 아이콘 import 필요 */}
+        </div>
+        <h3 className="text-xl font-bold text-slate-900 mb-3">자기주도 학습 학생 앱</h3>
+        <p className="text-slate-600 text-sm leading-relaxed mb-6">
+          학생들은 전용 대시보드에서 자신의 성적 추이를 확인하고, 
+          CBT 환경에서 문제를 풀며 즉시 채점 결과를 확인할 수 있습니다.
+        </p>
+        <div className="aspect-video bg-slate-100 rounded-lg flex items-center justify-center text-xs text-slate-400">
+          Student Dashboard UI
+        </div>
+      </motion.div>
+    </div>
+  </div>
+</section>
 
         {/* --- 5. 서비스 플랜 섹션 --- */}
         <motion.section
