@@ -2,11 +2,10 @@
 
 "use client";
 
-import { useState, useEffect } from "react";
-import Link from "next/link";
+import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { db } from "@/lib/firebase";
-import { collection, query, where, getDocs, orderBy, limit } from "firebase/firestore";
+import { collection, query, where, getDocs } from "firebase/firestore";
 import { 
   ClipboardDocumentCheckIcon, 
   ExclamationCircleIcon, 
@@ -16,7 +15,7 @@ import {
 } from "@heroicons/react/24/outline";
 import { ActionItem } from "@/types/report";
 import { useAuth } from "@/context/AuthContext";
-import WeeklyReportModal from "./WeeklyReportModal"; // 아래에서 만들 예정
+import WeeklyReportModal from "./WeeklyReportModal";
 
 export default function DashboardActionCenter() {
   const { user } = useAuth();
@@ -28,78 +27,81 @@ export default function DashboardActionCenter() {
   const [isReportModalOpen, setIsReportModalOpen] = useState(false);
   const [selectedClassForReport, setSelectedClassForReport] = useState<{id: string, name: string} | null>(null);
 
-  useEffect(() => {
+  // 1. [정의] fetchTasks 함수를 useEffect보다 먼저 선언합니다.
+  const fetchTasks = useCallback(async () => {
     if (!user) return;
+    setLoading(true);
+    const newTasks: ActionItem[] = [];
 
-    const fetchTasks = async () => {
-      setLoading(true);
-      const newTasks: ActionItem[] = [];
+    try {
+      // 1. 내가 담당하는 반 조회
+      const classesQ = query(
+        collection(db, "classes"), 
+        where("instructorId", "==", user.uid)
+      );
+      const classesSnap = await getDocs(classesQ);
+      const myClasses = classesSnap.docs.map(d => ({ id: d.id, ...d.data() }));
 
-      try {
-        // 1. [로직] 내가 담당하는 반 조회
-        const classesQ = query(
-          collection(db, "classes"), 
-          where("instructorId", "==", user.uid)
+      // 2. 이번 주 월요일 날짜 계산
+      const today = new Date();
+      const day = today.getDay() || 7; 
+      if(day !== 1) today.setHours(-24 * (day - 1)); 
+      const thisWeekMonday = today.toISOString().split('T')[0];
+
+      // 3. 반별 리포트 미작성 확인
+      for (const cls of myClasses) {
+        const reportQ = query(
+          collection(db, "weekly_reports"),
+          where("classId", "==", cls.id),
+          where("weekStartDate", "==", thisWeekMonday)
         );
-        const classesSnap = await getDocs(classesQ);
-        const myClasses = classesSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+        const reportSnap = await getDocs(reportQ);
 
-        // 2. [분석] 각 반별로 이번 주 리포트가 있는지 확인
-        const today = new Date();
-        // 이번 주 월요일 날짜 계산
-        const day = today.getDay() || 7; 
-        if(day !== 1) today.setHours(-24 * (day - 1)); 
-        const thisWeekMonday = today.toISOString().split('T')[0];
-
-        for (const cls of myClasses) {
-          // 해당 반의 이번 주 리포트 조회
-          const reportQ = query(
-            collection(db, "weekly_reports"),
-            where("classId", "==", cls.id),
-            where("weekStartDate", "==", thisWeekMonday)
-          );
-          const reportSnap = await getDocs(reportQ);
-
-          // 리포트가 없으면 '작업 필요' 태스크 생성
-          if (reportSnap.empty) {
-            newTasks.push({
-              id: `report-${cls.id}`,
-              type: 'WEEKLY_REPORT',
-              title: `[${(cls as any).name}] 주간 리포트 작성`,
-              description: "이번 주 학습 내용과 학생 피드백을 정리해주세요.",
-              priority: 'HIGH',
-              relatedId: cls.id,
-              isDone: false
-            });
-          }
+        // 리포트가 없으면 '작업 필요' 태스크 생성
+        if (reportSnap.empty) {
+          newTasks.push({
+            id: `report-${cls.id}`,
+            type: 'WEEKLY_REPORT',
+            title: `[${(cls as any).name}] 주간 리포트 작성`,
+            description: "이번 주 학습 내용과 학생 피드백을 정리해주세요.",
+            priority: 'HIGH',
+            relatedId: cls.id,
+            isDone: false
+          });
         }
-
-        // 3. [분석] 장기 미관리 학생 확인 (샘플 로직: 상담 로그가 2주 이상 없는 경우)
-        // (성능을 위해 최대 5명만 체크하거나 로직 최적화 필요. 여기선 예시로 간단히 구현)
-        
-        // ... (성적 미입력 건 조회 로직 추가 가능)
-
-      } catch (e) {
-        console.error("할 일 분석 중 오류", e);
       }
 
-      setTasks(newTasks);
-      setLoading(false);
-    };
+      // (추가적인 할 일 분석 로직이 있다면 여기에 추가)
 
-    fetchTasks();
+    } catch (e) {
+      console.error("할 일 분석 중 오류", e);
+    }
+
+    setTasks(newTasks);
+    setLoading(false);
   }, [user]);
+
+  // 2. [사용] useEffect에서 fetchTasks 호출
+  useEffect(() => {
+    fetchTasks();
+  }, [fetchTasks]);
 
   // 액션 핸들러
   const handleAction = (task: ActionItem) => {
     if (task.type === 'WEEKLY_REPORT') {
-      // 해당 반 이름 찾기 (간단히 title에서 파싱하거나 state관리)
+      // 반 이름 파싱 (또는 task 데이터 구조 개선 시 직접 전달)
       const className = task.title.match(/\[(.*?)\]/)?.[1] || "반 정보 없음";
       setSelectedClassForReport({ id: task.relatedId!, name: className });
       setIsReportModalOpen(true);
     } else if (task.type === 'GRADE_ENTRY') {
       router.push(`/manage/reports?action=input&classId=${task.relatedId}`);
     }
+  };
+
+  // 리포트 작성 완료 시 호출될 핸들러
+  const handleReportComplete = () => {
+    setIsReportModalOpen(false);
+    fetchTasks(); // 목록 새로고침
   };
 
   if (loading) return <div className="h-32 bg-slate-100 rounded-xl animate-pulse" />;
@@ -154,10 +156,8 @@ export default function DashboardActionCenter() {
       {isReportModalOpen && selectedClassForReport && (
         <WeeklyReportModal 
           classData={selectedClassForReport}
-          onClose={() => {
-            setIsReportModalOpen(false);
-            // 리포트 작성 후 새로고침 로직 필요 (window.location.reload() 또는 fetchTasks 재호출)
-          }}
+          onClose={() => setIsReportModalOpen(false)} 
+          onComplete={handleReportComplete}
         />
       )}
     </>

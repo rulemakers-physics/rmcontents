@@ -293,9 +293,20 @@ const ExamPaperLayout = forwardRef<HTMLDivElement, ExamPaperLayoutProps>(
       </div>
     );
 
+    // [보안 1] 우클릭 방지 핸들러 추가
+    const handleContextMenu = (e: React.MouseEvent) => {
+      e.preventDefault();
+    };
+
     return (
       <>
-        <div ref={ref} className="w-full bg-gray-100 flex flex-col items-center gap-10 py-10 print:p-0 print:bg-white print:gap-0">
+        <div 
+          ref={ref} 
+          // ▼▼▼ [2. 수정할 코드] className 끝에 'no-select' 추가하고 onContextMenu 연결 ▼▼▼
+          className="w-full bg-gray-100 flex flex-col items-center gap-10 py-10 print:p-0 print:bg-white print:gap-0 no-select"
+          onContextMenu={handleContextMenu}
+          // ▲▲▲ 여기까지 수정하세요 ▲▲▲
+        >
           
           {/* === [1] 문제지 영역 === */}
           {questionPages.map((columns, pageIdx) => (
@@ -357,12 +368,19 @@ const ExamPaperLayout = forwardRef<HTMLDivElement, ExamPaperLayoutProps>(
                            {/* 문항 본문 */}
                            <div className="flex-1">
                               {prob.imageUrl ? (
-                                /* eslint-disable-next-line @next/next/no-img-element */
-                                <img 
-                                  src={prob.imageUrl} 
-                                  alt={`Problem ${prob.number}`} 
-                                  className="w-full h-auto object-contain max-h-[800px]" 
-                                />
+                                /* ▼▼▼ [3. 수정할 코드] 기존 img 태그를 div로 감싸고 오버레이 추가 ▼▼▼ */
+                                <div className="relative w-full h-auto">
+                                   {/* 투명 보호막: 이미지를 덮어서 우클릭/저장을 막음 */}
+                                   <div className="protect-overlay" />
+                                   
+                                   {/* 원본 이미지: 클릭 이벤트 무시(pointer-events-none) 설정 */}
+                                   <img 
+                                     src={prob.imageUrl} 
+                                     alt={`Problem ${prob.number}`} 
+                                     className="w-full h-auto object-contain max-h-[800px] pointer-events-none" 
+                                   />
+                                </div>
+                                /* ▲▲▲ 여기까지 수정▲▲▲ */
                               ) : (
                                 <p className={`whitespace-pre-wrap leading-relaxed ${template.problemFontSize} text-slate-800`}>
                                   {prob.content}

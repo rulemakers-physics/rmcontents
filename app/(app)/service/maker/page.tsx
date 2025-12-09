@@ -714,11 +714,29 @@ function ExamBuilderContent() {
                         {examProblems.map((prob, index) => (
                           <Draggable key={prob.id} draggableId={prob.id} index={index}>
                             {(provided, snapshot) => (
-                              <div ref={provided.innerRef} {...provided.draggableProps} {...provided.dragHandleProps} className={`p-2 bg-white border rounded-lg flex items-center gap-3 shadow-sm group ${snapshot.isDragging ? 'shadow-lg border-blue-500 z-50' : 'border-gray-200'}`}>
+                              <div 
+                                ref={provided.innerRef} 
+                                {...provided.draggableProps} 
+                                {...provided.dragHandleProps} 
+                                // ▼▼▼ [1] 여기에 우클릭 방지 핸들러 추가 ▼▼▼
+                                onContextMenu={(e) => e.preventDefault()}
+                                className={`p-2 bg-white border rounded-lg flex items-center gap-3 shadow-sm group ${snapshot.isDragging ? 'shadow-lg border-blue-500 z-50' : 'border-gray-200'}`}
+                              >
                                 <span className="w-6 h-6 flex-shrink-0 flex items-center justify-center bg-slate-100 rounded-full text-xs font-bold text-slate-500">{prob.number}</span>
+                                
                                 <div className="relative w-12 h-12 bg-slate-50 rounded border border-slate-100 overflow-hidden flex-shrink-0">
-                                  {prob.imageUrl ? <img src={prob.imageUrl} alt="" className="w-full h-full object-contain" /> : <div className="flex items-center justify-center h-full text-[10px] text-slate-300">Text</div>}
+                                  {prob.imageUrl ? (
+                                    <img 
+                                      src={prob.imageUrl} 
+                                      alt="" 
+                                      // ▼▼▼ [2] 이미지에 pointer-events-none 추가 (이미지 자체 클릭/드래그 차단) ▼▼▼
+                                      className="w-full h-full object-contain pointer-events-none" 
+                                    />
+                                  ) : (
+                                    <div className="flex items-center justify-center h-full text-[10px] text-slate-300">Text</div>
+                                  )}
                                 </div>
+                                
                                 <div className="flex-1 min-w-0">
                                   <p className="text-xs font-bold text-slate-800 truncate">{prob.minorTopic}</p>
                                   <span className="text-[10px] text-slate-500">{prob.difficulty}</span>

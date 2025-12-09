@@ -16,7 +16,8 @@ const PUBLIC_PATHS = [
   "/contact", 
   "/company", 
   "/terms", 
-  "/privacy"
+  "/privacy",
+  "/share" // [추가] 공유 페이지 접근 허용
 ];
 
 // 쇼케이스 등 일부 공개 경로는 startsWith로 처리
