@@ -390,6 +390,7 @@ export default function HomePage() {
             </motion.div>
           </div>
         </section>
+        <TrustBanner />
          {/* --- 2. PASS Question Bank (Light Theme, Text Left - Image Right) --- */}
         <section className="py-32 bg-white relative overflow-hidden">
           <div className="container mx-auto px-6 max-w-6xl">
@@ -702,102 +703,170 @@ export default function HomePage() {
             </div>
           </div>
         </section>
-        {/* --- 2. 핵심 역량 섹션 (Clean Bento-like Grid) --- */}
-        <motion.section
-          variants={staggerContainer}
-          initial="initial"
-          whileInView="animate"
-          viewport={{ once: true, margin: "-100px" }}
-          className="bg-white py-24 sm:py-32"
-        >
-          <div className="container mx-auto max-w-6xl px-6">
-            <div className="text-center mb-16">
-              <h2 className="text-base font-semibold uppercase tracking-wide text-sky-600">
+        {/* --- 2. 핵심 역량 섹션 (Redesigned: Premium Dark & Glass) --- */}
+        <section className="relative py-24 sm:py-32 bg-slate-950 overflow-hidden">
+          
+          {/* 배경 장식 1: 은은한 상단 조명 효과 */}
+          <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[400px] bg-indigo-900/20 rounded-full blur-[120px] pointer-events-none" />
+          
+          {/* 배경 장식 2: 정밀함을 상징하는 미세한 격자 패턴 */}
+          <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.02)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.02)_1px,transparent_1px)] bg-[size:60px_60px] opacity-20 pointer-events-none" />
+
+          <div className="container relative z-10 mx-auto max-w-6xl px-6">
+            
+            {/* 섹션 헤더 */}
+            <div className="text-center mb-20">
+              <motion.div 
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-900/30 border border-indigo-700/50 text-indigo-300 text-xs font-bold uppercase tracking-wider mb-4"
+              >
+                <SparklesIcon className="w-3 h-3" />
                 Core Competency
-              </h2>
-              <p className="mt-2 text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl">
-                RuleMakers만의 차별화된 전문성
-              </p>
-              <p className="mt-4 text-lg text-slate-600">
+              </motion.div>
+              
+              <motion.h2 
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ delay: 0.1 }}
+                className="text-3xl font-bold tracking-tight text-white sm:text-4xl"
+              >
+                RuleMakers만의 <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-200 via-sky-200 to-white">차별화된 전문성</span>
+              </motion.h2>
+              
+              <motion.p 
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ delay: 0.2 }}
+                className="mt-4 text-lg text-slate-400 max-w-2xl mx-auto"
+              >
                 단순한 컨텐츠가 아닙니다. 서울대학교 출신 연구진이 직접 출제하고 검수합니다.
-              </p>
+              </motion.p>
             </div>
             
+            {/* 카드 그리드 영역 */}
             <div className="grid gap-8 md:grid-cols-3">
-              <FeatureCard
+              
+              {/* Card 1: 학교별 분석 */}
+              <PremiumFeatureCard
                 icon={BeakerIcon}
                 title="학교별 1:1 정밀 분석"
                 description="담당 학교의 교과서, 부교재, 프린트물은 물론 최신 3개년 기출 경향까지 완벽하게 분석하여 적중률 높은 컨텐츠를 설계합니다."
+                delay={0}
+                colorClass="text-sky-400 group-hover:text-sky-300"
+                bgClass="group-hover:bg-sky-500/10 group-hover:border-sky-500/50"
               />
-              <FeatureCard
+
+              {/* Card 2: 3일 완성 */}
+              <PremiumFeatureCard
                 icon={CpuChipIcon}
                 title="3일 내의 신속한 제작"
                 description="자체 개발한 '문항 데이터베이스 시스템'을 통해, 고품질의 맞춤형 교재를 업계 최단 시간인 3일 이내에 제작합니다."
+                delay={0.1}
+                colorClass="text-indigo-400 group-hover:text-indigo-300"
+                bgClass="group-hover:bg-indigo-500/10 group-hover:border-indigo-500/50"
               />
-              <FeatureCard
-                icon={DocumentTextIcon}
+
+              {/* Card 3: 서울대 연구진 */}
+              <PremiumFeatureCard
+                icon={AcademicCapIcon}
                 title="서울대 연구진 교차 검수"
                 description="서울대 사범대 출신 전문 연구진과 현직 강사로 구성된 검수팀이 교차 검수를 진행합니다."
+                delay={0.2}
+                colorClass="text-emerald-400 group-hover:text-emerald-300"
+                bgClass="group-hover:bg-emerald-500/10 group-hover:border-emerald-500/50"
               />
+
             </div>
           </div>
-        </motion.section>
+        </section>
 
-        {/* --- 3. 작업 방식 섹션 (Step Process) --- */}
-        <motion.section
+        {/* --- 3. 작업 방식 섹션 (Dark Theme: Neon Roadmap) --- */}
+        <section
           ref={howItWorksRef}
-          initial="initial"
-          whileInView="animate"
-          viewport={{ once: true }}
-          className="relative bg-slate-50 py-24 sm:py-32"
+          className="relative bg-slate-900 py-24 sm:py-32 overflow-hidden border-t border-slate-800"
         >
-          {/* 배경 장식 */}
-          <div className="absolute inset-0 opacity-[0.03] bg-[radial-gradient(#0f172a_1px,transparent_1px)] [background-size:20px_20px]" />
+          {/* 배경 장식: 은은한 방사형 빛 */}
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[1000px] h-[600px] bg-sky-900/10 rounded-full blur-[100px] pointer-events-none" />
 
           <div className="container relative z-10 mx-auto max-w-6xl px-6">
-            <div className="text-center mb-16">
-              <h2 className="text-3xl font-bold text-slate-900 sm:text-4xl">
+            
+            {/* 섹션 헤더 */}
+            <motion.div 
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              className="text-center mb-20"
+            >
+              <h2 className="text-3xl font-bold text-white sm:text-4xl">
                 3 Steps, 3 Days
               </h2>
-              <p className="mt-4 text-lg text-slate-600">
-                복잡한 과정 없이, 단 3단계로 3일 이내에 선생님만의 프리미엄 컨텐츠가 완성됩니다.
+              <p className="mt-4 text-lg text-slate-400 max-w-2xl mx-auto">
+                복잡한 과정 없이, 단 3단계로 <span className="text-sky-400 font-semibold">3일 이내</span>에 선생님만의 프리미엄 컨텐츠가 완성됩니다.
               </p>
-            </div>
+            </motion.div>
 
-            <div className="grid gap-8 md:grid-cols-3 relative">
-              {/* 연결선 (데스크탑 전용) */}
-              <div className="hidden md:block absolute top-12 left-[16%] right-[16%] h-0.5 bg-slate-200 z-0" />
+            <div className="relative grid gap-12 md:grid-cols-3">
               
-              <ProcessStep
+              {/* [데스크탑 전용] 연결선 (Gradient Neon Line) */}
+              <div className="hidden md:block absolute top-10 left-[16%] right-[16%] h-1 bg-slate-800 rounded-full z-0 overflow-hidden">
+                 {/* 흐르는 빛 효과 */}
+                 <div className="absolute inset-0 bg-gradient-to-r from-transparent via-sky-500 to-transparent w-1/2 animate-shimmer-slide opacity-50" />
+                 {/* 고정 그라데이션 라인 */}
+                 <div className="absolute inset-0 bg-gradient-to-r from-sky-900 via-indigo-500 to-sky-900 opacity-30" />
+              </div>
+              
+              {/* Step 01 */}
+              <DarkProcessStep
                 step="01"
-                title="작업 요청 및 참고 자료 업로드"
+                title="작업 요청"
+                subtitle="자료 업로드"
                 description="전용 폼을 통해 작업을 요청하고, 학교 기출문제나 참고하고 싶은 자료를 업로드합니다."
                 icon={ArrowDownTrayIcon}
+                delay={0}
               />
-              <ProcessStep
+              
+              {/* Step 02 */}
+              <DarkProcessStep
                 step="02"
                 title="분석 및 제작"
-                description="요청사항에 맞춰 문항을 선별/제작하고 세밀한 검수를 진행합니다."
+                subtitle="전문가 검수"
+                description="서울대 연구진이 요청사항에 맞춰 문항을 선별/제작하고 정밀한 교차 검수를 진행합니다."
                 icon={CpuChipIcon}
+                delay={0.2}
               />
-              <ProcessStep
+              
+              {/* Step 03 */}
+              <DarkProcessStep
                 step="03"
                 title="결과물 수령"
-                description="완성된 고화질 PDF 파일을 대시보드에서 즉시 다운로드합니다."
+                subtitle="PDF 다운로드"
+                description="완성된 고화질 PDF 파일을 대시보드에서 즉시 다운로드하여 수업에 활용하세요."
                 icon={CheckCircleIcon}
+                delay={0.4}
               />
             </div>
 
-            <div className="mt-16 text-center">
+            {/* 하단 CTA 버튼 */}
+            <motion.div 
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ delay: 0.6 }}
+              className="mt-20 text-center"
+            >
               <Link
                 href="/request"
-                className="inline-flex items-center gap-2 rounded-lg bg-slate-900 px-8 py-4 text-lg font-bold text-white shadow-lg transition-transform hover:-translate-y-1 hover:bg-slate-800"
+                className="group inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-sky-600 to-indigo-600 px-10 py-4 text-lg font-bold text-white shadow-lg shadow-sky-900/30 transition-all hover:scale-105 hover:shadow-sky-500/40 ring-1 ring-white/10"
               >
                 지금 바로 시작하기
               </Link>
-            </div>
+            </motion.div>
           </div>
-        </motion.section>
+        </section>
 
         {/* --- 4. 컨텐츠 샘플 섹션 (Dark Mode) --- */}
         <motion.section
@@ -1281,5 +1350,167 @@ function MobileShowcaseCard({ category, title, imgSrc, href }: { category: strin
         </div>
       </div>
     </Link>
+  );
+}
+
+/**
+ * [신규 컴포넌트] 신뢰도 배너 (Infinite Marquee)
+ * - 로고나 텍스트가 무한으로 흐르는 애니메이션
+ */
+const TrustBanner = () => {
+  // 예시 데이터: 실제로는 제휴 학교명이나 학원 로고 이미지를 넣으면 더 좋습니다.
+  const brands = [
+    "서울대학교 사범대학 연구진",
+    "샤인학원",
+    "목동 C 수학",
+    "서초 M 아카데미",
+    "반포 H 고등관",
+    "분당 E 입시센터",
+    "중계 T 학원",
+    "대치 K 학원",
+  ];
+
+  // 끊김 없는 무한 스크롤을 위해 배열을 2배로 복사
+  const duplicatedBrands = [...brands, ...brands];
+
+  return (
+    <div className="w-full bg-slate-900 border-y border-slate-800 py-5 overflow-hidden flex relative z-20">
+      <div className="container mx-auto max-w-6xl flex items-center relative">
+        
+        {/* 왼쪽 고정 라벨 (데스크탑 전용) */}
+        <div className="hidden md:flex items-center pr-8 bg-slate-900 z-10 relative">
+          <span className="text-slate-500 text-xs font-bold uppercase tracking-widest whitespace-nowrap">
+            Trusted by
+          </span>
+          <div className="h-4 w-[1px] bg-slate-700 ml-4"></div>
+        </div>
+
+        {/* 애니메이션 영역 */}
+        <div className="flex-1 overflow-hidden relative mask-linear-fade">
+          {/* 양옆 그라데이션 마스크 효과 (자연스럽게 사라짐) */}
+          <div className="absolute left-0 top-0 bottom-0 w-16 bg-gradient-to-r from-slate-900 to-transparent z-10 pointer-events-none" />
+          <div className="absolute right-0 top-0 bottom-0 w-16 bg-gradient-to-l from-slate-900 to-transparent z-10 pointer-events-none" />
+
+          <motion.div
+            className="flex w-max"
+            animate={{ x: ["0%", "-50%"] }} // 전체 길이의 절반만큼 이동 후 리셋 (무한 루프 원리)
+            transition={{
+              ease: "linear",
+              duration: 25, // 속도 조절 (숫자가 클수록 느림)
+              repeat: Infinity,
+            }}
+          >
+            {duplicatedBrands.map((brand, index) => (
+              <div
+                key={index}
+                className="flex items-center space-x-2 mr-12 md:mr-16 opacity-50 grayscale hover:grayscale-0 hover:opacity-100 transition-all duration-300 cursor-default"
+              >
+                {/* 아이콘 (학교/학원 느낌) */}
+                <AcademicCapIcon className="w-5 h-5 text-slate-400" />
+                <span className="text-sm md:text-base font-bold text-slate-300 whitespace-nowrap">
+                  {brand}
+                </span>
+              </div>
+            ))}
+          </motion.div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+/**
+ * [신규 컴포넌트] Premium Dark Feature Card
+ * - 다크 모드 전용, 호버 시 그라데이션 및 발광 효과
+ */
+function PremiumFeatureCard({
+  icon: Icon,
+  title,
+  description,
+  delay,
+  colorClass,
+  bgClass
+}: {
+  icon: React.ElementType;
+  title: string;
+  description: string;
+  delay: number;
+  colorClass: string; // 아이콘 색상 제어
+  bgClass: string;    // 호버 시 배경/테두리 색상 제어
+}) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 30 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true }}
+      transition={{ duration: 0.5, delay }}
+      className={`group relative h-full rounded-2xl border border-slate-800 bg-slate-900/50 p-8 backdrop-blur-sm transition-all duration-500 hover:-translate-y-2 ${bgClass}`}
+    >
+      {/* 호버 시 나타나는 내부 그라데이션 효과 */}
+      <div className="absolute inset-0 rounded-2xl bg-gradient-to-b from-white/5 to-transparent opacity-0 transition-opacity duration-500 group-hover:opacity-100 pointer-events-none" />
+
+      {/* 아이콘 영역 */}
+      <div className={`mb-6 inline-flex h-14 w-14 items-center justify-center rounded-xl bg-slate-800 shadow-inner ring-1 ring-white/10 transition-colors duration-500 group-hover:bg-slate-950 ${colorClass}`}>
+        <Icon className="h-7 w-7" />
+      </div>
+
+      {/* 텍스트 영역 */}
+      <h3 className="mb-3 text-xl font-bold text-white transition-colors group-hover:text-white">
+        {title}
+      </h3>
+      <p className="text-base leading-relaxed text-slate-400 transition-colors group-hover:text-slate-300">
+        {description}
+      </p>
+    </motion.div>
+  );
+}
+/**
+ * [신규 컴포넌트] Dark Theme Process Step
+ * - 어두운 배경에서 잘 보이는 네온 스타일 스텝
+ */
+function DarkProcessStep({
+  step,
+  title,
+  subtitle,
+  description,
+  icon: Icon,
+  delay
+}: {
+  step: string;
+  title: string;
+  subtitle: string;
+  description: string;
+  icon: React.ElementType;
+  delay: number;
+}) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true }}
+      transition={{ duration: 0.5, delay }}
+      className="relative z-10 flex flex-col items-center text-center group"
+    >
+      {/* 아이콘 원형 컨테이너 */}
+      <div className="relative mb-8 flex h-20 w-20 items-center justify-center rounded-2xl bg-slate-800 shadow-xl ring-1 ring-white/10 group-hover:bg-slate-700 group-hover:scale-110 transition-all duration-300">
+        <Icon className="h-9 w-9 text-sky-400 group-hover:text-white transition-colors" />
+        
+        {/* Step Number Badge */}
+        <div className="absolute -top-3 -right-3 flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-600 text-sm font-bold text-white shadow-lg ring-2 ring-slate-900 transform rotate-12 group-hover:rotate-0 transition-transform">
+          {step}
+        </div>
+      </div>
+
+      {/* 텍스트 내용 */}
+      <h3 className="text-xl font-bold text-white mb-1 group-hover:text-sky-400 transition-colors">
+        {title}
+      </h3>
+      <span className="text-xs font-bold text-indigo-400 uppercase tracking-widest mb-4 block">
+        {subtitle}
+      </span>
+      <p className="text-sm text-slate-400 leading-relaxed max-w-xs group-hover:text-slate-300 transition-colors">
+        {description}
+      </p>
+    </motion.div>
   );
 }
