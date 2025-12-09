@@ -51,21 +51,21 @@ const BRANCH_LIST = [
     id: 1,
     name: "샤인학원 고등 본관",
     address: "서울 동작구 여의대방로 200",
-    phone: "02-0000-0000",
+    phone: "02-6268-8262",
     type: "Academy", // 뱃지 표시용
   },
   {
     id: 2,
-    name: "샤인학원 수학과학관",
+    name: "샤인수학과학학원",
     address: "서울 영등포구 여의대방로 79 2층, 3층",
-    phone: "02-0000-0000",
+    phone: "02-842-3504",
     type: "Academy",
   },
   {
     id: 3,
     name: "샤인학원 초중등관",
     address: "서울 동작구 대방동길 86",
-    phone: "02-0000-0000",
+    phone: "02-815-6877",
     type: "Academy",
   },
   {

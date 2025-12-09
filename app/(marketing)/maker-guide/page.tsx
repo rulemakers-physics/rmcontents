@@ -31,7 +31,7 @@ export default function MakerGuidePage() {
             </span>
           </h1>
           <p className="text-lg text-slate-400 max-w-2xl mx-auto mb-10 leading-relaxed">
-            단원, 난이도, 유형별 정밀 필터링부터<br className="md:hidden"/> HWP 스타일의 레이아웃 편집까지.<br />
+            단원, 난이도, 유형별 정밀 필터링부터<br className="md:hidden"/> 간편한 편집까지.<br />
             클릭 몇 번으로 수업 자료 준비를 끝내세요.
           </p>
           <div className="flex justify-center gap-4">
@@ -127,7 +127,7 @@ export default function MakerGuidePage() {
                 </li>
                 <li className="flex items-center gap-3">
                   <CheckBadgeIcon className="w-5 h-5 text-indigo-500" />
-                  <span>학원 로고 및 워터마크 삽입 기능</span>
+                  <span>문제지 상단 학원 로고 삽입 기능</span>
                 </li>
               </ul>
             </div>

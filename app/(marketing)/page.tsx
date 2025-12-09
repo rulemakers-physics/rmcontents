@@ -412,7 +412,7 @@ export default function HomePage() {
                   <span className="text-slate-400">필요한 문제만 골라 담으세요</span>
                 </h2>
                 <p className="text-lg text-slate-600 leading-relaxed mb-8 break-keep">
-                  서울대 연구진이 개발한 <strong>검증된 킬러 문항</strong>과 <strong>최신 기출 변형 문항</strong>을
+                  서울대 사범대 출신 연구진이 개발한 <strong>검증된 문항</strong>과 <strong>최신 기출 변형 문항</strong>을
                   선생님이 원하는 조건대로 자유롭게 골라 담으세요.
                   <br/><br/>
                   단원, 난이도, 객관식/서술형 필터링은 물론, 
@@ -443,7 +443,7 @@ export default function HomePage() {
                 <div className="relative rounded-2xl shadow-2xl border border-slate-200 overflow-hidden bg-slate-50 aspect-[4/3] group transform transition-transform hover:scale-[1.01] hover:shadow-blue-200/50">
                    <div className="absolute inset-0 bg-gradient-to-tr from-blue-500/10 to-transparent" />
                    <Image 
-                     src="/images/mock-exam.png" 
+                     src="/images/maker.png" 
                      alt="PASS Question Bank UI" 
                      fill 
                      className="object-cover object-top"
@@ -464,7 +464,7 @@ export default function HomePage() {
         </section>
 
         {/* ▼▼▼ [추가] 데스크탑용 All-in-One LMS 섹션 ▼▼▼ */}
-        <section className="py-24 bg-slate-50 border-t border-slate-200">
+        <section className="py-24 bg-slate-50">
           <div className="container mx-auto px-6 max-w-6xl text-center">
             <div className="mb-16">
               <span className="text-indigo-600 font-bold tracking-widest text-xs uppercase">All-in-One Academy LMS</span>
@@ -525,10 +525,9 @@ export default function HomePage() {
         </section>
 
         {/* --- 3. [UPDATED] All-in-One LMS Section --- */}
-        <section className="py-24 bg-slate-50 overflow-hidden border-t border-slate-200">
+        <section className="py-24 bg-slate-50 overflow-hidden">
           <div className="container mx-auto px-6 max-w-6xl">
             <div className="text-center mb-16">
-              <span className="text-indigo-600 font-bold tracking-widest text-xs uppercase">Academy LMS</span>
               <h2 className="mt-3 text-3xl font-bold text-slate-900 sm:text-4xl">
                 수업 관리는 <span className="text-indigo-600">더 간편하게</span>,<br />
                 분석은 <span className="text-indigo-600">더 정교하게</span>
