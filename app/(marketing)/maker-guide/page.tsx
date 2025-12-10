@@ -22,12 +22,12 @@ export default function MakerGuidePage() {
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,_var(--tw-gradient-stops))] from-blue-900/40 via-slate-900 to-slate-900" />
         <div className="container mx-auto px-6 relative z-10 text-center">
           <span className="inline-block py-1 px-3 rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-400 text-xs font-bold tracking-widest uppercase mb-6">
-            PASS Question Bank
+            <strong>P</strong>erfect <strong>A</strong>nswer for <strong>S</strong>tudying <strong>S</strong>cience
           </span>
           <h1 className="text-4xl md:text-6xl font-bold mb-6 leading-tight">
-            원하는 문제만 골라 담는<br />
+            원하는 문제만 간편히 담는<br />
             <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-emerald-400">
-              가장 완벽한 시험지 빌더
+              PASS 문제은행
             </span>
           </h1>
           <p className="text-lg text-slate-400 max-w-2xl mx-auto mb-10 leading-relaxed">

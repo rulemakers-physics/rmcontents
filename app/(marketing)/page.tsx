@@ -23,7 +23,8 @@ import {
   DevicePhoneMobileIcon,
   CursorArrowRaysIcon, 
   PrinterIcon, 
-  SwatchIcon
+  SwatchIcon,
+  UserGroupIcon
 } from "@heroicons/react/24/solid";
 import { motion, Variants } from "framer-motion";
 import { ArrowRight } from "lucide-react";
@@ -339,7 +340,7 @@ export default function HomePage() {
               transition={{ duration: 0.6, delay: 0.2 }}
               className="mt-8 max-w-2xl text-lg text-slate-300 sm:text-xl leading-relaxed"
             >
-              직접 만드는 <strong>문제은행</strong>부터 전문가에게 맡기는 <strong>맞춤 제작</strong>까지.<br/>
+              강력한 <strong>문제은행</strong>부터 서울대 사범대 출신 전문가들의 <strong>맞춤 제작 컨텐츠</strong>까지.<br/>
               RuleMakers는 선생님의 수업 준비를 위한 가장 완벽한 파트너입니다.
             </motion.p>
             
@@ -497,7 +498,7 @@ export default function HomePage() {
                 </div>
                 <h3 className="text-xl font-bold text-slate-900 mb-3">1. 시험지 생성</h3>
                 <p className="text-slate-600 text-sm leading-relaxed">
-                  PASS 문제은행에서 학생 수준에 맞는 시험지를 생성하고, 수업에 활용합니다.
+                  PASS 문제은행에서 학생 수준에 맞는 <br/>시험지를 생성하고, 수업에 활용합니다.
                 </p>
               </motion.div>
 
@@ -511,7 +512,7 @@ export default function HomePage() {
                 </div>
                 <h3 className="text-xl font-bold text-slate-900 mb-3">2. 성적/출석 관리</h3>
                 <p className="text-slate-600 text-sm leading-relaxed">
-                  채점 결과와 출석 현황을 시스템에 입력하면, AI가 자동으로 데이터를 분석합니다.
+                  채점 결과와 출석 현황을 시스템에 입력하면, <br/>AI가 자동으로 데이터를 분석합니다.
                 </p>
               </motion.div>
 
@@ -525,7 +526,7 @@ export default function HomePage() {
                 </div>
                 <h3 className="text-xl font-bold text-slate-900 mb-3">3. 리포트 발행</h3>
                 <p className="text-slate-600 text-sm leading-relaxed">
-                  분석된 데이터를 바탕으로 전문적인 주간 리포트를 생성하여 학부모님께 전송합니다.
+                  분석된 데이터를 바탕으로 전문적인 <br/>주간 리포트를 생성하여 학부모님께 전송합니다.
                 </p>
               </motion.div>
             </div>
@@ -560,8 +561,8 @@ export default function HomePage() {
                 </div>
                 <h3 className="text-xl font-bold text-slate-900 mb-3">자동화된 주간 리포트</h3>
                 <p className="text-slate-600 text-sm leading-relaxed mb-6">
-                  매주 반복되는 학부모 상담 준비, 이제 클릭 한 번이면 끝납니다. 
-                  출석, 과제 수행률, 테스트 점수가 자동으로 집계되어 보기 편한 리포트로 생성됩니다.
+                  매주 반복되는 학부모 상담 준비, <br/>이제 클릭 한 번이면 끝납니다. 
+                  <br/>출석, 과제 수행률, 시험 점수가 자동으로 집계되어 <br/>학부모님께 공유 가능한 리포트로 생성됩니다.
                 </p>
                 <div className="bg-slate-50 p-4 rounded-xl border border-slate-100 text-xs text-slate-500">
                   <div className="flex justify-between mb-2">
@@ -574,7 +575,7 @@ export default function HomePage() {
                 </div>
               </motion.div>
 
-              {/* Feature 2: Mistake Note */}
+              {/* Feature 2: Grade Analysis (Updated from Student Mistake Note) */}
               <motion.div 
                 variants={fadeInUp}
                 initial="initial"
@@ -584,20 +585,28 @@ export default function HomePage() {
                 className="bg-white p-8 rounded-3xl border border-slate-200 shadow-sm hover:shadow-lg transition-all"
               >
                 <div className="w-12 h-12 bg-emerald-50 rounded-2xl flex items-center justify-center text-emerald-600 mb-6">
-                  <CheckCircleIcon className="w-6 h-6" />
+                  <ChartBarIcon className="w-6 h-6" />
                 </div>
-                <h3 className="text-xl font-bold text-slate-900 mb-3">학생별 오답 유형 분석</h3>
+                <h3 className="text-xl font-bold text-slate-900 mb-3">학급별 성적 데이터 분석</h3>
                 <p className="text-slate-600 text-sm leading-relaxed mb-6">
-                  단순히 틀린 개수만 세지 않습니다. '몰라서', '실수', '시간부족' 등 
-                  오답 원인을 태그하여 학생의 약점을 정밀하게 진단합니다.
+                  입력된 테스트 결과를 바탕으로 <br/>반 평균, 최고점, 성적 분포를 자동으로 분석합니다. 
+                  <br/>시각화된 그래프를 통해 학급의 성취도 변화를 <br/>한눈에 파악하세요.
                 </p>
-                <div className="flex gap-2">
-                  <span className="px-2 py-1 bg-red-50 text-red-600 text-[10px] font-bold rounded">개념 부족</span>
-                  <span className="px-2 py-1 bg-orange-50 text-orange-600 text-[10px] font-bold rounded">계산 실수</span>
+                {/* Visual: Mini Bar Chart */}
+                <div className="flex items-end justify-between h-16 px-6 pb-2 bg-slate-50 rounded-xl border border-slate-100">
+                  <div className="w-6 bg-emerald-200 rounded-t-sm h-[40%]" />
+                  <div className="w-6 bg-emerald-300 rounded-t-sm h-[60%]" />
+                  <div className="w-6 bg-emerald-500 rounded-t-sm h-[85%] relative">
+                    {/* Trend Badge */}
+                    <div className="absolute -top-5 left-1/2 -translate-x-1/2 bg-white border border-emerald-100 shadow-sm text-[9px] font-bold text-emerald-600 px-1.5 py-0.5 rounded-full whitespace-nowrap">
+                      +12.5
+                    </div>
+                  </div>
+                  <div className="w-6 bg-emerald-400 rounded-t-sm h-[70%]" />
                 </div>
               </motion.div>
 
-              {/* Feature 3: Student App */}
+              {/* Feature 3: Class & Student Management (Updated from Student App) */}
               <motion.div 
                 variants={fadeInUp}
                 initial="initial"
@@ -607,15 +616,22 @@ export default function HomePage() {
                 className="bg-white p-8 rounded-3xl border border-slate-200 shadow-sm hover:shadow-lg transition-all"
               >
                 <div className="w-12 h-12 bg-purple-50 rounded-2xl flex items-center justify-center text-purple-600 mb-6">
-                  <DevicePhoneMobileIcon className="w-6 h-6" />
+                  <UserGroupIcon className="w-6 h-6" />
                 </div>
-                <h3 className="text-xl font-bold text-slate-900 mb-3">자기주도 학습 학생 앱</h3>
+                <h3 className="text-xl font-bold text-slate-900 mb-3">효율적인 반/원생 관리</h3>
                 <p className="text-slate-600 text-sm leading-relaxed mb-6">
-                  학생들은 전용 대시보드에서 자신의 성적 추이를 확인하고, 
-                  CBT 환경에서 문제를 풀며 즉시 채점 결과를 확인할 수 있습니다.
+                  엑셀로 관리하던 학생 명부와 출석부, 이제 그만. 
+                  <br/>반별 수강생 관리부터 연락처, 상담 기록까지 <br/>하나의 시스템으로 통합 관리하세요.
                 </p>
-                <div className="aspect-video bg-slate-100 rounded-lg flex items-center justify-center text-xs text-slate-400 font-medium">
-                  Student Dashboard UI
+                <div className="bg-slate-50 p-4 rounded-xl border border-slate-100 flex flex-col gap-2">
+                  <div className="flex items-center justify-between text-xs text-slate-600 bg-white p-2 rounded border border-slate-200 shadow-sm">
+                      <span className="font-bold">김철수 (서울고)</span>
+                      <span className="text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded font-bold">출석</span>
+                  </div>
+                  <div className="flex items-center justify-between text-xs text-slate-600 bg-white p-2 rounded border border-slate-200 shadow-sm opacity-60">
+                      <span className="font-bold">이영희 (경기고)</span>
+                      <span className="text-red-500 bg-red-50 px-1.5 py-0.5 rounded font-bold">결석</span>
+                  </div>
                 </div>
               </motion.div>
             </div>
