@@ -135,7 +135,14 @@ export default function Header() {
           {/* 1. 로고 */}
           <Link href="/" className="flex items-center gap-2.5 flex-shrink-0 group">
              <div className="relative w-8 h-8 transition-transform group-hover:scale-110 duration-300">
-               <Image src="/images/logo.png" alt="RuleMakers Logo" fill className="object-contain" />
+               <Image 
+                src="/images/logo.png" 
+                alt="RuleMakers Logo" 
+                fill 
+                className="object-contain" 
+                priority // 로딩 우선순위 높임
+                sizes="32px" // 최적화 힌트 제공
+              />
              </div>
              <span className="text-xl font-extrabold tracking-tight text-slate-900">
                RuleMakers

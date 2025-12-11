@@ -352,7 +352,7 @@ function ExamBuilderContent() {
   };
 
   const toggleDifficulty = (d: Difficulty) => {
-    if (d === '킬러' && userPlan !== 'MAKERS') { toast.error("Maker's Plan 전용입니다."); return; }
+    if (d === '킬러' && userPlan !== 'STD_PREMIUM') { toast.error("연간 Plan 전용입니다."); return; }
     setDifficulties(prev => prev.includes(d) ? prev.filter(x => x !== d) : [...prev, d]);
   };
   

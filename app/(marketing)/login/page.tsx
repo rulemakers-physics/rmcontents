@@ -54,7 +54,7 @@ export default function LoginPage() {
       <div className="hidden lg:flex lg:w-1/3 flex-col justify-center bg-gray-900 p-16 text-white">
         <h1 className="mb-4 text-4xl font-bold">RuleMakers</h1>
         <p className="text-xl text-gray-300 font-light leading-relaxed">
-          강사님의 수업 준비 시간을 줄여드리는<br />
+          선생님의 수업 준비 시간을 줄여드리는<br />
           <span className="font-semibold text-white">가장 확실한 컨텐츠 파트너</span>
         </p>
         <div className="mt-12 space-y-8">
@@ -97,7 +97,7 @@ export default function LoginPage() {
             <div className="mb-8 text-center lg:hidden">
               <h1 className="text-3xl font-bold text-gray-900">RuleMakers</h1>
               <p className="mt-2 text-gray-600">
-                강사님을 위한 프리미엄 컨텐츠 서비스
+                선생님을 위한 프리미엄 컨텐츠 서비스
               </p>
             </div>
 
