@@ -31,12 +31,13 @@ export default function MakerGuidePage() {
             </span>
           </h1>
           <p className="text-lg text-slate-400 max-w-2xl mx-auto mb-10 leading-relaxed">
-            단원, 난이도, 유형별 정밀 필터링부터<br className="md:hidden"/> 간편한 편집까지.<br />
+            단원, 난이도, 유형별 맞춤형 필터링부터<br className="md:hidden"/> 간편한 편집까지.<br />
             클릭 몇 번으로 수업 자료 준비를 끝내세요.
           </p>
           <div className="flex justify-center gap-4">
             <Link 
-              href="/service/maker" 
+              href="/service/maker"
+              target="_blank"
               className="inline-flex items-center justify-center px-8 py-4 text-base font-bold text-slate-900 bg-white rounded-xl hover:bg-blue-50 transition-all shadow-lg hover:shadow-blue-500/20"
             >
               지금 바로 만들기
@@ -55,10 +56,10 @@ export default function MakerGuidePage() {
               <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center text-blue-600 mb-6">
                 <AdjustmentsHorizontalIcon className="w-6 h-6" />
               </div>
-              <h3 className="text-2xl font-bold text-slate-900 mb-4">초정밀 문항 필터링</h3>
+              <h3 className="text-2xl font-bold text-slate-900 mb-4">맞춤형 문항 필터링</h3>
               <p className="text-slate-600 leading-relaxed mb-6">
                 대단원, 중단원은 물론 <strong>난이도(기본/하/중/상/킬러)</strong>와 <strong>문항 유형(객관식/서술형)</strong>까지.
-                선생님이 원하는 조건에 딱 맞는 문제들만 AI가 즉시 선별하여 추천해 드립니다.
+                선생님이 원하는 조건에 딱 맞는 문제들만 즉시 선별해 드립니다.
               </p>
               <ul className="space-y-3 text-sm text-slate-500">
                 <li className="flex items-center gap-3">
@@ -67,7 +68,7 @@ export default function MakerGuidePage() {
                 </li>
                 <li className="flex items-center gap-3">
                   <CheckBadgeIcon className="w-5 h-5 text-blue-500" />
-                  <span>출제된 적 없는 문항 선별 기능</span>
+                  <span>사용되지 않은 문항 선별 기능</span>
                 </li>
               </ul>
             </div>
@@ -102,7 +103,7 @@ export default function MakerGuidePage() {
                 </li>
                 <li className="flex items-center gap-3">
                   <CheckBadgeIcon className="w-5 h-5 text-emerald-500" />
-                  <span>AI 기반 유사 문항 무제한 교체</span>
+                  <span>유사 문항 실시간 무제한 교체(One-Click)</span>
                 </li>
               </ul>
             </div>
@@ -151,6 +152,7 @@ export default function MakerGuidePage() {
         </p>
         <Link 
           href="/service/maker"
+          target="_blank"
           className="inline-flex items-center justify-center px-10 py-4 bg-white text-slate-900 font-bold rounded-xl hover:bg-slate-100 transition-all hover:scale-105 shadow-xl"
         >
           PASS 문제은행 시작하기

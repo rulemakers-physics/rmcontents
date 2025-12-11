@@ -727,10 +727,11 @@ function ExamBuilderContent() {
                                 <div className="relative w-12 h-12 bg-slate-50 rounded border border-slate-100 overflow-hidden flex-shrink-0">
                                   {prob.imageUrl ? (
                                     <img 
-                                      src={prob.imageUrl} 
-                                      alt="" 
+                                      src={getProxyImageSrc(prob.imageUrl)}
+                                      alt={`Problem ${prob.number}`}
                                       // ▼▼▼ [2] 이미지에 pointer-events-none 추가 (이미지 자체 클릭/드래그 차단) ▼▼▼
-                                      className="w-full h-full object-contain pointer-events-none" 
+                                      className="w-full h-full object-contain pointer-events-none"
+                                      onContextMenu={(e) => e.preventDefault()}
                                     />
                                   ) : (
                                     <div className="flex items-center justify-center h-full text-[10px] text-slate-300">Text</div>

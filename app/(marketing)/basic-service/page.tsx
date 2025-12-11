@@ -158,9 +158,10 @@ export default function BasicServicePage() {
         </p>
         <Link 
           href="/service/maker"
+          target="_blank"
           className="inline-flex items-center justify-center px-8 py-3 bg-blue-600 text-white font-bold rounded-lg hover:bg-blue-700 transition-colors shadow-md"
         >
-          시험지 제작 도구 실행하기
+          문제은행 바로가기
         </Link>
       </div>
     </section>

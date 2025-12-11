@@ -26,7 +26,7 @@ export default function LoginPage() {
       if (isFirstLogin === true) {
         router.push("/profile/setup");
       } else if (isFirstLogin === false) {
-        router.push("/dashboard");
+        router.push("/");
       }
     }
   }, [user, loading, isFirstLogin, router]);

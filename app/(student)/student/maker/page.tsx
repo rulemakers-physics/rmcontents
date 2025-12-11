@@ -26,6 +26,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useProblemFetcher } from "@/hooks/useProblemFetcher";
 import { Difficulty, DBProblem } from "@/types/problem"; 
 import { TEMPLATES, ExamTemplateStyle, LayoutMode } from "@/types/examTemplates";
+import { getProxyImageSrc } from "@/lib/imageHelper";
 
 function ExamBuilderContent() {
   const { userData, user } = useAuth();

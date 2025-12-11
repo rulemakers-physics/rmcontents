@@ -7,6 +7,7 @@ import { ExamTemplateStyle, LayoutMode } from "@/types/examTemplates";
 import { ExclamationCircleIcon } from "@heroicons/react/24/outline";
 import ReportIssueModal from "./ReportIssueModal";
 import { ExamPaperProblem, PrintOptions } from "@/types/exam";
+import { getProxyImageSrc } from "@/lib/imageHelper";
 
 // --- [상수 설정] A4 및 레이아웃 (96DPI 기준) ---
 const A4_HEIGHT_PX = 1123; // A4 높이 (297mm)
@@ -147,7 +148,7 @@ const ExamPaperLayout = forwardRef<HTMLDivElement, ExamPaperLayoutProps>(
     // 템플릿의 헤더 높이 파싱
     const headerH = parseInt(template.headerHeight) || 100; 
     const paddingY = 5; 
-
+    
     // 문제지 페이지네이션
     const questionPages = useMemo(() => {
       if (!printOptions.questions) return [];
@@ -373,13 +374,14 @@ const ExamPaperLayout = forwardRef<HTMLDivElement, ExamPaperLayoutProps>(
                                    {/* 투명 보호막: 이미지를 덮어서 우클릭/저장을 막음 */}
                                    <div className="protect-overlay" />
                                    
-                                   {/* 원본 이미지: 클릭 이벤트 무시(pointer-events-none) 설정 */}
-                                   <img 
-                                     src={prob.imageUrl} 
-                                     alt={`Problem ${prob.number}`} 
-                                     className="w-full h-auto object-contain max-h-[800px] pointer-events-none" 
-                                   />
-                                </div>
+                                   {/* [수정] src에 getProxyImageSrc 적용 */}
+                                    <img 
+                                      src={getProxyImageSrc(prob.imageUrl)}
+                                      alt={`Problem ${prob.number}`} 
+                                      className="w-full h-auto object-contain max-h-[800px] pointer-events-none" 
+                                      onContextMenu={(e) => e.preventDefault()}
+                                    />
+                                  </div>
                                 /* ▲▲▲ 여기까지 수정▲▲▲ */
                               ) : (
                                 <p className={`whitespace-pre-wrap leading-relaxed ${template.problemFontSize} text-slate-800`}>

@@ -355,7 +355,8 @@ export default function HomePage() {
                 
                 {/* Primary Button: 문제은행 (Gradient & Glow) */}
                 <Link 
-                  href="/service/maker" 
+                  href="/service/maker"
+                  target="_blank"
                   className="group relative flex items-center justify-center gap-2 px-8 py-4 bg-gradient-to-r from-blue-600 to-sky-600 hover:from-blue-500 hover:to-sky-500 text-white text-lg font-bold rounded-xl transition-all hover:scale-[1.02] shadow-lg shadow-blue-900/50 ring-1 ring-white/20"
                 >
                   문제은행 무료 체험
@@ -391,7 +392,7 @@ export default function HomePage() {
             </motion.div>
           </div>
         </section>
-        <TrustBanner />
+        {/*<TrustBanner />*/}
          {/* --- 2. PASS Question Bank (Light Theme, Text Left - Image Right) --- */}
         <section className="py-32 bg-white relative overflow-hidden">
           <div className="container mx-auto px-6 max-w-6xl">
@@ -676,7 +677,7 @@ export default function HomePage() {
                     <div className="flex-shrink-0 w-8 h-8 rounded-full bg-slate-700 text-slate-300 flex items-center justify-center font-bold text-sm ring-4 ring-slate-800">2</div>
                     <div>
                       <h4 className="text-lg font-bold text-slate-200">전문가 분석 및 제작</h4>
-                      <p className="text-sm text-slate-400">서울대 출신 연구진이 문항을 선별하고 교차 검수를 진행합니다.</p>
+                      <p className="text-sm text-slate-400">맞춤형 컨텐츠를 제작하고 교차 검수를 진행합니다.</p>
                     </div>
                   </div>
                   <div className="flex items-start gap-4">
@@ -745,7 +746,6 @@ export default function HomePage() {
                 viewport={{ once: true }}
                 className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-900/30 border border-indigo-700/50 text-indigo-300 text-xs font-bold uppercase tracking-wider mb-4"
               >
-                <SparklesIcon className="w-3 h-3" />
                 Core Competency
               </motion.div>
               
@@ -793,10 +793,10 @@ export default function HomePage() {
                 bgClass="group-hover:bg-indigo-500/10 group-hover:border-indigo-500/50"
               />
 
-              {/* Card 3: 서울대 연구진 */}
+              {/* Card 3: 교차 검수 */}
               <PremiumFeatureCard
                 icon={AcademicCapIcon}
-                title="서울대 연구진 교차 검수"
+                title="꼼꼼한 교차 검수"
                 description="서울대 사범대 출신 전문 연구진과 현직 강사로 구성된 검수팀이 교차 검수를 진행합니다."
                 delay={0.2}
                 colorClass="text-emerald-400 group-hover:text-emerald-300"
@@ -972,7 +972,7 @@ export default function HomePage() {
                 promotionText="2025년 Early Bird 특가"
                 features={[
                 { text: "기본 문제은행 서비스", included: true },
-                { text: "기출 분석 및 내신대비 N제 & 모의고사", included: true },
+                { text: "기출 분석 및 내신대비 모의고사 4회분 제공", included: true },
                 { text: "교육청 모의고사 분석 및 유사 문항", included: true },
                 { text: "주요 개념서 및 부교재 유사 문항", included: true },
                 { text: "자체 개발 고난도 문항 풀", included: false },
@@ -1384,13 +1384,13 @@ const TrustBanner = () => {
   // 예시 데이터: 실제로는 제휴 학교명이나 학원 로고 이미지를 넣으면 더 좋습니다.
   const brands = [
     "서울대학교 사범대학 연구진",
-    "샤인학원",
-    "목동 C 수학",
-    "서초 M 아카데미",
-    "반포 H 고등관",
-    "분당 E 입시센터",
-    "중계 T 학원",
-    "대치 K 학원",
+    "샤인학원 고등 본관",
+    "EG학원 금천 캠퍼스",
+    "EG학원 난곡 캠퍼스",
+    "시대인재 손은정 선생님",
+    "시대인재 조윤호 선생님",
+    "시대인재 박천익 선생님",
+    "샤인수학과학학원"
   ];
 
   // 끊김 없는 무한 스크롤을 위해 배열을 2배로 복사

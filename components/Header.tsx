@@ -20,7 +20,8 @@ import {
   Squares2X2Icon,
   PencilSquareIcon,
   Cog6ToothIcon,
-  CreditCardIcon
+  CreditCardIcon,
+  BeakerIcon
 } from "@heroicons/react/24/outline";
 
 import NotificationBell from "./NotificationBell";
@@ -209,6 +210,14 @@ export default function Header() {
               <div className="w-24 h-9 bg-slate-100 animate-pulse rounded-lg"></div>
             ) : user ? (
               <div className="flex items-center gap-3">
+                <Link 
+                  href="/service/maker"
+                  target="_blank"
+                  className="hidden md:flex items-center gap-1.5 px-3 py-2 text-base font-bold text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors border border-blue-100"
+                >
+                  <BeakerIcon className="w-4 h-4" />
+                  문제은행
+                </Link>
                 {/* 실제 기능하는 알림 벨 */}
                 <NotificationBell />
 
@@ -281,13 +290,8 @@ export default function Header() {
               </div>
             ) : (
               <div className="hidden md:flex items-center gap-2">
-                 <Link href="/login" className="text-sm font-bold text-slate-500 hover:text-slate-900 px-3 py-2 transition-colors">로그인</Link>
-                 <Link 
-                  href="/login" 
-                  className="px-5 py-2.5 bg-slate-900 text-white text-sm font-bold rounded-lg hover:bg-slate-800 hover:shadow-lg hover:-translate-y-0.5 transition-all"
-                >
-                  시작하기
-                </Link>
+                 {/* [수정] 시작하기 버튼 삭제, 로그인 버튼만 남김 */}
+                 <Link href="/login" className="text-m font-bold text-slate-500 hover:text-slate-900 px-3 py-2 transition-colors">로그인</Link>
               </div>
             )}
 
