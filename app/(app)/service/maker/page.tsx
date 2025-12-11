@@ -50,6 +50,9 @@ function ExamBuilderContent() {
   const [excludeUsed, setExcludeUsed] = useState(true); // 기본값: 제외함
   const [usedProblemIds, setUsedProblemIds] = useState<string[]>([]);
 
+  // [NEW] 교육과정 외 문항 제외 상태
+  const [excludeNonCurriculum, setExcludeNonCurriculum] = useState(false);
+
   // 메타데이터 & 옵션
   const [examTitle, setExamTitle] = useState("제목을 입력해주세요");
   const [instructorName, setInstructorName] = useState(userData?.name || "선생님 성함");
@@ -151,6 +154,7 @@ function ExamBuilderContent() {
     difficulties,
     excludedProblemIds: excludeUsed ? usedProblemIds : [],
     questionTypes: targetQuestionTypes, // [신규] 전달
+    excludeNonCurriculum: excludeNonCurriculum,
   });
 
   // [신규] 체크박스 핸들러
@@ -188,7 +192,8 @@ function ExamBuilderContent() {
           solutionUrl: p.solutionUrl || null,
           // DB의 높이 정보 전달
           height: (p as any).imgHeight,         
-          solutionHeight: (p as any).solutionHeight
+          solutionHeight: (p as any).solutionHeight,
+          materialLevel: p.materialLevel,
         }));
         
       setExamProblems(formatted);
@@ -570,24 +575,41 @@ function ExamBuilderContent() {
               </div>
               {/* ▲▲▲ [신규 끝] ▲▲▲ */}
               
-              {/* [신규] 문항 필터 (사용 문항 제외) */}
-              <div className="pt-4 border-t border-gray-100">
+              {/* ▼▼▼ [NEW] 문항 필터 섹션 (기존 필터 섹션 근처에 추가) ▼▼▼ */}
+             <div className="pt-4 border-t border-gray-100">
                 <h3 className="text-sm font-bold text-gray-900 mb-3 flex items-center gap-2">
                   <CheckSquare className="w-4 h-4"/> 문항 필터
                 </h3>
-                <label className="flex items-center gap-2 cursor-pointer p-2 border rounded-lg hover:bg-gray-50 bg-white">
-                  <input 
-                    type="checkbox" 
-                    checked={excludeUsed} 
-                    onChange={(e) => setExcludeUsed(e.target.checked)} 
-                    className="rounded text-blue-600 focus:ring-blue-500 w-4 h-4" 
-                  />
-                  <div>
-                    <span className="text-sm font-bold text-slate-700 block">최근 1개월 내 사용 문항 제외</span>
-                    <span className="text-xs text-slate-400">보관함에 저장된 기록 기준 ({usedProblemIds.length}개 제외됨)</span>
-                  </div>
-                </label>
-              </div>
+                <div className="space-y-2">
+                  {/* 1. 사용 문항 제외 (기존) */}
+                  <label className="flex items-center gap-2 cursor-pointer p-2 border rounded-lg hover:bg-gray-50 bg-white">
+                    <input 
+                      type="checkbox" 
+                      checked={excludeUsed} 
+                      onChange={(e) => setExcludeUsed(e.target.checked)} 
+                      className="rounded text-blue-600 w-4 h-4" 
+                    />
+                    <div>
+                      <span className="text-sm font-bold text-slate-700 block">사용 문항 제외</span>
+                      <span className="text-xs text-slate-400">최근 1개월 내 사용된 문제 제외</span>
+                    </div>
+                  </label>
+
+                  {/* 2. 교육과정 외 문항 제외 (신규) */}
+                  <label className="flex items-center gap-2 cursor-pointer p-2 border rounded-lg hover:bg-gray-50 bg-white">
+                    <input 
+                      type="checkbox" 
+                      checked={excludeNonCurriculum} 
+                      onChange={(e) => setExcludeNonCurriculum(e.target.checked)} 
+                      className="rounded text-blue-600 w-4 h-4" 
+                    />
+                    <div>
+                      <span className="text-sm font-bold text-slate-700 block">교육과정 외 문항 제외</span>
+                      <span className="text-xs text-slate-400">심화 교과 및 기타 문항 제외 (교과서 중심)</span>
+                    </div>
+                  </label>
+                </div>
+             </div>
 
               {/* 문항 수 */}
               <div className="pt-4 border-t border-gray-100">
@@ -628,6 +650,24 @@ function ExamBuilderContent() {
                 </div>
               </div>
 
+              <div className="bg-slate-50 p-3 rounded-lg space-y-3 border border-slate-200">
+                   {/* [수정] 기본(Dense) 모드일 때만 문항 간격 조절 표시 */}
+                   {layoutMode === 'dense' && (
+                     <div>
+                        <div className="flex justify-between text-xs mb-1 text-slate-600">
+                           <span>문제 간격 (px)</span>
+                           <span className="font-bold text-blue-600">{printOptions.questionPadding}</span>
+                        </div>
+                        <input 
+                          type="range" min="10" max="100" step="5" 
+                          value={printOptions.questionPadding} 
+                          onChange={(e) => setPrintOptions(prev => ({...prev, questionPadding: Number(e.target.value)}))}
+                          className="w-full h-1.5 bg-gray-300 rounded-lg appearance-none cursor-pointer accent-blue-600" 
+                        />
+                     </div>
+                   )}
+              </div>
+
               {/* 옵션 및 여백 */}
               <div className="pt-4 border-t border-gray-100">
                 <h3 className="text-sm font-bold text-gray-900 mb-3 flex items-center gap-2">
@@ -647,24 +687,6 @@ function ExamBuilderContent() {
                     <input type="checkbox" checked={printOptions.solutions} onChange={(e) => setPrintOptions(prev => ({...prev, solutions: e.target.checked}))} className="rounded text-blue-600" />
                     <span className="text-sm text-slate-700">해설지 포함</span>
                   </label>
-                </div>
-
-                <div className="bg-slate-50 p-3 rounded-lg space-y-3 border border-slate-200">
-                   {/* [수정] 기본(Dense) 모드일 때만 문항 간격 조절 표시 */}
-                   {layoutMode === 'dense' && (
-                     <div>
-                        <div className="flex justify-between text-xs mb-1 text-slate-600">
-                           <span>문제 간격 (px)</span>
-                           <span className="font-bold text-blue-600">{printOptions.questionPadding}</span>
-                        </div>
-                        <input 
-                          type="range" min="10" max="100" step="5" 
-                          value={printOptions.questionPadding} 
-                          onChange={(e) => setPrintOptions(prev => ({...prev, questionPadding: Number(e.target.value)}))}
-                          className="w-full h-1.5 bg-gray-300 rounded-lg appearance-none cursor-pointer accent-blue-600" 
-                        />
-                     </div>
-                   )}
                 </div>
               </div>
 

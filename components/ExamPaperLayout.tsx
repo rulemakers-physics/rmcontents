@@ -364,6 +364,27 @@ const ExamPaperLayout = forwardRef<HTMLDivElement, ExamPaperLayoutProps>(
                               >
                                 {formatNumber(prob.number)}
                               </span>
+                              {/* ▼▼▼ [수정] 3. 소단원(Minor Topic): 번호 아래 선에 맞춤 ▼▼▼ */}
+                              {prob.minorTopic && (
+                              <span className="ml-1 text-[8.5px] font-bold text-slate-500 tracking-tight translate-x-[-2px] translate-y-[5px]">
+                                  {prob.minorTopic}
+                              </span>
+                              )}
+
+                              {/* 4. 난이도 표시 (주석 유지) */}
+                              {/* {prob.difficulty && (
+                              <span className="ml-2 text-[10px] font-medium text-slate-400">
+                                  난이도: {prob.difficulty}
+                              </span>
+                              )}
+                              */}
+
+                              {/* ▼▼▼ [수정] 5. 소재 수준 태그: 오른쪽 끝 정렬 (ml-auto) ▼▼▼ */}
+                              {prob.materialLevel && prob.materialLevel !== "학교 교과서" && (
+                              <span className="ml-auto px-1.5 py-0.5 rounded border border-slate-400 text-[10px] font-bold text-slate-500 bg-white whitespace-nowrap mb-[1px]">
+                                  심화 교과
+                              </span>
+                              )}
                            </div>
                            
                            {/* 문항 본문 */}

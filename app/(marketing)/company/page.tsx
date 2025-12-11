@@ -86,7 +86,7 @@ const BRANCH_LIST = [
     id: 6,
     name: "샤인독서실 동작 본관",
     address: "주소를 입력해주세요",
-    phone: "02-0000-0000",
+    phone: "02-6267-8262",
     type: "Study Center",
   },
 ];
@@ -850,42 +850,6 @@ export default function CompanyPage() {
           </ul>
         </div>
       </div>
-
-      {/* Foundation (The Origin) */}
-      <div className="relative pl-8 md:pl-12">
-        <span className="absolute -left-[9px] top-2 h-4 w-4 rounded-full border-4 border-white bg-slate-200 shadow-md"></span>
-        
-        <div className="mb-6">
-          <h3 className="text-xl font-bold text-slate-400 uppercase tracking-wider">The Origin</h3>
-          <p className="text-sm text-slate-400">RuleMakers 설립 이전 (2017 ~ 2021)</p>
-        </div>
-        
-        {/* Timeline style items */}
-        <div className="grid gap-6 border-l border-slate-200 ml-1 pl-6 py-2">
-          <div className="relative group">
-             <span className="absolute -left-[31px] top-2 h-2.5 w-2.5 rounded-full bg-slate-300 border-2 border-white group-hover:bg-blue-400 transition-colors"></span>
-             <div className="flex flex-col sm:flex-row sm:items-baseline gap-1 sm:gap-4">
-               <span className="font-bold text-slate-700 text-lg w-12">2021</span>
-               <span className="text-slate-600 font-medium">RuleBreakersBooks 법인 설립</span>
-             </div>
-          </div>
-          <div className="relative group">
-             <span className="absolute -left-[31px] top-2 h-2.5 w-2.5 rounded-full bg-slate-300 border-2 border-white group-hover:bg-blue-400 transition-colors"></span>
-             <div className="flex flex-col sm:flex-row sm:items-baseline gap-1 sm:gap-4">
-               <span className="font-bold text-slate-700 text-lg w-12">2019</span>
-               <span className="text-slate-600">RuleBreakers Contents Team 결성</span>
-             </div>
-          </div>
-          <div className="relative group">
-             <span className="absolute -left-[31px] top-2 h-2.5 w-2.5 rounded-full bg-slate-300 border-2 border-white group-hover:bg-blue-400 transition-colors"></span>
-             <div className="flex flex-col sm:flex-row sm:items-baseline gap-1 sm:gap-4">
-               <span className="font-bold text-slate-700 text-lg w-12">2018</span>
-               <span className="text-slate-600">시대인재 컨텐츠팀 출제 위원 활동</span>
-             </div>
-          </div>
-        </div>
-      </div>
-
     </div>
   </div>
 </section>

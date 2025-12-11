@@ -13,7 +13,8 @@ export interface ExamPaperProblem {
   majorTopic?: string;
   minorTopic?: string;
   height?: number;         
-  solutionHeight?: number; 
+  solutionHeight?: number;
+  materialLevel?: string;
 }
 
 export interface SavedExam {

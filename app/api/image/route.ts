@@ -8,8 +8,11 @@ export async function GET(request: NextRequest) {
   const problemId = searchParams.get("id");
   const path = searchParams.get("path");
 
-  // [보안 1] 브라우저 주소창 직접 입력 차단 (이미지 태그 요청만 허용)
+  // [보안] 브라우저 주소창 직접 입력 차단 (이미지 태그 요청만 허용)
   const fetchDest = request.headers.get("sec-fetch-dest");
+  // 주의: 리다이렉트 방식에서는 브라우저가 최종 URL로 이동할 때 이 헤더가 바뀔 수 있으므로,
+  // 너무 엄격하게 막으면 이미지가 안 뜰 수 있습니다. 
+  // 일단 기존 로직을 유지하되, 문제 발생 시 이 부분은 완화가 필요할 수 있습니다.
   if (fetchDest === "document") {
     return new NextResponse("Access Denied: Direct access not allowed.", { status: 403 });
   }
@@ -17,8 +20,9 @@ export async function GET(request: NextRequest) {
   try {
     let storagePath = "";
 
-    // Case A: 문항 ID로 요청온 경우 (문항 코드 은폐를 위해 DB 조회)
+    // Case A: 문항 ID로 요청온 경우 (DB 조회)
     if (problemId) {
+      // 1. DB에서 파일 경로 조회 (가볍고 빠름)
       const docRef = adminDb.collection("problems").doc(problemId);
       const docSnap = await docRef.get();
 
@@ -29,29 +33,21 @@ export async function GET(request: NextRequest) {
       const data = docSnap.data();
       const originalUrl = data?.imgUrl || "";
 
-      // ▼▼▼ [수정됨] URL 형식에 따른 스토리지 경로 추출 로직 ▼▼▼
+      // URL에서 스토리지 경로 추출 로직 (기존 유지)
       if (originalUrl.includes("/o/")) {
-        // 1. Firebase Client SDK 형식 (firebasestorage.googleapis.com)
         const split = originalUrl.split("/o/");
         if (split.length > 1) {
           storagePath = decodeURIComponent(split[1].split("?")[0]);
         }
       } else if (originalUrl.includes("storage.googleapis.com")) {
-        // 2. GCS Public URL 형식 (storage.googleapis.com)
-        // 예: https://storage.googleapis.com/버킷명/폴더/파일명.png
         const urlWithoutProtocol = originalUrl.replace(/^https?:\/\//, '');
         const parts = urlWithoutProtocol.split('/');
-        
-        // parts[0]: 도메인, parts[1]: 버킷명, parts[2~]: 파일 경로
         if (parts.length >= 3) {
-           // 버킷명 다음부터 끝까지 합쳐서 경로 생성
            storagePath = decodeURIComponent(parts.slice(2).join('/'));
         }
       }
-      // ▲▲▲ [수정 끝] ▲▲▲
-      
     } 
-    // Case B: 경로로 직접 요청온 경우 (로고 등)
+    // Case B: 경로로 직접 요청온 경우
     else if (path) {
       storagePath = decodeURIComponent(path);
     } else {
@@ -62,28 +58,20 @@ export async function GET(request: NextRequest) {
       return new NextResponse("Invalid Image Path", { status: 404 });
     }
 
-    // Storage 파일 스트리밍
+    // 2. Signed URL 생성 (핵심 변경 사항)
+    // 파일을 다운로드하는 대신, 구글 서버에서 직접 받을 수 있는 임시 URL을 발급합니다.
     const bucket = adminStorage.bucket();
     const file = bucket.file(storagePath);
-    const [exists] = await file.exists();
-    
-    if (!exists) {
-        return new NextResponse("File not found in storage", { status: 404 });
-    }
 
-    const [fileBuffer] = await file.download();
-    const [metadata] = await file.getMetadata();
-    const contentType = metadata.contentType || "image/png";
+    // 유효기간 1시간짜리 URL 생성
+    const [signedUrl] = await file.getSignedUrl({
+      action: 'read',
+      expires: Date.now() + 60 * 60 * 1000, // 1시간 후 만료
+    });
 
-    const headers = new Headers();
-    headers.set("Content-Type", contentType);
-    headers.set("Cache-Control", "public, max-age=31536000, immutable");
-    
-    // [보안 2] 다운로드 방지 헤더
-    headers.set("Content-Disposition", "inline"); 
-    headers.set("X-Content-Type-Options", "nosniff");
-
-    return new NextResponse(new Blob([fileBuffer as any]), { headers });
+    // 3. 브라우저를 해당 URL로 리다이렉트 (307 Temporary Redirect)
+    // 브라우저는 이 응답을 받자마자 즉시 구글 서버에서 이미지를 다운로드합니다.
+    return NextResponse.redirect(signedUrl, 307);
 
   } catch (error) {
     console.error("Secure Image Proxy Error:", error);

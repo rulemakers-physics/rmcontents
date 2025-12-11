@@ -11,6 +11,7 @@ interface FilterProps {
   difficulties: Difficulty[];
   excludedProblemIds?: string[];
   questionTypes?: string[]; // ['SELECTION', 'ESSAY']
+  excludeNonCurriculum?: boolean;
 }
 
 export function useProblemFetcher({ 
@@ -18,7 +19,8 @@ export function useProblemFetcher({
   selectedMinorTopics, 
   difficulties,
   excludedProblemIds = [],
-  questionTypes = ['SELECTION', 'ESSAY'] // 기본값 설정
+  questionTypes = ['SELECTION', 'ESSAY'], // 기본값 설정
+  excludeNonCurriculum = false
 }: FilterProps) {
   const [problems, setProblems] = useState<DBProblem[]>([]);
   const [loading, setLoading] = useState(false);
@@ -78,7 +80,11 @@ export function useProblemFetcher({
             return questionTypes.includes(type);
           });
         }
-
+        // ▼▼▼ [NEW] 소재 수준 필터링 (교육과정 외 제외) ▼▼▼
+        // "학교 교과서"가 아닌 것("그 외", "심화 교과")을 제외합니다.
+        if (excludeNonCurriculum) {
+          allFetched = allFetched.filter(p => p.materialLevel === "학교 교과서");
+        }
         // C. 사용된 문항 제외 (최근 1달 내 사용된 문항)
         if (excludedProblemIds.length > 0) {
           // 배열 검색 성능(O(n))보다 Set 검색 성능(O(1))이 월등하므로 변환
@@ -111,7 +117,8 @@ export function useProblemFetcher({
     JSON.stringify(selectedMinorTopics), 
     JSON.stringify(difficulties), 
     JSON.stringify(excludedProblemIds), 
-    JSON.stringify(questionTypes)
+    JSON.stringify(questionTypes),
+    excludeNonCurriculum
   ]);
 
   return { problems, loading };

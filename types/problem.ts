@@ -26,7 +26,9 @@ export interface DBProblem {
   imgHeight?: number;      
   solutionHeight?: number;
   // [신규] 유사 문항 리스트 필드 추가
-  similarProblems?: SimilarProblemInfo[]; 
+  similarProblems?: SimilarProblemInfo[];
+  // [NEW] 소재 수준 필드 추가
+  materialLevel?: string; // "학교 교과서" | "그 외" | "심화 교과"
   createdAt: any;
 }
 
