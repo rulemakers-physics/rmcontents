@@ -29,6 +29,7 @@ import { ref, uploadBytes, getDownloadURL } from "firebase/storage"; // [신규]
 import { storage } from "@/lib/firebase"; // [신규] storage 인스턴스 추가
 import { v4 as uuidv4 } from "uuid"; // [신규] 파일명 생성을 위해 uuid 필요 (없으면 설치 필요, 혹은 Date.now() 사용)
 import { ExamPaperProblem, PrintOptions } from "@/types/exam";
+import { getSecureImageSrc, getProxyImageSrc } from "@/lib/imageHelper";
 
 function ExamBuilderContent() {
   const { userData, user } = useAuth();
@@ -727,7 +728,7 @@ function ExamBuilderContent() {
                                 <div className="relative w-12 h-12 bg-slate-50 rounded border border-slate-100 overflow-hidden flex-shrink-0">
                                   {prob.imageUrl ? (
                                     <img 
-                                      src={getProxyImageSrc(prob.imageUrl)}
+                                      src={getSecureImageSrc(prob.id)}
                                       alt={`Problem ${prob.number}`}
                                       // ▼▼▼ [2] 이미지에 pointer-events-none 추가 (이미지 자체 클릭/드래그 차단) ▼▼▼
                                       className="w-full h-full object-contain pointer-events-none"

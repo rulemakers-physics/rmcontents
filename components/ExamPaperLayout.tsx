@@ -7,7 +7,7 @@ import { ExamTemplateStyle, LayoutMode } from "@/types/examTemplates";
 import { ExclamationCircleIcon } from "@heroicons/react/24/outline";
 import ReportIssueModal from "./ReportIssueModal";
 import { ExamPaperProblem, PrintOptions } from "@/types/exam";
-import { getProxyImageSrc } from "@/lib/imageHelper";
+import { getSecureImageSrc, getProxyImageSrc } from "@/lib/imageHelper";
 
 // --- [상수 설정] A4 및 레이아웃 (96DPI 기준) ---
 const A4_HEIGHT_PX = 1123; // A4 높이 (297mm)
@@ -202,7 +202,7 @@ const ExamPaperLayout = forwardRef<HTMLDivElement, ExamPaperLayoutProps>(
                 <div className="flex flex-col items-end gap-2">
                   {/* 해설지에도 로고 표시 (선택사항) */}
                   {academyLogo && (
-                    <img src={academyLogo} alt="Academy Logo" className="h-12 object-contain" />
+                    <img src={getProxyImageSrc(academyLogo)} alt="Academy Logo" className="h-12 object-contain" />
                   )}
                   </div>
                 </div>
@@ -235,7 +235,7 @@ const ExamPaperLayout = forwardRef<HTMLDivElement, ExamPaperLayoutProps>(
                 <div className="flex flex-col items-end gap-2">
                   {/* [헤더] 학원 로고: 성명란 위에 배치 */}
                   {academyLogo && (
-                    <img src={academyLogo} alt="Academy Logo" className="h-12 object-contain" />
+                    <img src={getProxyImageSrc(academyLogo)} alt="Academy Logo" className="h-12 object-contain" />
                   )}
 
                   {template.showScoreBox && (
@@ -265,7 +265,7 @@ const ExamPaperLayout = forwardRef<HTMLDivElement, ExamPaperLayoutProps>(
               <div className="flex flex-col items-end">
                 {/* [수정] 로고가 있으면 페이지 번호 대신 로고를 크게 표시 */}
                 {academyLogo ? (
-                  <img src={academyLogo} alt="Academy Logo" className="h-12 object-contain" />
+                  <img src={getProxyImageSrc(academyLogo)} alt="Academy Logo" className="h-12 object-contain" />
                 ) : (
                   // 로고가 없을 때만 페이지 번호 표시 (기존 방식 유지)
                   <div className="flex items-center gap-2 text-xs text-slate-400">
@@ -376,7 +376,7 @@ const ExamPaperLayout = forwardRef<HTMLDivElement, ExamPaperLayoutProps>(
                                    
                                    {/* [수정] src에 getProxyImageSrc 적용 */}
                                     <img 
-                                      src={getProxyImageSrc(prob.imageUrl)}
+                                      src={getSecureImageSrc(prob.id)}
                                       alt={`Problem ${prob.number}`} 
                                       className="w-full h-auto object-contain max-h-[800px] pointer-events-none" 
                                       onContextMenu={(e) => e.preventDefault()}
@@ -504,7 +504,7 @@ const ExamPaperLayout = forwardRef<HTMLDivElement, ExamPaperLayoutProps>(
                         <div className="text-sm text-gray-700 mt-1 leading-relaxed">
                            {prob.solutionUrl ? (
                              /* eslint-disable-next-line @next/next/no-img-element */
-                             <img src={prob.solutionUrl} alt="해설" className="w-full h-auto object-contain" />
+                             <img src={getProxyImageSrc(prob.solutionUrl)} alt="해설" className="w-full h-auto object-contain" />
                            ) : (
                              <p className="whitespace-pre-wrap">{prob.content || "해설 없음"}</p>
                            )}
