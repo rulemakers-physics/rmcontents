@@ -815,7 +815,7 @@ function ExamBuilderContent() {
                   )}
                 </div>
 
-                {/* 템플릿 선택 */}
+                {/* 템플릿 선택 
                 <div className="pt-4 border-t border-gray-100">
                    <h3 className="text-sm font-bold text-gray-900 mb-3 flex items-center gap-2"><LayoutTemplate className="w-4 h-4"/> 서식 디자인</h3>
                    <div className="grid grid-cols-1 gap-2">
@@ -826,7 +826,7 @@ function ExamBuilderContent() {
                      ))}
                    </div>
                 </div>
-
+                */}
                 {/* 옵션 및 여백 */}
                 <div className="pt-4 border-t border-gray-100 pb-10">
                   <h3 className="text-sm font-bold text-gray-900 mb-3 flex items-center gap-2">
