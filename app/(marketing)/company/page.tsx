@@ -72,14 +72,14 @@ const BRANCH_LIST = [
     id: 4,
     name: "EG학원 금천관",
     address: "서울 금천구 남부순환로 1372 2층 EG학원",
-    phone: "02-0000-0000",
+    phone: "02-858-4244",
     type: "Academy",
   },
   {
     id: 5,
     name: "EG학원 난곡관",
     address: "서울 관악구 남부순환로 1495 2-3층",
-    phone: "02-0000-0000",
+    phone: "02-830-0515",
     type: "Academy",
   },
   {

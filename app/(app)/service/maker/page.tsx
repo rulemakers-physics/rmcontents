@@ -750,7 +750,7 @@ function ExamBuilderContent() {
                                 <div className="relative w-12 h-12 bg-slate-50 rounded border border-slate-100 overflow-hidden flex-shrink-0">
                                   {prob.imageUrl ? (
                                     <img 
-                                      src={getSecureImageSrc(prob.id)}
+                                      src={getSecureImageSrc(prob.imageUrl)}
                                       alt={`Problem ${prob.number}`}
                                       // ▼▼▼ [2] 이미지에 pointer-events-none 추가 (이미지 자체 클릭/드래그 차단) ▼▼▼
                                       className="w-full h-full object-contain pointer-events-none"

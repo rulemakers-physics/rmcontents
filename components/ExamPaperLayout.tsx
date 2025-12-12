@@ -223,7 +223,7 @@ const ExamPaperLayout = forwardRef<HTMLDivElement, ExamPaperLayoutProps>(
                    <span className="text-xs text-slate-500 font-bold tracking-widest mb-1 block">
                      2025학년도 1학기 대비
                    </span>
-                   <h1 className={`font-extrabold tracking-tight text-slate-900 ${template.titleSize}`}>
+                   <h1 className={`font-semibold tracking-tight text-slate-900 ${template.titleSize}`}>
                      {title}
                    </h1>
                    <div className="mt-1 text-xs font-medium text-slate-500">
@@ -397,7 +397,7 @@ const ExamPaperLayout = forwardRef<HTMLDivElement, ExamPaperLayoutProps>(
                                    
                                    {/* [수정] src에 getProxyImageSrc 적용 */}
                                     <img 
-                                      src={getSecureImageSrc(prob.id)}
+                                      src={getSecureImageSrc(prob.imageUrl)}
                                       alt={`Problem ${prob.number}`} 
                                       className="w-full h-auto object-contain max-h-[800px] pointer-events-none" 
                                       onContextMenu={(e) => e.preventDefault()}
