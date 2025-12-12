@@ -340,11 +340,19 @@ export default function StoragePage() {
   // [수정] 인쇄 모달 열기 핸들러
   const handleOpenPrint = (exam: SavedExam) => {
     // ExamPrintModal용 데이터 매핑
-    const printData = {
+    const printData: SavedExam = {
       id: exam.id,
+      userId: user!.uid,
       title: exam.title,
-      instructorName: exam.instructorName, // 학생 이름 or 강사 이름
-      academyLogo: exam.academyLogo, // [신규] 로고 전달
+      // [New] 추가된 메타데이터 매핑
+      subTitle: exam.subTitle,
+      academyName: exam.academyName,
+      instructorName: exam.instructorName,
+      academyLogo: exam.academyLogo,
+      
+      createdAt: exam.createdAt,
+      problemCount: exam.problemCount,
+      folderId: exam.folderId,
       
       problems: exam.problems?.map((p: any) => ({
         ...p,

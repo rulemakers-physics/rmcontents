@@ -21,6 +21,10 @@ export interface SavedExam {
   id: string;
   userId: string;
   title: string;
+  // [신규] 부제목 및 학원명 필드 추가
+  subTitle?: string;
+  academyName?: string;
+  
   instructorName: string;
   
   createdAt: Timestamp | Date;
@@ -33,7 +37,6 @@ export interface SavedExam {
   // 레이아웃 설정
   layoutMode?: LayoutMode;
   questionPadding?: number; 
-  // [삭제됨] solutionPadding 
   
   // 학원 로고
   academyLogo?: string | null;

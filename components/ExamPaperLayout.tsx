@@ -21,6 +21,7 @@ const formatNumber = (num: number) => {
   return num.toString().padStart(2, '0');
 };
 
+// [수정] Props 인터페이스 확장
 interface ExamPaperLayoutProps {
   problems: ExamPaperProblem[]; 
   title: string;
@@ -28,7 +29,10 @@ interface ExamPaperLayoutProps {
   template: ExamTemplateStyle;
   printOptions: PrintOptions;
   isTeacherVersion?: boolean;
-  academyLogo?: string | null; // 로고 Prop 명시
+  academyLogo?: string | null;
+  // [New] 추가된 Props
+  subTitle?: string;
+  academyName?: string;
 }
 
 // --- [알고리즘] 문항 분배 함수 ---
@@ -141,7 +145,7 @@ function distributeItems(
 }
 
 const ExamPaperLayout = forwardRef<HTMLDivElement, ExamPaperLayoutProps>(
-  ({ problems = [], title, instructor, template, printOptions, isTeacherVersion, academyLogo }, ref) => {
+  ({ problems = [], title, instructor, template, printOptions, isTeacherVersion, academyLogo, subTitle, academyName }, ref) => {
     
     const [reportTarget, setReportTarget] = React.useState<ExamPaperProblem | null>(null);
 
@@ -184,7 +188,7 @@ const ExamPaperLayout = forwardRef<HTMLDivElement, ExamPaperLayoutProps>(
     }, [problems, printOptions.solutions, headerH]);
 
 
-    // --- 헤더 렌더링 ---
+    // --- 헤더 렌더링 함수 ---
     const renderHeader = (pageNum: number, isSolution = false) => {
       const displayTitle = isSolution ? `${title} [정답 및 해설]` : title;
 
@@ -200,7 +204,6 @@ const ExamPaperLayout = forwardRef<HTMLDivElement, ExamPaperLayoutProps>(
                   {displayTitle}
                 </span>
                 <div className="flex flex-col items-end gap-2">
-                  {/* 해설지에도 로고 표시 (선택사항) */}
                   {academyLogo && (
                     <img src={getProxyImageSrc(academyLogo)} alt="Academy Logo" className="h-12 object-contain" />
                   )}
@@ -210,7 +213,7 @@ const ExamPaperLayout = forwardRef<HTMLDivElement, ExamPaperLayoutProps>(
          );
       }
 
-      // 2. 문제지 헤더 (1페이지)
+      // 2. 문제지 헤더 (1페이지) - 여기가 핵심 수정 부분입니다
       if (pageNum === 0) {
         return (
           <div 
@@ -218,22 +221,24 @@ const ExamPaperLayout = forwardRef<HTMLDivElement, ExamPaperLayoutProps>(
             style={{ height: template.headerHeight }}
           >
              <div className="flex justify-between items-end">
-                {/* 좌측: 타이틀 */}
+                {/* 좌측: 타이틀 및 부제목 */}
                 <div>
+                   {/* [수정] subTitle 적용 */}
                    <span className="text-xs text-slate-500 font-bold tracking-widest mb-1 block">
-                     2025학년도 1학기 대비
+                     {subTitle || "2025학년도 1학기 대비"}
                    </span>
                    <h1 className={`font-semibold tracking-tight text-slate-900 ${template.titleSize}`}>
                      {title}
                    </h1>
-                   <div className="mt-1 text-xs font-medium text-slate-500">
-                      {instructor} 선생님
+                   <div className="mt-1 text-xs font-medium text-slate-500 flex items-center gap-2">
+                      {/* [수정] 학원명 적용 */}
+                      {academyName && <span className="font-bold text-slate-700">{academyName}</span>}
+                      <span>{instructor} 선생님</span>
                    </div>
                 </div>
                 
                 {/* 우측: 로고 및 점수 박스 */}
                 <div className="flex flex-col items-end gap-2">
-                  {/* [헤더] 학원 로고: 성명란 위에 배치 */}
                   {academyLogo && (
                     <img src={getProxyImageSrc(academyLogo)} alt="Academy Logo" className="h-12 object-contain" />
                   )}
@@ -252,7 +257,7 @@ const ExamPaperLayout = forwardRef<HTMLDivElement, ExamPaperLayoutProps>(
         );
       }
 
-      // 3. [수정] 문제지 2페이지 이후 헤더 (페이지 번호 제거 -> 로고로 대체)
+      // 3. 문제지 2페이지 이후 헤더
       return (
         <div 
           className="w-full flex flex-col justify-end shrink-0 border-b border-gray-300 pb-2 mb-4"
@@ -263,11 +268,9 @@ const ExamPaperLayout = forwardRef<HTMLDivElement, ExamPaperLayoutProps>(
                 {title}
               </span>
               <div className="flex flex-col items-end">
-                {/* [수정] 로고가 있으면 페이지 번호 대신 로고를 크게 표시 */}
                 {academyLogo ? (
-                  <img src={getProxyImageSrc(academyLogo)} alt="Academy Logo" className="h-12 object-contain" />
+                  <img src={getProxyImageSrc(academyLogo)} alt="Logo" className="h-8 object-contain" />
                 ) : (
-                  // 로고가 없을 때만 페이지 번호 표시 (기존 방식 유지)
                   <div className="flex items-center gap-2 text-xs text-slate-400">
                     <span className="pl-2 border-l border-slate-300 font-bold text-slate-500">
                       {pageNum + 1}
@@ -381,7 +384,7 @@ const ExamPaperLayout = forwardRef<HTMLDivElement, ExamPaperLayoutProps>(
 
                               {/* ▼▼▼ [수정] 5. 소재 수준 태그: 오른쪽 끝 정렬 (ml-auto) ▼▼▼ */}
                               {prob.materialLevel && prob.materialLevel !== "학교 교과서" && (
-                              <span className="ml-auto px-1.5 py-0.5 rounded border border-slate-400 text-[10px] font-bold text-slate-500 bg-white whitespace-nowrap mb-[1px]">
+                              <span className="ml-auto px-1.5 py-0.5 rounded border border-slate-400 text-[10px] font-bold text-slate-500 bg-white whitespace-nowrap mb-[1px] translate-y-[3px]">
                                   심화 교과
                               </span>
                               )}

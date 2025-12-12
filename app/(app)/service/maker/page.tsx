@@ -9,10 +9,10 @@ import {
   Printer, Lock, ChevronDown, Filter, FileText, 
   LayoutTemplate, Image as ImageIcon, SaveIcon, ListOrdered, 
   RotateCcw, FileCheck, CheckSquare, Settings2, CheckCircle2,
-  Undo
+  Undo, Minus, Plus
 } from "lucide-react";
 import { 
-  Squares2X2Icon, ViewColumnsIcon, QueueListIcon // [신규] 레이아웃 아이콘
+  Squares2X2Icon, ViewColumnsIcon, QueueListIcon 
 } from "@heroicons/react/24/outline";
 import ExamPaperLayout from "@/components/ExamPaperLayout";
 import { useAuth } from "@/context/AuthContext";
@@ -25,11 +25,15 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useProblemFetcher } from "@/hooks/useProblemFetcher";
 import { Difficulty, DBProblem } from "@/types/problem"; 
 import { TEMPLATES, ExamTemplateStyle, LayoutMode } from "@/types/examTemplates";
-import { ref, uploadBytes, getDownloadURL } from "firebase/storage"; // [신규] Storage 함수 추가
-import { storage } from "@/lib/firebase"; // [신규] storage 인스턴스 추가
-import { v4 as uuidv4 } from "uuid"; // [신규] 파일명 생성을 위해 uuid 필요 (없으면 설치 필요, 혹은 Date.now() 사용)
+import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
+import { storage } from "@/lib/firebase";
 import { ExamPaperProblem, PrintOptions } from "@/types/exam";
-import { getSecureImageSrc, getProxyImageSrc } from "@/lib/imageHelper";
+import { getSecureImageSrc } from "@/lib/imageHelper";
+
+// 난이도 정렬 순서
+const DIFFICULTY_ORDER: Record<string, number> = {
+  '기본': 1, '하': 2, '중': 3, '상': 4, '킬러': 5
+};
 
 function ExamBuilderContent() {
   const { userData, user } = useAuth();
@@ -40,26 +44,32 @@ function ExamBuilderContent() {
 
   const [activeTab, setActiveTab] = useState<'filter' | 'order'>('filter');
 
-  // 필터 상태
-  const [difficulties, setDifficulties] = useState<Difficulty[]>(["기본", "하", "중", "상"]);
-  const [questionCount, setQuestionCount] = useState(20);
+  // 난이도별 문항 수 배분 상태
+  const [difficultyCounts, setDifficultyCounts] = useState<Record<Difficulty, number>>({
+    "기본": 5, "하": 5, "중": 10, "상": 0, "킬러": 0
+  });
+  
+  // 총 문항 수 자동 계산
+  const questionCount = useMemo(() => 
+    Object.values(difficultyCounts).reduce((a, b) => a + b, 0), 
+  [difficultyCounts]);
+
   const [selectedMajorTopics, setSelectedMajorTopics] = useState<string[]>([]);
   const [selectedMinorTopics, setSelectedMinorTopics] = useState<string[]>([]);
 
-  // [신규] 사용 문항 필터링 상태
-  const [excludeUsed, setExcludeUsed] = useState(true); // 기본값: 제외함
+  // 필터 상태
+  const [excludeUsed, setExcludeUsed] = useState(true);
   const [usedProblemIds, setUsedProblemIds] = useState<string[]>([]);
-
-  // [NEW] 교육과정 외 문항 제외 상태
   const [excludeNonCurriculum, setExcludeNonCurriculum] = useState(false);
 
   // 메타데이터 & 옵션
   const [examTitle, setExamTitle] = useState("제목을 입력해주세요");
+  const [subTitle, setSubTitle] = useState("2025학년도 1학기 대비"); 
+  const [academyName, setAcademyName] = useState(userData?.academy || ""); 
   const [instructorName, setInstructorName] = useState(userData?.name || "선생님 성함");
   const [academyLogo, setAcademyLogo] = useState<string | null>(null);
-  const [isUploadingLogo, setIsUploadingLogo] = useState(false); // [신규] 로고 업로드 상태
+  const [isUploadingLogo, setIsUploadingLogo] = useState(false);
   
-  // [설정] 기본값 설정: 문제 간격 40, 해설 간격 20
   const [printOptions, setPrintOptions] = useState<Omit<PrintOptions, "layoutMode">>({
     questions: true,
     answers: true,
@@ -67,102 +77,25 @@ function ExamBuilderContent() {
     questionPadding: 40
   });
 
-  const [isTeacherMode, setIsTeacherMode] = useState(false);
   const [currentTemplate, setCurrentTemplate] = useState<ExamTemplateStyle>(TEMPLATES[0]);
+  const [isTeacherMode, setIsTeacherMode] = useState(false);
 
-  // [중요] 초기값을 빈 배열로 명시
   const [examProblems, setExamProblems] = useState<ExamPaperProblem[]>([]);
-  // [추가] 실행 취소를 위한 히스토리 상태 (이전 문제 배열들을 저장)
   const [history, setHistory] = useState<ExamPaperProblem[][]>([]);
+  
   const [isSaving, setIsSaving] = useState(false);
   const [isLoaded, setIsLoaded] = useState(false); 
   const [isMounted, setIsMounted] = useState(false);
   
-  // [신규] 질문 형식 상태 관리
-  // 기본값: ['SELECTION'] (객관식만 선택됨)
+  // 질문 형식 상태
   const [targetQuestionTypes, setTargetQuestionTypes] = useState<string[]>(['SELECTION', 'ESSAY']);
-
-  // [신규] 레이아웃 모드 상태
+  // 레이아웃 모드 상태
   const [layoutMode, setLayoutMode] = useState<LayoutMode>('dense');
 
-  // [추가] 되돌리기(Undo) 핸들러
-  const handleUndo = useCallback(() => {
-    if (history.length === 0) {
-      toast.error("이전 상태가 없습니다.");
-      return;
-    }
-
-    // 1. 가장 최근 상태 가져오기
-    const previousState = history[history.length - 1];
-
-    // 2. 현재 문제 리스트를 이전 상태로 복구
-    setExamProblems(previousState);
-
-    // 3. 히스토리에서 복구한 상태 제거
-    setHistory(prev => prev.slice(0, -1));
-
-    toast.success("실행 취소되었습니다.");
-  }, [history]);
-
-  useEffect(() => {
-    setIsMounted(true);
-  }, []);
-
-  // [신규] 최근 1개월 내 사용된 문제 ID 조회
-  useEffect(() => {
-    if (!user) return;
-
-    const fetchUsedProblems = async () => {
-      try {
-        // 1개월 전 날짜 계산
-        const oneMonthAgo = new Date();
-        oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1);
-
-        // 최근 1개월 내 저장된 시험지 조회
-        const q = query(
-          collection(db, "saved_exams"),
-          where("userId", "==", user.uid),
-          where("createdAt", ">=", oneMonthAgo)
-        );
-
-        const snapshot = await getDocs(q);
-        const usedIds = new Set<string>();
-
-        snapshot.forEach((doc) => {
-          const data = doc.data();
-          // 저장된 시험지의 문제 배열에서 ID 추출
-          if (Array.isArray(data.problems)) {
-            data.problems.forEach((p: any) => {
-              if (p.id) usedIds.add(p.id);
-            });
-          }
-        });
-
-        setUsedProblemIds(Array.from(usedIds));
-      } catch (error) {
-        console.error("사용된 문제 조회 실패:", error);
-      }
-    };
-
-    fetchUsedProblems();
-  }, [user]);
-
-  // 문제 데이터 Fetcher Hook 사용 (필터링 조건 전달)
-  const { problems: fetchedProblems, loading: isFetching } = useProblemFetcher({
-    selectedMajorTopics,
-    selectedMinorTopics,
-    difficulties,
-    excludedProblemIds: excludeUsed ? usedProblemIds : [],
-    questionTypes: targetQuestionTypes, // [신규] 전달
-    excludeNonCurriculum: excludeNonCurriculum,
-  });
-
-  // [신규] 체크박스 핸들러
+  // [누락 수정] 문항 유형 토글 핸들러
   const toggleQuestionType = (type: string) => {
     setTargetQuestionTypes(prev => {
-      // 최소 1개는 선택되어 있어야 함 (모두 해제 방지 로직이 필요하다면 추가)
       if (prev.includes(type)) {
-        // 만약 이것을 끄면 아무것도 안 남는 경우 -> 끄지 않음 (선택 사항)
         if (prev.length === 1) return prev; 
         return prev.filter(t => t !== type);
       } else {
@@ -171,40 +104,152 @@ function ExamBuilderContent() {
     });
   };
 
-  // [핵심 수정] 자동 생성 로직
+  // 되돌리기(Undo) 핸들러
+  const handleUndo = useCallback(() => {
+    if (history.length === 0) {
+      toast.error("이전 상태가 없습니다.");
+      return;
+    }
+    const previousState = history[history.length - 1];
+    setExamProblems(previousState);
+    setHistory(prev => prev.slice(0, -1));
+    toast.success("실행 취소되었습니다.");
+  }, [history]);
+
   useEffect(() => {
-    // 1. 아직 로딩 전이거나 데이터를 불러오는 중이면 대기
+    setIsMounted(true);
+  }, []);
+
+  // 최근 사용 문항 조회
+  useEffect(() => {
+    if (!user) return;
+    const fetchUsedProblems = async () => {
+      try {
+        const oneMonthAgo = new Date();
+        oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1);
+        const q = query(
+          collection(db, "saved_exams"),
+          where("userId", "==", user.uid),
+          where("createdAt", ">=", oneMonthAgo)
+        );
+        const snapshot = await getDocs(q);
+        const usedIds = new Set<string>();
+        snapshot.forEach((doc) => {
+          const data = doc.data();
+          if (Array.isArray(data.problems)) {
+            data.problems.forEach((p: any) => { if (p.id) usedIds.add(p.id); });
+          }
+        });
+        setUsedProblemIds(Array.from(usedIds));
+      } catch (error) {
+        console.error("사용된 문제 조회 실패:", error);
+      }
+    };
+    fetchUsedProblems();
+  }, [user]);
+
+  // 문제 데이터 Fetcher
+  const { problems: fetchedProblems, loading: isFetching } = useProblemFetcher({
+    selectedMajorTopics,
+    selectedMinorTopics,
+    difficulties: [], // 전체 난이도를 가져와서 클라이언트에서 배분
+    excludedProblemIds: excludeUsed ? usedProblemIds : [],
+    questionTypes: targetQuestionTypes,
+    excludeNonCurriculum: excludeNonCurriculum,
+  });
+
+  // 대단원 선택 핸들러
+  const handleMajorTopicChange = (majorName: string, isChecked: boolean) => {
+    const targetMajor = SCIENCE_UNITS.flatMap(u => u.majorTopics).find(m => m.name === majorName);
+    if (!targetMajor) return;
+
+    setSelectedMajorTopics(prev => 
+      isChecked ? [...prev, majorName] : prev.filter(t => t !== majorName)
+    );
+
+    setSelectedMinorTopics(prev => {
+      const otherMinors = prev.filter(m => !targetMajor.minorTopics.includes(m));
+      return isChecked ? [...otherMinors, ...targetMajor.minorTopics] : otherMinors;
+    });
+    
+    setExamProblems([]); 
+  };
+
+  // 난이도별 문항 수 조절 핸들러
+  const updateDifficultyCount = (level: Difficulty, delta: number) => {
+    if (level === '킬러' && delta > 0 && userPlan !== 'MAKERS') {
+      toast.error("킬러 문항은 Maker's Plan 전용입니다.");
+      return;
+    }
+
+    setDifficultyCounts(prev => {
+      const newValue = Math.max(0, prev[level] + delta);
+      const currentTotal = Object.values(prev).reduce((a, b) => a + b, 0);
+      if (delta > 0 && currentTotal >= 50) {
+        toast.error("최대 50문항까지 구성 가능합니다.");
+        return prev;
+      }
+      return { ...prev, [level]: newValue };
+    });
+  };
+
+  // 문제 배분 및 정렬 로직 (자동 생성)
+  useEffect(() => {
     if (!isLoaded || isFetching) return;
 
-    // 2. 불러온 데이터가 있으면 가공해서 상태 업데이트
-    if (fetchedProblems.length > 0) {
-      const formatted: ExamPaperProblem[] = fetchedProblems
-        .slice(0, questionCount)
-        .map((p, idx) => ({
-          id: p.id,
-          number: idx + 1,
-          imageUrl: p.imgUrl,
-          content: p.content,
-          difficulty: p.difficulty,
-          majorTopic: p.majorTopic,
-          minorTopic: p.minorTopic,
-          answer: p.answer || null,
-          solutionUrl: p.solutionUrl || null,
-          // DB의 높이 정보 전달
-          height: (p as any).imgHeight,         
-          solutionHeight: (p as any).solutionHeight,
-          materialLevel: p.materialLevel,
-        }));
-        
-      setExamProblems(formatted);
-    } 
-    // 3. 불러온 데이터가 없지만 단원은 선택된 상태라면 -> 문제 없음을 표시하기 위해 빈 배열 설정
-    else if (fetchedProblems.length === 0 && selectedMajorTopics.length > 0) {
+    if (selectedMinorTopics.length === 0) {
       setExamProblems([]);
+      return;
     }
-  }, [fetchedProblems, questionCount, isLoaded, isFetching, selectedMajorTopics.length]); 
 
-  // 문제 교체 핸들러 (유사 문항)
+    const poolByDiff: Record<string, DBProblem[]> = { '기본': [], '하': [], '중': [], '상': [], '킬러': [] };
+    fetchedProblems.forEach(p => {
+      if (poolByDiff[p.difficulty]) poolByDiff[p.difficulty].push(p);
+    });
+
+    let selectedProblems: DBProblem[] = [];
+
+    Object.entries(difficultyCounts).forEach(([diff, count]) => {
+      const pool = poolByDiff[diff];
+      if (pool && pool.length > 0) {
+        const shuffled = [...pool].sort(() => Math.random() - 0.5);
+        selectedProblems.push(...shuffled.slice(0, count));
+      }
+    });
+
+    // 정렬: 소단원 순서 -> 난이도 오름차순
+    const allMinorTopicsOrdered = SCIENCE_UNITS.flatMap(s => s.majorTopics.flatMap(m => m.minorTopics));
+    
+    selectedProblems.sort((a, b) => {
+      const idxA = allMinorTopicsOrdered.indexOf(a.minorTopic);
+      const idxB = allMinorTopicsOrdered.indexOf(b.minorTopic);
+      if (idxA !== idxB) return idxA - idxB;
+
+      const diffA = DIFFICULTY_ORDER[a.difficulty] || 3;
+      const diffB = DIFFICULTY_ORDER[b.difficulty] || 3;
+      return diffA - diffB;
+    });
+
+    const formatted: ExamPaperProblem[] = selectedProblems.map((p, idx) => ({
+      id: p.id,
+      number: idx + 1,
+      imageUrl: p.imgUrl,
+      content: p.content,
+      difficulty: p.difficulty,
+      majorTopic: p.majorTopic,
+      minorTopic: p.minorTopic,
+      answer: p.answer || null,
+      solutionUrl: p.solutionUrl || null,
+      height: (p as any).imgHeight,         
+      solutionHeight: (p as any).solutionHeight,
+      materialLevel: p.materialLevel,
+    }));
+
+    setExamProblems(formatted);
+
+  }, [fetchedProblems, difficultyCounts, isLoaded, isFetching, selectedMinorTopics]);
+
+  // 문제 교체 핸들러
   const handleReplaceProblem = useCallback(async (problemId: string, currentMajor: string, currentDifficulty: string) => {
     if (!currentMajor) return;
     const toastId = toast.loading("유사 문항을 탐색 중...");
@@ -226,7 +271,6 @@ function ExamBuilderContent() {
           const snap = await getDocs(q);
           if (!snap.empty) {
             const candidateDoc = snap.docs[0];
-            // [수정] 교체 시에도 '이미 사용한 문제' 제외 로직 적용 여부 고려 (여기선 현재 시험지에 있는 것만 제외)
             if (!currentIds.includes(candidateDoc.id)) {
               newProblemData = { id: candidateDoc.id, ...candidateDoc.data() } as DBProblem;
               break;
@@ -253,9 +297,7 @@ function ExamBuilderContent() {
       }
 
       if (newProblemData) {
-        // ▼▼▼ [수정] 교체 전 현재 상태를 히스토리에 저장 ▼▼▼
         setHistory(prev => [...prev, examProblems]); 
-        // ▲▲▲ --------------------------------------- ▲▲▲
 
         setExamProblems(prev => prev.map(p => {
           if (p.id === problemId) {
@@ -282,7 +324,7 @@ function ExamBuilderContent() {
       console.error(e);
       toast.error("오류가 발생했습니다.", { id: toastId });
     }
-  }, [examProblems]); // examProblems 의존성 필수
+  }, [examProblems]);
 
   // 임시 저장 불러오기
   useEffect(() => {
@@ -292,14 +334,12 @@ function ExamBuilderContent() {
         try {
           const parsed = JSON.parse(savedDraft);
           const { title, problems, updatedAt } = parsed;
-          
           if (Date.now() - updatedAt < 24 * 60 * 60 * 1000) {
             setExamTitle(title || "");
             setExamProblems(Array.isArray(problems) ? problems : []); 
             toast("임시 저장된 시험지를 불러왔습니다.", { icon: '📂' });
           }
         } catch (e) {
-          console.error("Draft load error", e);
           localStorage.removeItem("exam_draft");
         }
       }
@@ -307,7 +347,7 @@ function ExamBuilderContent() {
     }
   }, [examId, isMounted]);
 
-  // 1. [수정] DB 로드 (저장된 시험지 불러오기) - layoutMode 복원 추가
+  // DB 로드 (저장된 시험지)
   useEffect(() => {
     if (!examId) return;
     const loadExam = async () => {
@@ -319,22 +359,13 @@ function ExamBuilderContent() {
           setExamTitle(data.title);
           setExamProblems(data.problems || []);
           setInstructorName(data.instructorName);
-          // [추가] 저장된 로고 URL 불러오기
-          if (data.academyLogo) {
-            setAcademyLogo(data.academyLogo);
-          }
-          
+          if (data.subTitle) setSubTitle(data.subTitle);
+          if (data.academyName) setAcademyName(data.academyName);
+          if (data.academyLogo) setAcademyLogo(data.academyLogo);
           const savedTemplate = TEMPLATES.find(t => t.id === data.templateId);
           if (savedTemplate) setCurrentTemplate(savedTemplate);
-
-          // [추가] 저장된 layoutMode와 padding이 있다면 복원
-          if (data.layoutMode) {
-            setLayoutMode(data.layoutMode as LayoutMode);
-          }
-          if (data.questionPadding) {
-            setPrintOptions((prev: any) => ({ ...prev, questionPadding: data.questionPadding }));
-          }
-
+          if (data.layoutMode) setLayoutMode(data.layoutMode as LayoutMode);
+          if (data.questionPadding) setPrintOptions((prev: any) => ({ ...prev, questionPadding: data.questionPadding }));
           toast.success("시험지를 불러왔습니다.");
         }
       } catch (error) {
@@ -349,18 +380,13 @@ function ExamBuilderContent() {
   // 임시 저장 (자동)
   useEffect(() => {
     if (examProblems.length > 0 && !examId && isMounted) {
-      const draft = {
-        title: examTitle,
-        problems: examProblems,
-        updatedAt: Date.now()
-      };
+      const draft = { title: examTitle, problems: examProblems, updatedAt: Date.now() };
       localStorage.setItem("exam_draft", JSON.stringify(draft));
     }
   }, [examProblems, examTitle, examId, isMounted]);
 
   const onDragEnd = (result: DropResult) => {
     if (!result.destination) return;
-    // [추가] 변경 전 상태 저장
     setHistory(prev => [...prev, examProblems]);
     const items = Array.from(examProblems);
     const [reorderedItem] = items.splice(result.source.index, 1);
@@ -370,12 +396,27 @@ function ExamBuilderContent() {
   };
 
   const printRef = useRef<HTMLDivElement>(null);
-  
-  // [수정] PDF 출력 기능은 여기서 사용되지 않고 보관함에서 사용됨.
-  // 하지만 미리보기용으로 ref는 유지해야 함.
 
-  // [수정] 저장 핸들러: 저장 후 보관함 이동 유도
-  // [수정] 시험지 저장 핸들러 (로고 포함)
+  // 로고 업로드 핸들러
+  const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files?.[0] || !user) return;
+    setIsUploadingLogo(true);
+    const file = e.target.files[0];
+    try {
+      const uniqueName = `${Date.now()}_${file.name}`;
+      const storageRef = ref(storage, `logos/${user.uid}/${uniqueName}`);
+      await uploadBytes(storageRef, file);
+      const url = await getDownloadURL(storageRef);
+      setAcademyLogo(url);
+      toast.success("로고가 등록되었습니다.");
+    } catch (error) {
+      toast.error("로고 업로드 실패");
+    } finally {
+      setIsUploadingLogo(false);
+    }
+  };
+
+  // 저장 핸들러
   const handleSaveExam = async () => {
     if (!user) { toast.error("로그인 필요"); return; }
     if (examProblems.length === 0) { toast.error("문제가 없습니다."); return; }
@@ -383,7 +424,6 @@ function ExamBuilderContent() {
     setIsSaving(true);
     try {
       const cleanProblems = examProblems.map(p => ({
-        // ... existing problem cleaning ...
         ...p,
         imageUrl: p.imageUrl || null,
         content: p.content || null,
@@ -398,60 +438,24 @@ function ExamBuilderContent() {
         userId: user.uid,
         instructorName,
         title: examTitle,
+        subTitle, 
+        academyName,
         problems: cleanProblems,
         templateId: currentTemplate.id,
         layoutMode: layoutMode,
         questionPadding: printOptions.questionPadding,
-        
-        // [추가] 로고 URL 저장
         academyLogo: academyLogo, 
-        
         createdAt: serverTimestamp(),
         problemCount: examProblems.length,
       });
       
       toast.success("시험지가 보관함에 저장되었습니다!");
       router.push("/service/storage");
-      
     } catch (e) {
       console.error(e);
       toast.error("저장 실패");
     }
     setIsSaving(false);
-  };
-
-  // [수정] 로고 업로드 핸들러 (Storage 연동)
-  const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (!e.target.files?.[0] || !user) return;
-    
-    setIsUploadingLogo(true);
-    const file = e.target.files[0];
-    
-    try {
-      // 1. Storage 경로 설정 (logos/유저ID/파일명)
-      const uniqueName = `${Date.now()}_${file.name}`;
-      const storageRef = ref(storage, `logos/${user.uid}/${uniqueName}`);
-      
-      // 2. 파일 업로드
-      await uploadBytes(storageRef, file);
-      
-      // 3. 다운로드 URL 획득
-      const url = await getDownloadURL(storageRef);
-      
-      // 4. 상태 업데이트
-      setAcademyLogo(url);
-      toast.success("로고가 등록되었습니다.");
-    } catch (error) {
-      console.error("Logo upload failed:", error);
-      toast.error("로고 업로드에 실패했습니다.");
-    } finally {
-      setIsUploadingLogo(false);
-    }
-  };
-
-  const toggleDifficulty = (d: Difficulty) => {
-    if (d === '킬러' && userPlan !== 'MAKERS') { toast.error("Maker's Plan 전용입니다."); return; }
-    setDifficulties(prev => prev.includes(d) ? prev.filter(x => x !== d) : [...prev, d]);
   };
 
   if (!isLoaded || !isMounted) return <div className="flex h-screen items-center justify-center">로딩 중...</div>;
@@ -471,9 +475,12 @@ function ExamBuilderContent() {
           </div>
         </div>
 
-        <div className="flex-1 overflow-y-auto p-5 custom-scrollbar">
+        {/* 컨텐츠 영역: 탭에 따라 구조가 다름 */}
+        <div className="flex-1 min-h-0 flex flex-col relative"> 
+          
+          {/* 1. 조건 설정 탭 (전체 스크롤) */}
           {activeTab === 'filter' && (
-            <div className="space-y-8 animate-in fade-in slide-in-from-left-4 duration-300">
+            <div className="absolute inset-0 overflow-y-auto p-5 custom-scrollbar space-y-8 animate-in fade-in slide-in-from-left-4 duration-300">
               
               {/* 단원 선택 */}
               <div>
@@ -489,12 +496,7 @@ function ExamBuilderContent() {
                               <input 
                                 type="checkbox"
                                 checked={selectedMajorTopics.includes(major.name)}
-                                onChange={(e) => {
-                                  setSelectedMajorTopics(prev => 
-                                    prev.includes(major.name) ? prev.filter(t => t !== major.name) : [...prev, major.name]
-                                  );
-                                  setExamProblems([]); 
-                                }}
+                                onChange={(e) => handleMajorTopicChange(major.name, e.target.checked)}
                                 className="rounded text-blue-600 w-4 h-4"
                               />
                               <span className={selectedMajorTopics.includes(major.name) ? "font-bold text-slate-800" : "text-slate-600"}>
@@ -513,9 +515,6 @@ function ExamBuilderContent() {
                                     setSelectedMinorTopics(prev => 
                                       prev.includes(minor) ? prev.filter(t => t !== minor) : [...prev, minor]
                                     );
-                                    if (!selectedMajorTopics.includes(major.name)) {
-                                      setSelectedMajorTopics(prev => [...prev, major.name]);
-                                    }
                                   }}
                                   className="rounded border-gray-300 text-blue-400 w-3 h-3"
                                 />
@@ -530,140 +529,107 @@ function ExamBuilderContent() {
                 </div>
               </div>
 
-              {/* 난이도 */}
+              {/* 난이도별 문항 수 배분 */}
               <div>
-                <h3 className="text-sm font-bold text-gray-900 mb-3">난이도</h3>
-                <div className="flex flex-wrap gap-2">
-                  {['기본', '하', '중', '상', '킬러'].map((level) => (
-                    <button
-                      key={level}
-                      onClick={() => toggleDifficulty(level as Difficulty)}
-                      className={`px-3 py-1.5 rounded-full text-xs font-bold border transition-all flex items-center gap-1 ${difficulties.includes(level as Difficulty) ? 'bg-slate-900 text-white border-slate-900' : 'bg-white text-gray-500 border-gray-200 hover:border-gray-400'}`}
-                    >
-                      {level} {level === '킬러' && userPlan !== 'MAKERS' && <Lock className="w-3 h-3" />}
-                    </button>
+                <h3 className="text-sm font-bold text-gray-900 mb-3 flex justify-between">
+                  <span>난이도 배분</span>
+                  <span className="text-blue-600">{questionCount}문항</span>
+                </h3>
+                <div className="space-y-2">
+                  {(['기본', '하', '중', '상', '킬러'] as Difficulty[]).map((level) => (
+                    <div key={level} className="flex items-center justify-between p-2 bg-white border border-gray-200 rounded-lg">
+                      <div className="flex items-center gap-2">
+                        <span className={`text-xs font-bold w-8 text-center ${level === '킬러' ? 'text-red-500' : 'text-slate-600'}`}>
+                          {level}
+                        </span>
+                        {level === '킬러' && <Lock className="w-3 h-3 text-red-400" />}
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <button 
+                          onClick={() => updateDifficultyCount(level, -1)}
+                          className="p-1 text-slate-400 hover:text-blue-600 bg-slate-50 rounded"
+                        >
+                          <Minus className="w-3 h-3" />
+                        </button>
+                        <span className="text-sm font-bold w-4 text-center">{difficultyCounts[level]}</span>
+                        <button 
+                          onClick={() => updateDifficultyCount(level, 1)}
+                          className="p-1 text-slate-400 hover:text-blue-600 bg-slate-50 rounded"
+                        >
+                          <Plus className="w-3 h-3" />
+                        </button>
+                      </div>
+                    </div>
                   ))}
                 </div>
               </div>
               
-              {/* ▼▼▼ [신규] 질문 형식 선택 UI 추가 (난이도 아래 또는 위) ▼▼▼ */}
+              {/* 문항 유형 */}
               <div className="pt-4 border-t border-gray-100">
                 <h3 className="text-sm font-bold text-gray-900 mb-3 flex items-center gap-2">
                   <CheckCircle2 className="w-4 h-4"/> 문항 유형
                 </h3>
                 <div className="flex gap-4">
                   <label className="flex items-center gap-2 cursor-pointer">
-                    <input 
-                      type="checkbox" 
-                      checked={targetQuestionTypes.includes('SELECTION')}
-                      onChange={() => toggleQuestionType('SELECTION')}
-                      className="rounded text-blue-600 focus:ring-blue-500 w-4 h-4" 
-                    />
+                    <input type="checkbox" checked={targetQuestionTypes.includes('SELECTION')} onChange={() => toggleQuestionType('SELECTION')} className="rounded text-blue-600 w-4 h-4" />
                     <span className="text-sm text-slate-700 font-bold">객관식</span>
                   </label>
-
                   <label className="flex items-center gap-2 cursor-pointer">
-                    <input 
-                      type="checkbox" 
-                      checked={targetQuestionTypes.includes('ESSAY')}
-                      onChange={() => toggleQuestionType('ESSAY')}
-                      className="rounded text-blue-600 focus:ring-blue-500 w-4 h-4" 
-                    />
+                    <input type="checkbox" checked={targetQuestionTypes.includes('ESSAY')} onChange={() => toggleQuestionType('ESSAY')} className="rounded text-blue-600 w-4 h-4" />
                     <span className="text-sm text-slate-700 font-bold">서답형</span>
                   </label>
                 </div>
               </div>
-              {/* ▲▲▲ [신규 끝] ▲▲▲ */}
               
-              {/* ▼▼▼ [NEW] 문항 필터 섹션 (기존 필터 섹션 근처에 추가) ▼▼▼ */}
-             <div className="pt-4 border-t border-gray-100">
+              {/* 문항 필터 */}
+              <div className="pt-4 border-t border-gray-100">
                 <h3 className="text-sm font-bold text-gray-900 mb-3 flex items-center gap-2">
                   <CheckSquare className="w-4 h-4"/> 문항 필터
                 </h3>
                 <div className="space-y-2">
-                  {/* 1. 사용 문항 제외 (기존) */}
                   <label className="flex items-center gap-2 cursor-pointer p-2 border rounded-lg hover:bg-gray-50 bg-white">
-                    <input 
-                      type="checkbox" 
-                      checked={excludeUsed} 
-                      onChange={(e) => setExcludeUsed(e.target.checked)} 
-                      className="rounded text-blue-600 w-4 h-4" 
-                    />
+                    <input type="checkbox" checked={excludeUsed} onChange={(e) => setExcludeUsed(e.target.checked)} className="rounded text-blue-600 w-4 h-4" />
                     <div>
                       <span className="text-sm font-bold text-slate-700 block">사용 문항 제외</span>
                       <span className="text-xs text-slate-400">최근 1개월 내 사용된 문제 제외</span>
                     </div>
                   </label>
-
-                  {/* 2. 교육과정 외 문항 제외 (신규) */}
                   <label className="flex items-center gap-2 cursor-pointer p-2 border rounded-lg hover:bg-gray-50 bg-white">
-                    <input 
-                      type="checkbox" 
-                      checked={excludeNonCurriculum} 
-                      onChange={(e) => setExcludeNonCurriculum(e.target.checked)} 
-                      className="rounded text-blue-600 w-4 h-4" 
-                    />
+                    <input type="checkbox" checked={excludeNonCurriculum} onChange={(e) => setExcludeNonCurriculum(e.target.checked)} className="rounded text-blue-600 w-4 h-4" />
                     <div>
-                      <span className="text-sm font-bold text-slate-700 block">교육과정 외 문항 제외</span>
-                      <span className="text-xs text-slate-400">심화 교과 및 기타 문항 제외 (교과서 중심)</span>
+                      <span className="text-sm font-bold text-slate-700 block">심화 교과 문항 제외</span>
+                      <span className="text-xs text-slate-400">심화 교과 및 교육과정 외 문항 제외 (교과서 중심)</span>
                     </div>
                   </label>
                 </div>
-             </div>
-
-              {/* 문항 수 */}
-              <div className="pt-4 border-t border-gray-100">
-                <div className="flex justify-between text-sm mb-2">
-                  <span>문항 수 (최대 50)</span>
-                  <span className="font-bold text-blue-600">{questionCount}문항</span>
-                </div>
-                <input type="range" min="4" max="50" step="1" value={questionCount} onChange={(e) => setQuestionCount(Number(e.target.value))} className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600" />
               </div>
 
-              {/* [신규] 레이아웃 설정 섹션 */}
+              {/* 레이아웃 설정 */}
               <div className="pt-4 border-t border-gray-100">
                 <h3 className="text-sm font-bold text-gray-900 mb-3 flex items-center gap-2">
                   <LayoutTemplate className="w-4 h-4"/> 배치 모드
                 </h3>
                 <div className="grid grid-cols-3 gap-2">
-                  <button 
-                    onClick={() => setLayoutMode('dense')}
-                    className={`flex flex-col items-center justify-center p-2 rounded-lg border text-xs transition-all ${layoutMode === 'dense' ? 'bg-blue-50 border-blue-500 text-blue-700' : 'bg-white border-slate-200 text-slate-500 hover:bg-slate-50'}`}
-                  >
-                    <QueueListIcon className="w-5 h-5 mb-1" />
-                    기본(빼곡)
+                  <button onClick={() => setLayoutMode('dense')} className={`flex flex-col items-center justify-center p-2 rounded-lg border text-xs transition-all ${layoutMode === 'dense' ? 'bg-blue-50 border-blue-500 text-blue-700' : 'bg-white border-slate-200 text-slate-500 hover:bg-slate-50'}`}>
+                    <QueueListIcon className="w-5 h-5 mb-1" /> 기본(빼곡)
                   </button>
-                  <button 
-                    onClick={() => setLayoutMode('split-2')}
-                    className={`flex flex-col items-center justify-center p-2 rounded-lg border text-xs transition-all ${layoutMode === 'split-2' ? 'bg-blue-50 border-blue-500 text-blue-700' : 'bg-white border-slate-200 text-slate-500 hover:bg-slate-50'}`}
-                  >
-                    <ViewColumnsIcon className="w-5 h-5 mb-1" />
-                    2분할
+                  <button onClick={() => setLayoutMode('split-2')} className={`flex flex-col items-center justify-center p-2 rounded-lg border text-xs transition-all ${layoutMode === 'split-2' ? 'bg-blue-50 border-blue-500 text-blue-700' : 'bg-white border-slate-200 text-slate-500 hover:bg-slate-50'}`}>
+                    <ViewColumnsIcon className="w-5 h-5 mb-1" /> 2분할
                   </button>
-                  <button 
-                    onClick={() => setLayoutMode('split-4')}
-                    className={`flex flex-col items-center justify-center p-2 rounded-lg border text-xs transition-all ${layoutMode === 'split-4' ? 'bg-blue-50 border-blue-500 text-blue-700' : 'bg-white border-slate-200 text-slate-500 hover:bg-slate-50'}`}
-                  >
-                    <Squares2X2Icon className="w-5 h-5 mb-1" />
-                    4분할
+                  <button onClick={() => setLayoutMode('split-4')} className={`flex flex-col items-center justify-center p-2 rounded-lg border text-xs transition-all ${layoutMode === 'split-4' ? 'bg-blue-50 border-blue-500 text-blue-700' : 'bg-white border-slate-200 text-slate-500 hover:bg-slate-50'}`}>
+                    <Squares2X2Icon className="w-5 h-5 mb-1" /> 4분할
                   </button>
                 </div>
               </div>
 
               <div className="bg-slate-50 p-3 rounded-lg space-y-3 border border-slate-200">
-                   {/* [수정] 기본(Dense) 모드일 때만 문항 간격 조절 표시 */}
                    {layoutMode === 'dense' && (
                      <div>
                         <div className="flex justify-between text-xs mb-1 text-slate-600">
                            <span>문제 간격 (px)</span>
                            <span className="font-bold text-blue-600">{printOptions.questionPadding}</span>
                         </div>
-                        <input 
-                          type="range" min="10" max="100" step="5" 
-                          value={printOptions.questionPadding} 
-                          onChange={(e) => setPrintOptions(prev => ({...prev, questionPadding: Number(e.target.value)}))}
-                          className="w-full h-1.5 bg-gray-300 rounded-lg appearance-none cursor-pointer accent-blue-600" 
-                        />
+                        <input type="range" min="10" max="100" step="5" value={printOptions.questionPadding} onChange={(e) => setPrintOptions(prev => ({...prev, questionPadding: Number(e.target.value)}))} className="w-full h-1.5 bg-gray-300 rounded-lg appearance-none cursor-pointer accent-blue-600" />
                      </div>
                    )}
               </div>
@@ -673,7 +639,6 @@ function ExamBuilderContent() {
                 <h3 className="text-sm font-bold text-gray-900 mb-3 flex items-center gap-2">
                   <Printer className="w-4 h-4"/> 옵션 및 여백
                 </h3>
-                
                 <div className="space-y-2 mb-4">
                   <label className="flex items-center gap-2 cursor-pointer p-2 border rounded-lg hover:bg-gray-50">
                     <input type="checkbox" checked={printOptions.questions} onChange={(e) => setPrintOptions(prev => ({...prev, questions: e.target.checked}))} className="rounded text-blue-600" />
@@ -705,79 +670,80 @@ function ExamBuilderContent() {
             </div>
           )}
 
+          {/* 2. 순서/교체 탭 (헤더 고정 + 리스트 스크롤) */}
           {activeTab === 'order' && (
-            <div className="animate-in fade-in slide-in-from-right-4 duration-300">
-              {/* ▼▼▼ [수정] 헤더 영역을 Flex로 변경하여 버튼 추가 ▼▼▼ */}
-              <div className="flex items-center justify-between mb-3">
-                <h3 className="text-sm font-bold text-gray-900 flex items-center gap-2">
-                  <ListOrdered className="w-4 h-4"/> 문항 순서 및 교체
-                </h3>
-                
-                {/* 되돌리기 버튼 */}
-                <button 
-                  onClick={handleUndo}
-                  disabled={history.length === 0}
-                  className={`flex items-center gap-1 px-2 py-1.5 rounded text-xs font-bold transition-colors ${
-                    history.length > 0 
-                      ? "bg-slate-100 text-slate-700 hover:bg-slate-200 hover:text-blue-600" 
-                      : "bg-slate-50 text-slate-300 cursor-not-allowed"
-                  }`}
-                  title="마지막 변경 취소 (Ctrl+Z)"
-                >
-                  <Undo className="w-3.5 h-3.5" /> 되돌리기
-                </button>
-              </div>
-              {/* ▲▲▲ --------------------------------------- ▲▲▲ */}
+            <div className="absolute inset-0 flex flex-col animate-in fade-in slide-in-from-right-4 duration-300">
               
-              {isMounted && (
-                <DragDropContext onDragEnd={onDragEnd}>
-                  <Droppable droppableId="exam-problems">
-                    {(provided) => (
-                      <div {...provided.droppableProps} ref={provided.innerRef} className="space-y-2 pb-4">
-                        {examProblems.map((prob, index) => (
-                          <Draggable key={prob.id} draggableId={prob.id} index={index}>
-                            {(provided, snapshot) => (
-                              <div 
-                                ref={provided.innerRef} 
-                                {...provided.draggableProps} 
-                                {...provided.dragHandleProps} 
-                                // ▼▼▼ [1] 여기에 우클릭 방지 핸들러 추가 ▼▼▼
-                                onContextMenu={(e) => e.preventDefault()}
-                                className={`p-2 bg-white border rounded-lg flex items-center gap-3 shadow-sm group ${snapshot.isDragging ? 'shadow-lg border-blue-500 z-50' : 'border-gray-200'}`}
-                              >
-                                <span className="w-6 h-6 flex-shrink-0 flex items-center justify-center bg-slate-100 rounded-full text-xs font-bold text-slate-500">{prob.number}</span>
-                                
-                                <div className="relative w-12 h-12 bg-slate-50 rounded border border-slate-100 overflow-hidden flex-shrink-0">
-                                  {prob.imageUrl ? (
-                                    <img 
-                                      src={getSecureImageSrc(prob.imageUrl)}
-                                      alt={`Problem ${prob.number}`}
-                                      // ▼▼▼ [2] 이미지에 pointer-events-none 추가 (이미지 자체 클릭/드래그 차단) ▼▼▼
-                                      className="w-full h-full object-contain pointer-events-none"
-                                      onContextMenu={(e) => e.preventDefault()}
-                                    />
-                                  ) : (
-                                    <div className="flex items-center justify-center h-full text-[10px] text-slate-300">Text</div>
-                                  )}
+              {/* Sticky Header Area */}
+              <div className="p-5 pb-3 border-b border-gray-100 bg-white z-10">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-sm font-bold text-gray-900 flex items-center gap-2">
+                    <ListOrdered className="w-4 h-4"/> 문항 순서
+                  </h3>
+                  <button 
+                    onClick={handleUndo}
+                    disabled={history.length === 0}
+                    className={`flex items-center gap-1 px-2 py-1.5 rounded text-xs font-bold transition-colors ${
+                      history.length > 0 
+                        ? "bg-slate-100 text-slate-700 hover:bg-slate-200 hover:text-blue-600" 
+                        : "bg-slate-50 text-slate-300 cursor-not-allowed"
+                    }`}
+                    title="마지막 변경 취소 (Ctrl+Z)"
+                  >
+                    <Undo className="w-3.5 h-3.5" /> 되돌리기
+                  </button>
+                </div>
+                <p className="text-[10px] text-slate-400 mt-1">드래그하여 순서를 변경하세요.</p>
+              </div>
+              
+              {/* Scrollable List */}
+              <div className="flex-1 overflow-y-auto p-5 pt-2 custom-scrollbar">
+                {isMounted && (
+                  <DragDropContext onDragEnd={onDragEnd}>
+                    <Droppable droppableId="exam-problems">
+                      {(provided) => (
+                        <div {...provided.droppableProps} ref={provided.innerRef} className="space-y-2 pb-4">
+                          {examProblems.map((prob, index) => (
+                            <Draggable key={prob.id} draggableId={prob.id} index={index}>
+                              {(provided, snapshot) => (
+                                <div 
+                                  ref={provided.innerRef} 
+                                  {...provided.draggableProps} 
+                                  {...provided.dragHandleProps} 
+                                  onContextMenu={(e) => e.preventDefault()}
+                                  className={`p-2 bg-white border rounded-lg flex items-center gap-3 shadow-sm group ${snapshot.isDragging ? 'shadow-lg border-blue-500 z-50' : 'border-gray-200'}`}
+                                >
+                                  <span className="w-6 h-6 flex-shrink-0 flex items-center justify-center bg-slate-100 rounded-full text-xs font-bold text-slate-500">{prob.number}</span>
+                                  <div className="relative w-12 h-12 bg-slate-50 rounded border border-slate-100 overflow-hidden flex-shrink-0">
+                                    {prob.imageUrl ? (
+                                      <img 
+                                        src={getSecureImageSrc(prob.imageUrl)}
+                                        alt={`Problem ${prob.number}`}
+                                        className="w-full h-full object-contain pointer-events-none"
+                                        onContextMenu={(e) => e.preventDefault()}
+                                      />
+                                    ) : (
+                                      <div className="flex items-center justify-center h-full text-[10px] text-slate-300">Text</div>
+                                    )}
+                                  </div>
+                                  <div className="flex-1 min-w-0">
+                                    <p className="text-xs font-bold text-slate-800 truncate">{prob.minorTopic}</p>
+                                    <span className="text-[10px] text-slate-500">{prob.difficulty}</span>
+                                  </div>
+                                  <button onClick={() => handleReplaceProblem(prob.id, prob.majorTopic || "", prob.difficulty || "중")} className="p-1.5 hover:bg-blue-50 text-blue-600 rounded">
+                                    <RotateCcw className="w-3.5 h-3.5" />
+                                  </button>
                                 </div>
-                                
-                                <div className="flex-1 min-w-0">
-                                  <p className="text-xs font-bold text-slate-800 truncate">{prob.minorTopic}</p>
-                                  <span className="text-[10px] text-slate-500">{prob.difficulty}</span>
-                                </div>
-                                <button onClick={() => handleReplaceProblem(prob.id, prob.majorTopic || "", prob.difficulty || "중")} className="p-1.5 hover:bg-blue-50 text-blue-600 rounded">
-                                  <RotateCcw className="w-3.5 h-3.5" />
-                                </button>
-                              </div>
-                            )}
-                          </Draggable>
-                        ))}
-                        {provided.placeholder}
-                      </div>
-                    )}
-                  </Droppable>
-                </DragDropContext>
-              )}
+                              )}
+                            </Draggable>
+                          ))}
+                          {provided.placeholder}
+                        </div>
+                      )}
+                    </Droppable>
+                  </DragDropContext>
+                )}
+              </div>
             </div>
           )}
         </div>
@@ -785,25 +751,57 @@ function ExamBuilderContent() {
 
       {/* === Main Preview === */}
       <main className="flex-1 flex flex-col h-full bg-slate-200/50 relative">
-        <header className="h-16 bg-white border-b border-gray-200 flex items-center justify-between px-6 flex-shrink-0 shadow-sm z-10">
-          <div className="flex items-center gap-6">
-            <input type="text" value={examTitle} onChange={(e) => setExamTitle(e.target.value)} className="font-bold text-lg text-gray-800 outline-none bg-transparent placeholder-gray-300 min-w-[200px]" placeholder="시험지 제목 입력" />
-            <input type="text" value={instructorName} onChange={(e) => setInstructorName(e.target.value)} className="text-sm font-medium text-gray-600 outline-none bg-transparent" placeholder="선생님 성함" />
-            {/* [수정] 로고 업로드 버튼 UI 개선 */}
-        <label className={`cursor-pointer flex items-center gap-2 px-3 py-1.5 rounded-md bg-gray-100 hover:bg-gray-200 text-xs text-gray-700 transition-colors ${isUploadingLogo ? 'opacity-50 cursor-not-allowed' : ''}`}>
-          <ImageIcon className="w-3 h-3" /> 
-          {isUploadingLogo ? "업로드 중..." : (academyLogo ? "로고 변경" : "학원 로고")}
-          <input 
-            type="file" 
-            accept="image/*" 
-            onChange={handleLogoUpload} 
-            className="hidden" 
-            disabled={isUploadingLogo}
-          />
-        </label>
-      </div>
+        <header className="h-20 bg-white border-b border-gray-200 flex items-center justify-between px-6 flex-shrink-0 shadow-sm z-10">
+          <div className="flex items-center gap-4 flex-1">
+            <div className="flex flex-col gap-1 w-full max-w-lg">
+                <input 
+                  type="text" 
+                  value={examTitle} 
+                  onChange={(e) => setExamTitle(e.target.value)} 
+                  className="font-bold text-lg text-gray-800 outline-none bg-transparent placeholder-gray-300 w-full" 
+                  placeholder="시험지 제목 입력" 
+                />
+                <div className="flex gap-2">
+                   <input 
+                     type="text" 
+                     value={subTitle} 
+                     onChange={(e) => setSubTitle(e.target.value)} 
+                     className="text-xs font-medium text-slate-500 outline-none bg-transparent w-40 border-b border-transparent hover:border-slate-200 focus:border-blue-400" 
+                     placeholder="부제목 (예: 2025 대비)" 
+                   />
+                   <span className="text-slate-300">|</span>
+                   <input 
+                     type="text" 
+                     value={academyName} 
+                     onChange={(e) => setAcademyName(e.target.value)} 
+                     className="text-xs font-medium text-slate-500 outline-none bg-transparent w-32 border-b border-transparent hover:border-slate-200 focus:border-blue-400" 
+                     placeholder="학원명 입력" 
+                   />
+                   <span className="text-slate-300">|</span>
+                   <input 
+                     type="text" 
+                     value={instructorName} 
+                     onChange={(e) => setInstructorName(e.target.value)} 
+                     className="text-xs font-medium text-slate-500 outline-none bg-transparent w-24 border-b border-transparent hover:border-slate-200 focus:border-blue-400" 
+                     placeholder="선생님 성함" 
+                   />
+                </div>
+            </div>
+            
+            <label className={`cursor-pointer flex items-center gap-2 px-3 py-1.5 rounded-md bg-gray-100 hover:bg-gray-200 text-xs text-gray-700 transition-colors ${isUploadingLogo ? 'opacity-50 cursor-not-allowed' : ''}`}>
+              <ImageIcon className="w-3 h-3" /> 
+              {isUploadingLogo ? "업로드 중..." : (academyLogo ? "로고 변경" : "학원 로고")}
+              <input 
+                type="file" 
+                accept="image/*" 
+                onChange={handleLogoUpload} 
+                className="hidden" 
+                disabled={isUploadingLogo}
+              />
+            </label>
+          </div>
+          
           <div className="flex gap-3">
-             {/* [수정] PDF 출력 버튼 제거하고, 저장 버튼 강조 */}
              <button onClick={handleSaveExam} disabled={isSaving} className="flex items-center gap-2 px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-bold text-sm shadow-md transition-all active:scale-95 disabled:opacity-50">
                <SaveIcon className="w-4 h-4" /> {isSaving ? "저장 중..." : "보관함 저장 (출력)"}
              </button>
@@ -812,20 +810,17 @@ function ExamBuilderContent() {
 
         <div className="flex-1 overflow-y-auto p-10 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-transparent bg-slate-100">
           <div className="flex flex-col items-center gap-8 pb-20">
-             {/* 페이지네이션 없이 전체 배열 전달 (내부에서 페이지 분배) */}
              <ExamPaperLayout 
                ref={printRef}
-               // [중요] 배열이 존재할 때만 전달 (undefined 방지)
                problems={examProblems || []} 
                title={examTitle}
                instructor={instructorName}
                template={currentTemplate}
-               printOptions={{
-                 ...printOptions,
-                 layoutMode: layoutMode
-               }}
+               printOptions={{ ...printOptions, layoutMode: layoutMode }}
                isTeacherVersion={isTeacherMode}
-               academyLogo={academyLogo} 
+               academyLogo={academyLogo}
+               subTitle={subTitle}
+               academyName={academyName}
              />
           </div>
         </div>

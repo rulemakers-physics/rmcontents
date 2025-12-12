@@ -130,8 +130,7 @@ export default function ExamPrintModal({ exam, onClose }: Props) {
           {/* 3. 메인: 미리보기 영역 */}
           <div className="flex-1 bg-slate-200/50 overflow-y-auto p-8 flex justify-center custom-scrollbar">
             <div className="shadow-2xl h-fit bg-white">
-               {/* 실제 출력될 컴포넌트 (설정값 전달) */}
-               {/* [수정] academyLogo 전달 */}
+               {/* [수정] subTitle, academyName 전달 추가 */}
                <ExamPaperLayout 
                  ref={printRef}
                  problems={exam.problems || []}
@@ -140,7 +139,9 @@ export default function ExamPrintModal({ exam, onClose }: Props) {
                  template={template}
                  printOptions={printOptions}
                  isTeacherVersion={false} 
-                 academyLogo={exam.academyLogo} // [신규] 전달
+                 academyLogo={exam.academyLogo}
+                 subTitle={exam.subTitle} // [New]
+                 academyName={exam.academyName} // [New]
                />
             </div>
           </div>
