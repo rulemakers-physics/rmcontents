@@ -1,11 +1,21 @@
 // types/grade.ts
 import { Timestamp } from "firebase/firestore";
 
+export interface WrongProblemInfo {
+  id: string;     // 문제 DB ID
+  number: number; // 원본 시험지에서의 문항 번호 (예: 5번)
+}
+
 export interface ScoreData {
   studentId: string;
   studentName: string;
   score: number;
-  note?: string; // 학생별 특이사항 (예: 계산 실수 많음)
+  note?: string;
+  answers?: Record<number, string>;
+  results?: Record<number, boolean>;
+  
+  // [수정] 단순 ID 배열(string[]) -> 번호 포함 객체 배열로 변경
+  wrongProblems?: WrongProblemInfo[]; 
 }
 
 export interface ExamResultData {

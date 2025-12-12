@@ -15,6 +15,7 @@ export interface ExamPaperProblem {
   height?: number;         
   solutionHeight?: number;
   materialLevel?: string;
+  customLabel?: string;
 }
 
 export interface SavedExam {

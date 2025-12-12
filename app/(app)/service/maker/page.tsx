@@ -258,23 +258,25 @@ function ExamBuilderContent() {
     }
   }, [examId, isMounted]);
 
-  // [수정 4] 문제 배분 및 정렬 로직 (방어 코드 추가)
+  // [수정] 문제 배분 및 정렬 로직 (버그 수정됨)
   useEffect(() => {
     if (!isLoaded || isFetching) return;
 
-    // 선택된 소단원이 없으면 초기화
+    // 1. 선택된 소단원이 없는 경우 처리
     if (selectedMinorTopics.length === 0) {
-      // 단, 드래프트를 막 불러온 시점이고 문제가 있다면 초기화 하지 않음 (안전장치)
+      // ★ [Fix] examId가 존재한다는 것은 '불러오기' 모드라는 뜻입니다.
+      // 이 경우 사용자가 필터를 건드리지 않았다면 기존 문제를 유지해야 합니다.
+      if (examId) return;
+
+      // 드래프트를 불러온 직후가 아니라면 초기화
       if (!isDraftLoadedRef.current) {
          setExamProblems([]);
       }
       return;
     }
 
-    // ★ 중요: 드래프트를 불러온 직후라면, DB에서 새로 문제를 섞지 않고 
-    // 저장된 문제를 그대로 사용하기 위해 이번 effect 실행을 건너뜀
     if (isDraftLoadedRef.current) {
-      isDraftLoadedRef.current = false; // 플래그 해제 (다음 변경부터는 동작하도록)
+      isDraftLoadedRef.current = false; 
       return;
     }
 
@@ -293,7 +295,6 @@ function ExamBuilderContent() {
       }
     });
 
-    // 정렬: 소단원 순서 -> 난이도 오름차순
     const allMinorTopicsOrdered = SCIENCE_UNITS.flatMap(s => s.majorTopics.flatMap(m => m.minorTopics));
     
     selectedProblems.sort((a, b) => {
@@ -323,7 +324,7 @@ function ExamBuilderContent() {
 
     setExamProblems(formatted);
 
-  }, [fetchedProblems, difficultyCounts, isLoaded, isFetching, selectedMinorTopics]);
+  }, [fetchedProblems, difficultyCounts, isLoaded, isFetching, selectedMinorTopics]); // examId 제거
 
   // 문제 교체 핸들러
   const handleReplaceProblem = useCallback(async (problemId: string, currentMajor: string, currentDifficulty: string) => {
@@ -530,6 +531,9 @@ function ExamBuilderContent() {
 
   if (!isLoaded || !isMounted) return <div className="flex h-screen items-center justify-center">로딩 중...</div>;
 
+  // examId가 있으면(불러오기 모드), 왼쪽/오른쪽 패널의 자동 생성 기능을 비활성화
+  const isEditMode = !!examId; 
+
   return (
     <div className="flex w-full h-[calc(100vh-64px)] bg-gray-50 font-sans overflow-hidden">
       
@@ -537,7 +541,7 @@ function ExamBuilderContent() {
         [LEFT SIDEBAR] 단원 선택 (탐색) - 기존 필터 탭의 상단 부분 이동
         ================================================================
       */}
-      <aside className="w-72 flex-shrink-0 bg-white border-r border-gray-200 overflow-hidden flex flex-col z-20">
+      <aside className={`w-72 flex-shrink-0 bg-white border-r border-gray-200 overflow-hidden flex flex-col z-20 relative ${isEditMode ? 'opacity-50 pointer-events-none grayscale' : ''}`}>
         <div className="p-5 border-b border-gray-100 flex-shrink-0">
           <h1 className="text-xl font-bold text-slate-900 flex items-center gap-2">
             <Filter className="w-5 h-5 text-blue-600" /> 단원 선택
@@ -587,6 +591,14 @@ function ExamBuilderContent() {
             ))}
           </div>
         </div>
+        {/* [신규] 잠금 오버레이 */}
+        {isEditMode && (
+          <div className="absolute inset-0 z-50 flex items-center justify-center bg-white/50 backdrop-blur-[1px]">
+            <div className="bg-slate-800 text-white text-xs px-3 py-1.5 rounded-full font-bold shadow-lg flex items-center gap-1">
+              <Lock className="w-3 h-3" /> 클리닉 생성 모드 (필터 잠김)
+            </div>
+          </div>
+        )}
       </aside>
 
       {/* ================================================================
@@ -696,8 +708,16 @@ function ExamBuilderContent() {
           
           {/* TAB 1: 구성 설정 (난이도, 옵션, 템플릿 등) */}
           {rightPanelTab === 'settings' && (
-             <div className="absolute inset-0 overflow-y-auto p-5 custom-scrollbar space-y-8 animate-in fade-in slide-in-from-right-4 duration-300">
-                
+             <div className={`absolute inset-0 overflow-y-auto p-5 custom-scrollbar space-y-8 animate-in fade-in slide-in-from-right-4 duration-300 ${isEditMode ? 'opacity-50 pointer-events-none' : ''}`}>
+                {/* [신규] 잠금 메시지 */}
+                {isEditMode && (
+                  <div className="text-center p-4 bg-yellow-50 border border-yellow-100 rounded-xl mb-4">
+                    <p className="text-xs font-bold text-yellow-700">⚠️ 기존 시험지 편집 중</p>
+                    <p className="text-[10px] text-yellow-600 mt-1">
+                      문항 구성이 초기화되는 것을 막기 위해<br/>자동 생성 필터가 비활성화되었습니다.
+                    </p>
+                  </div>
+                )}
                 {/* 난이도 배분 */}
                 <div>
                   <h3 className="text-sm font-bold text-gray-900 mb-3 flex justify-between">

@@ -8,6 +8,7 @@ import { ExclamationCircleIcon } from "@heroicons/react/24/outline";
 import ReportIssueModal from "./ReportIssueModal";
 import { ExamPaperProblem, PrintOptions } from "@/types/exam";
 import { getSecureImageSrc, getProxyImageSrc } from "@/lib/imageHelper";
+import QRCode from "react-qr-code";
 
 // --- [상수 설정] A4 및 레이아웃 (96DPI 기준) ---
 const A4_HEIGHT_PX = 1123; // A4 높이 (297mm)
@@ -33,6 +34,7 @@ interface ExamPaperLayoutProps {
   // [New] 추가된 Props
   subTitle?: string;
   academyName?: string;
+  id?: string;
 }
 
 // --- [알고리즘] 문항 분배 함수 ---
@@ -145,7 +147,7 @@ function distributeItems(
 }
 
 const ExamPaperLayout = forwardRef<HTMLDivElement, ExamPaperLayoutProps>(
-  ({ problems = [], title, instructor, template, printOptions, isTeacherVersion, academyLogo, subTitle, academyName }, ref) => {
+  ({ id, problems = [], title, instructor, template, printOptions, isTeacherVersion, academyLogo, subTitle, academyName }, ref) => {
     
     const [reportTarget, setReportTarget] = React.useState<ExamPaperProblem | null>(null);
 
@@ -187,6 +189,8 @@ const ExamPaperLayout = forwardRef<HTMLDivElement, ExamPaperLayoutProps>(
       });
     }, [problems, printOptions.solutions, headerH]);
 
+    // OMR 링크 생성 (배포된 도메인으로 변경 필요)
+    const omrLink = id ? `https://rulemakers.co.kr/student/omr/${id}` : "";
 
     // --- 헤더 렌더링 함수 ---
     const renderHeader = (pageNum: number, isSolution = false) => {
@@ -213,7 +217,7 @@ const ExamPaperLayout = forwardRef<HTMLDivElement, ExamPaperLayoutProps>(
          );
       }
 
-      // 2. 문제지 헤더 (1페이지) - 여기가 핵심 수정 부분입니다
+      // 2. 문제지 헤더 (1페이지)
       if (pageNum === 0) {
         return (
           <div 
@@ -222,8 +226,7 @@ const ExamPaperLayout = forwardRef<HTMLDivElement, ExamPaperLayoutProps>(
           >
              <div className="flex justify-between items-end">
                 {/* 좌측: 타이틀 및 부제목 */}
-                <div>
-                   {/* [수정] subTitle 적용 */}
+                <div className="flex-1 mr-4"> {/* flex-1 추가하여 공간 확보 */}
                    <span className="text-xs text-slate-500 font-bold tracking-widest mb-1 block">
                      {subTitle || "2025학년도 1학기 대비"}
                    </span>
@@ -231,18 +234,28 @@ const ExamPaperLayout = forwardRef<HTMLDivElement, ExamPaperLayoutProps>(
                      {title}
                    </h1>
                    <div className="mt-1 text-xs font-medium text-slate-500 flex items-center gap-2">
-                      {/* [수정] 학원명 적용 */}
                       {academyName && <span className="font-bold text-slate-700">{academyName}</span>}
                       <span>{instructor} 선생님</span>
                    </div>
                 </div>
                 
-                {/* 우측: 로고 및 점수 박스 */}
-                <div className="flex flex-col items-end gap-2">
+                {/* 우측 통합: QR 코드 + 로고 + 점수 박스 */}
+                <div className="flex flex-col items-end gap-2 shrink-0">
+                  
+                  {/* 1. QR 코드 (id가 있을 때만) */}
+                  {omrLink && (
+                    <div className="flex flex-col items-center bg-white p-1 border border-slate-200 rounded mb-1">
+                      <QRCode value={omrLink} size={48} />
+                      <span className="text-[8px] font-bold text-slate-500 mt-0.5">OMR 입력</span>
+                    </div>
+                  )}
+
+                  {/* 2. 학원 로고 */}
                   {academyLogo && (
                     <img src={getProxyImageSrc(academyLogo)} alt="Academy Logo" className="h-12 object-contain" />
                   )}
 
+                  {/* 3. 점수 박스 */}
                   {template.showScoreBox && (
                     <div className="flex border border-slate-800 text-xs">
                        <div className="bg-slate-50 px-2 py-1 border-r border-slate-800 font-bold flex items-center">성명</div>
@@ -351,7 +364,18 @@ const ExamPaperLayout = forwardRef<HTMLDivElement, ExamPaperLayoutProps>(
 
                         {/* [수정] 문항 레이아웃: 번호 상단 배치 + 룰메이커스 로고 */}
                         <div className="flex flex-col h-full gap-2">
-                           
+                           {/* [신규] 출처 라벨 (있을 경우만 표시) */}
+                           {prob.customLabel && (
+                             <div className="mb-1">
+                               <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold border ${
+                                 prob.customLabel.includes("오답") 
+                                   ? "bg-red-50 text-red-600 border-red-100" 
+                                   : "bg-indigo-50 text-indigo-600 border-indigo-100"
+                               }`}>
+                                 {prob.customLabel}
+                               </span>
+                             </div>
+                           )}
                            {/* 문항 번호 Header */}
                            <div className="flex items-center gap-1">
                               {/* 룰메이커스 로고 (문항 번호 크기에 맞춤) */}
