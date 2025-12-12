@@ -41,6 +41,10 @@ export interface SavedExam {
   
   // 학원 로고
   academyLogo?: string | null;
+  // [신규] 클리닉 관련 필드 추가
+  isClinic?: boolean;       // 클리닉 여부
+  parentExamId?: string;    // 원본 시험지 ID (연결용)
+  studentName?: string;     // 클리닉 대상 학생 이름
 }
 
 export interface PrintOptions {

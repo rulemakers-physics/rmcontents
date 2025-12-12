@@ -87,8 +87,14 @@ function distributeItems(
       ? (item.height ? item.height * IMG_SCALE_FACTOR : 10)
       : (item.solutionHeight ? item.solutionHeight * IMG_SCALE_FACTOR : 10);
     
-    // [수정] 문항 번호가 상단으로 이동했으므로, 문항별 기본 높이(번호 영역)를 추가로 고려해야 함 (약 30px)
-    const headerOffset = type === 'question' ? 40 : 25; 
+    // [수정] 문항 번호 헤더 높이 계산 (기존 40px/25px)
+    let headerOffset = type === 'question' ? 40 : 25; 
+    
+    // [추가] 클리닉 라벨(오답/유사)이 있는 경우 높이 보정 (+20px)
+    // 라벨 폰트 크기, 패딩, 마진(mb-1)을 고려한 값입니다.
+    if (type === 'question' && item.customLabel) {
+      headerOffset += 20;
+    }
     const itemTotalHeight = rawHeight + options.itemGap + headerOffset;
     
     const maxContentY = options.pageHeight - options.footerHeight - options.paddingBottom - SAFETY_MARGIN_BOTTOM;

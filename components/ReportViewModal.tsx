@@ -20,15 +20,18 @@ interface Props {
   onClose: () => void;
 }
 
+// [신규] reviewTarget 타입에 sourceExamId 추가
+interface ReviewTargetState {
+  studentName: string;
+  wrongProblems: { id: string, number: number }[];
+  sourceExamId?: string; // 추가됨
+}
+
 export default function ReportViewModal({ result, onClose }: Props) {
   const printRef = useRef<HTMLDivElement>(null);
 
   // [신규] 클리닉 생성 모달 상태 관리
-  const [reviewTarget, setReviewTarget] = useState<{
-  studentName: string;
-  // wrongIds: string[] -> wrongProblems: WrongProblemInfo[]
-  wrongProblems: { id: string, number: number }[]; 
-  } | null>(null);
+  const [reviewTarget, setReviewTarget] = useState<ReviewTargetState | null>(null);
 
   const handlePrint = useReactToPrint({
     contentRef: printRef,
@@ -42,11 +45,16 @@ export default function ReportViewModal({ result, onClose }: Props) {
 
   // [신규] 클리닉 버튼 핸들러
   const handleOpenClinic = (studentName: string, wrongProblems?: { id: string, number: number }[]) => {
-  if (!wrongProblems || wrongProblems.length === 0) {
-    toast("오답 데이터가 없습니다.", { icon: "👏" });
-    return;
-  }
-  setReviewTarget({ studentName, wrongProblems });
+    if (!wrongProblems || wrongProblems.length === 0) {
+      toast("오답 데이터가 없습니다.", { icon: "👏" });
+      return;
+    }
+    // result.examId (원본 시험지 ID)를 함께 전달
+    setReviewTarget({ 
+      studentName, 
+      wrongProblems,
+      sourceExamId: result.examId 
+    });
   };
 
   return (
@@ -182,6 +190,7 @@ export default function ReportViewModal({ result, onClose }: Props) {
         <ReviewExamBuilderModal 
           studentName={reviewTarget.studentName}
           sourceExamTitle={result.examTitle}
+          sourceExamId={reviewTarget.sourceExamId}
           wrongProblems={reviewTarget.wrongProblems}
           onClose={() => setReviewTarget(null)}
         />

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
@@ -27,7 +27,10 @@ import {
   FolderOpenIcon,
   EllipsisHorizontalIcon,
   ArrowUpTrayIcon,
-  PrinterIcon 
+  PrinterIcon ,
+  SparklesIcon, // 클리닉 아이콘용
+  ChevronDownIcon,
+  ChevronUpIcon
 } from "@heroicons/react/24/outline";
 
 // --- DnD Kit ---
@@ -226,6 +229,43 @@ export default function StoragePage() {
   const currentFolderObj = folders.find(f => f.id === currentFolderId);
   const parentFolderId = currentFolderObj?.parentId || null;
   const parentFolderName = parentFolderId ? folders.find(f => f.id === parentFolderId)?.name : "Root(최상위)";
+
+  // [수정 2] 클리닉 토글 상태 관리 (어떤 시험지의 클리닉 목록을 펼쳤는지 저장)
+  const [expandedExamId, setExpandedExamId] = useState<string | null>(null);
+
+  // [수정 3] 데이터 필터링 및 그룹핑 로직 (기존 currentExams 변수 대체)
+  const { displayExams, examClinicsMap } = useMemo(() => {
+    // 1. 현재 폴더에 있는 파일만 필터링
+    const currentFiles = savedExams.filter(e => (e.folderId || null) === currentFolderId);
+    
+    const mainExams: SavedExam[] = [];
+    const clinicsMap: Record<string, SavedExam[]> = {};
+
+    currentFiles.forEach(exam => {
+      if (exam.isClinic) {
+        // 클리닉인 경우: parentExamId를 키로 하여 맵에 저장
+        const pid = exam.parentExamId;
+        if (pid) {
+          if (!clinicsMap[pid]) clinicsMap[pid] = [];
+          clinicsMap[pid].push(exam);
+        } else {
+          // 연결 정보가 없는 클리닉(예전 데이터)은 그냥 메인 목록에 표시
+          mainExams.push(exam);
+        }
+      } else {
+        // 일반 시험지인 경우: 메인 목록에 추가
+        mainExams.push(exam);
+      }
+    });
+
+    return { displayExams: mainExams, examClinicsMap: clinicsMap };
+  }, [savedExams, currentFolderId]);
+
+  // [수정 4] 클리닉 토글 핸들러
+  const toggleClinics = (e: React.MouseEvent, examId: string) => {
+    e.stopPropagation(); // 카드 클릭 이벤트 전파 방지
+    setExpandedExamId(prev => prev === examId ? null : examId);
+  };
 
   // --- 핸들러: 폴더 생성 ---
   const handleCreateFolder = async () => {
@@ -478,85 +518,149 @@ export default function StoragePage() {
               </div>
             )}
 
-            {/* 시험지 리스트 */}
-            <div>
-              <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3 px-1">
-                Files ({currentExams.length})
-              </h3>
-              
-              {currentExams.length === 0 ? (
-                <div className="text-center py-20 bg-white rounded-2xl border border-dashed border-slate-200">
-                  <DocumentTextIcon className="w-12 h-12 text-slate-300 mx-auto mb-3" />
-                  <p className="text-slate-500 font-medium">이 폴더에는 시험지가 없습니다.</p>
-                </div>
-              ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {currentExams.map((exam) => (
-                    <DraggableExam key={exam.id} exam={exam}>
-                      <div className="group bg-white p-5 rounded-2xl border border-slate-200 shadow-sm hover:shadow-lg transition-all relative flex flex-col justify-between h-full">
-                        
-                        <div className="flex justify-between items-start mb-3">
-                          <div className="p-2.5 bg-slate-100 text-slate-500 rounded-xl group-hover:bg-slate-800 group-hover:text-white transition-colors">
-                            <DocumentTextIcon className="w-6 h-6" />
-                          </div>
-                          
-                          <div className="flex gap-1" onPointerDown={(e) => e.stopPropagation()}>
-                             <button 
-                                onClick={() => handleOpenPrintModal(exam)}
-                                className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
-                                title="인쇄 및 PDF 저장"
-                             >
-                               <PrinterIcon className="w-5 h-5" />
-                             </button>
-                             <button 
-                                onClick={() => handleDeleteExam(exam.id)}
-                                className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                                title="삭제"
-                             >
-                               <TrashIcon className="w-5 h-5" />
-                             </button>
-                          </div>
-                        </div>
-                        
-                        <div>
-                          <h3 className="text-lg font-bold text-slate-900 mb-1 line-clamp-1 group-hover:text-blue-600 transition-colors">
-                            {exam.title}
-                          </h3>
-                          <div className="flex items-center gap-3 text-xs text-slate-500 mb-4">
-                            <span className="flex items-center gap-1">
-                              <CalendarDaysIcon className="w-3.5 h-3.5" />
-                              {formatDate(exam.createdAt)}
-                            </span>
-                            <span className="w-1 h-1 bg-slate-300 rounded-full" />
-                            <span>{exam.problemCount}문항</span>
-                          </div>
-                        </div>
+            {/* 시험지 리스트 영역 */}
+        <div>
+          <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3 px-1">
+            Files ({displayExams.length})
+          </h3>
+          
+          {displayExams.length === 0 ? (
+            <div className="text-center py-20 bg-white rounded-2xl border border-dashed border-slate-200">
+              <DocumentTextIcon className="w-12 h-12 text-slate-300 mx-auto mb-3" />
+              <p className="text-slate-500 font-medium">이 폴더에는 시험지가 없습니다.</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {/* [변경] currentExams -> displayExams */}
+              {displayExams.map((exam) => {
+                // 해당 시험지에 연결된 클리닉 목록 가져오기
+                const linkedClinics = examClinicsMap[exam.id] || [];
+                const hasClinics = linkedClinics.length > 0;
+                const isExpanded = expandedExamId === exam.id;
 
-                        <div 
-                          className="flex items-center gap-2 pt-4 border-t border-slate-100 mt-auto"
-                          onPointerDown={(e) => e.stopPropagation()} 
-                        >
-                          <button 
-                            onClick={() => handleGoToGrade(exam.id)}
-                            className="flex-1 py-2 text-xs font-bold text-green-700 bg-green-50 rounded-lg hover:bg-green-100 transition-colors flex items-center justify-center gap-1"
-                          >
-                            <ChartBarIcon className="w-3.5 h-3.5" /> 성적 입력
-                          </button>
-                          <Link 
-                            href={`/service/maker?id=${exam.id}`}
-                            className="flex-1 py-2 text-xs font-bold text-blue-700 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors flex items-center justify-center gap-1"
-                          >
-                            <PencilSquareIcon className="w-3.5 h-3.5" /> 수정/불러오기
-                          </Link>
+                return (
+                  <DraggableExam key={exam.id} exam={exam}>
+                    <div className={`group bg-white p-5 rounded-2xl border transition-all relative flex flex-col justify-between h-full ${
+                      isExpanded ? 'border-blue-300 shadow-md ring-1 ring-blue-100' : 'border-slate-200 shadow-sm hover:shadow-lg'
+                    }`}>
+                      
+                      {/* 카드 상단: 아이콘 및 기본 버튼 */}
+                      <div className="flex justify-between items-start mb-3">
+                        <div className={`p-2.5 rounded-xl transition-colors ${
+                          exam.isClinic ? 'bg-purple-50 text-purple-600' : 'bg-slate-100 text-slate-500 group-hover:bg-slate-800 group-hover:text-white'
+                        }`}>
+                          {exam.isClinic ? <SparklesIcon className="w-6 h-6"/> : <DocumentTextIcon className="w-6 h-6" />}
+                        </div>
+                        
+                        <div className="flex gap-1" onPointerDown={(e) => e.stopPropagation()}>
+                           <button onClick={() => handleOpenPrintModal(exam)} className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors" title="인쇄 및 PDF 저장">
+                             <PrinterIcon className="w-5 h-5" />
+                           </button>
+                           <button onClick={() => handleDeleteExam(exam.id)} className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors" title="삭제">
+                             <TrashIcon className="w-5 h-5" />
+                           </button>
                         </div>
                       </div>
-                    </DraggableExam>
-                  ))}
-                </div>
-              )}
+                      
+                      {/* 카드 정보 */}
+                      <div className="mb-4">
+                        <h3 className="text-lg font-bold text-slate-900 mb-1 line-clamp-1 group-hover:text-blue-600 transition-colors">
+                          {exam.title}
+                        </h3>
+                        <div className="flex items-center gap-3 text-xs text-slate-500">
+                          <span className="flex items-center gap-1">
+                            <CalendarDaysIcon className="w-3.5 h-3.5" />
+                            {formatDate(exam.createdAt)}
+                          </span>
+                          <span className="w-1 h-1 bg-slate-300 rounded-full" />
+                          <span>{exam.problemCount}문항</span>
+                        </div>
+                      </div>
+
+                      {/* ▼▼▼ [추가된 부분] 클리닉 아코디언 섹션 ▼▼▼ */}
+                      {hasClinics && (
+                        <div className="mb-4" onPointerDown={(e) => e.stopPropagation()}>
+                          <button
+                            onClick={(e) => toggleClinics(e, exam.id)}
+                            className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-bold transition-colors ${
+                              isExpanded ? 'bg-purple-50 text-purple-700' : 'bg-slate-50 text-slate-600 hover:bg-slate-100'
+                            }`}
+                          >
+                            <div className="flex items-center gap-1.5">
+                              <SparklesIcon className="w-4 h-4" />
+                              <span>오답 클리닉 ({linkedClinics.length})</span>
+                            </div>
+                            {isExpanded ? <ChevronUpIcon className="w-3 h-3" /> : <ChevronDownIcon className="w-3 h-3" />}
+                          </button>
+
+                          {/* 펼쳐진 클리닉 리스트 */}
+                          {isExpanded && (
+                            <div className="mt-2 space-y-1 pl-2 border-l-2 border-purple-100 max-h-40 overflow-y-auto custom-scrollbar">
+                              {linkedClinics.map(clinic => (
+                                <div key={clinic.id} className="flex items-center justify-between p-2 rounded hover:bg-slate-50 group/item">
+                                  <div className="flex items-center gap-2 overflow-hidden">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-purple-400 shrink-0" />
+                                    <div className="flex flex-col min-w-0">
+                                      <span className="text-xs font-bold text-slate-700 truncate max-w-[120px]">
+                                        {clinic.studentName || "학생"} {/* 학생 이름 표시 */}
+                                      </span>
+                                      <span className="text-[10px] text-slate-400">
+                                        {formatDate(clinic.createdAt)}
+                                      </span>
+                                    </div>
+                                  </div>
+                                  
+                                  <div className="flex gap-1 opacity-0 group-hover/item:opacity-100 transition-opacity">
+                                    <button 
+                                      onClick={() => handleOpenPrintModal(clinic)}
+                                      className="p-1 text-slate-400 hover:text-indigo-600"
+                                      title="인쇄"
+                                    >
+                                      <PrinterIcon className="w-3.5 h-3.5" />
+                                    </button>
+                                    <button 
+                                      onClick={() => handleDeleteExam(clinic.id)}
+                                      className="p-1 text-slate-400 hover:text-red-600"
+                                      title="삭제"
+                                    >
+                                      <TrashIcon className="w-3.5 h-3.5" />
+                                    </button>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      )}
+                      {/* ▲▲▲ [추가된 부분 끝] ▲▲▲ */}
+
+                        {/* 하단 액션 버튼들 */}
+                      <div 
+                        className="flex items-center gap-2 pt-4 border-t border-slate-100 mt-auto"
+                        onPointerDown={(e) => e.stopPropagation()} 
+                      >
+                        <button 
+                          onClick={() => handleGoToGrade(exam.id)}
+                          className="flex-1 py-2 text-xs font-bold text-green-700 bg-green-50 rounded-lg hover:bg-green-100 transition-colors flex items-center justify-center gap-1"
+                        >
+                          <ChartBarIcon className="w-3.5 h-3.5" /> 성적 입력
+                        </button>
+                        <Link 
+                          href={`/service/maker?id=${exam.id}`}
+                          className="flex-1 py-2 text-xs font-bold text-blue-700 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors flex items-center justify-center gap-1"
+                        >
+                          <PencilSquareIcon className="w-3.5 h-3.5" /> 수정/복사
+                        </Link>
+                      </div>
+                    </div>
+                  </DraggableExam>
+                );
+              })}
             </div>
-          </div>
-        )}
+          )}
+        </div>
+        </div>
+    )}
 
         {/* 모달 1: 폴더 생성 */}
         {isCreateFolderOpen && (

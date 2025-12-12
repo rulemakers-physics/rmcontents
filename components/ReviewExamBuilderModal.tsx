@@ -16,11 +16,12 @@ import { DBProblem } from "@/types/problem";
 interface Props {
   studentName: string;
   sourceExamTitle: string;
+  sourceExamId?: string; // [신규] Optional Prop 추가
   wrongProblems: { id: string, number: number }[]; // [수정] 타입 명시
   onClose: () => void;
 }
 
-export default function ReviewExamBuilderModal({ studentName, sourceExamTitle, wrongProblems, onClose }: Props) {
+export default function ReviewExamBuilderModal({ studentName, sourceExamTitle, sourceExamId, wrongProblems, onClose }: Props) {
   const { user } = useAuth();
   const router = useRouter();
 
@@ -163,7 +164,10 @@ export default function ReviewExamBuilderModal({ studentName, sourceExamTitle, w
         templateId: "math-pro",
         layoutMode: "dense",
         questionPadding: 40,
-        isClinic: true 
+        // [수정] 클리닉 메타데이터 추가 저장
+        isClinic: true,
+        parentExamId: sourceExamId || null, // 원본 시험지 ID 연결
+        studentName: studentName // 학생 이름 저장
       });
 
       toast.success("클리닉 시험지가 생성되었습니다!", { id: toastId });
