@@ -19,6 +19,9 @@ import { useAuth } from "@/context/AuthContext";
 import { 
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer 
 } from "recharts";
+import WeaknessRadarChart from "./WeaknessRadarChart"; // [신규 컴포넌트]
+import { analyzeCumulativeWeakness, AnalysisResult } from "@/utils/analysisHelper"; // [신규 로직]
+import { SparklesIcon } from "@heroicons/react/24/solid"; // 아이콘
 
 interface Props {
   student: StudentData;
@@ -116,6 +119,29 @@ export default function StudentDetailModal({ student, onClose }: Props) {
     if (!confirm("삭제하시겠습니까?")) return;
     await deleteDoc(doc(db, "students", student.id, "counseling_logs", logId));
   };
+
+  // [신규] 누적 분석 데이터 상태
+  const [aiAnalysisData, setAiAnalysisData] = useState<AnalysisResult[]>([]);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+
+  // [신규] 분석 실행 함수
+  const runAnalysis = async () => {
+    if (!student.classId) return;
+    setIsAnalyzing(true);
+    const data = await analyzeCumulativeWeakness(student.id, student.classId);
+    setAiAnalysisData(data);
+    setIsAnalyzing(false);
+    if (data.length === 0) {
+      toast("분석할 충분한 누적 데이터가 없습니다.");
+    }
+  };
+
+  // 탭이 'analysis'로 바뀔 때 자동으로 분석 실행 (선택 사항)
+  useEffect(() => {
+    if (activeTab === 'analysis' && aiAnalysisData.length === 0) {
+      runAnalysis();
+    }
+  }, [activeTab]);
 
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
@@ -237,31 +263,47 @@ export default function StudentDetailModal({ student, onClose }: Props) {
 
             {/* 2. 분석 탭 */}
             {activeTab === 'analysis' && (
-              <div className="h-full flex flex-col">
+              <div className="h-full flex flex-col overflow-y-auto pr-2 custom-scrollbar">
                 <div className="mb-6">
-                  <h3 className="text-lg font-bold text-slate-900 mb-1">성적 변화 추이</h3>
-                  <p className="text-sm text-slate-500">최근 응시한 시험의 성적 변화를 그래프로 확인합니다.</p>
+                  <h3 className="text-lg font-bold text-slate-900 mb-1 flex items-center gap-2">
+                    <SparklesIcon className="w-5 h-5 text-indigo-500" />
+                    AI 누적 학습 분석
+                  </h3>
+                  <p className="text-sm text-slate-500">
+                    지금까지 응시한 모든 시험 데이터를 종합하여 단원별 숙련도를 분석합니다.
+                  </p>
                 </div>
 
-                <div className="flex-1 min-h-[300px] w-full">
-                  {examHistory.length === 0 ? (
-                    <div className="h-full flex items-center justify-center text-slate-400 text-sm border-2 border-dashed border-slate-100 rounded-xl">
-                      데이터가 부족하여 그래프를 표시할 수 없습니다.
+                {/* --- [신규] AI 분석 차트 영역 --- */}
+                <div className="bg-white p-4 rounded-2xl border border-indigo-100 shadow-sm mb-8">
+                  {isAnalyzing ? (
+                    <div className="h-64 flex flex-col items-center justify-center text-slate-400 gap-3">
+                      <div className="w-8 h-8 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin" />
+                      <span className="text-xs">데이터를 분석 중입니다...</span>
                     </div>
+                  ) : aiAnalysisData.length > 0 ? (
+                    <>
+                      <div className="flex justify-between items-center mb-4 px-2">
+                        <h4 className="font-bold text-slate-800 text-sm">단원별 실력 (가중치 분석)</h4>
+                        <span className="text-[12px] bg-indigo-50 text-indigo-600 px-2 py-1 rounded-full font-bold">
+                          RuleMakers AI Powered
+                        </span>
+                      </div>
+                      {/* 위에서 만든 레이더 차트 컴포넌트 사용 */}
+                      <WeaknessRadarChart data={aiAnalysisData} />
+                      <div className="mt-4 p-3 bg-slate-50 rounded-lg text-xs text-slate-600 leading-relaxed">
+                        💡 <strong>분석 인사이트:</strong><br/>
+                        {/* 간단한 자동 코멘트 생성 로직 */}
+                        {(() => {
+                          const lowest = [...aiAnalysisData].sort((a, b) => a.score - b.score)[0];
+                          return `${student.name} 학생은 현재 '${lowest.topic}' 단원이 가장 취약합니다. 해당 단원 위주의 클리닉 문제 풀이가 필요합니다.`;
+                        })()}
+                      </div>
+                    </>
                   ) : (
-                    <ResponsiveContainer width="100%" height="100%">
-                      <LineChart data={examHistory} margin={{ top: 5, right: 20, bottom: 5, left: 0 }}>
-                        <CartesianGrid stroke="#f1f5f9" strokeDasharray="3 3" />
-                        <XAxis dataKey="date" fontSize={12} tick={{fill: '#94a3b8'}} />
-                        <YAxis domain={[0, 100]} fontSize={12} tick={{fill: '#94a3b8'}} />
-                        <Tooltip 
-                          contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
-                        />
-                        <Legend />
-                        <Line type="monotone" dataKey="myScore" name="내 점수" stroke="#2563eb" strokeWidth={3} activeDot={{ r: 6 }} />
-                        <Line type="monotone" dataKey="average" name="반 평균" stroke="#94a3b8" strokeDasharray="5 5" />
-                      </LineChart>
-                    </ResponsiveContainer>
+                    <div className="h-40 flex items-center justify-center text-slate-400 text-sm border-2 border-dashed border-slate-100 rounded-xl">
+                      분석할 데이터가 부족합니다.
+                    </div>
                   )}
                 </div>
                 

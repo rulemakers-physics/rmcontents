@@ -60,7 +60,7 @@ export default function WeaknessRadarChart({ data }: Props) {
       {/* 중앙 점수 표시 (옵션) */}
       <div className="absolute top-2 right-2">
         <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800">
-          AI Analysis
+          Analysis
         </span>
       </div>
     </div>
