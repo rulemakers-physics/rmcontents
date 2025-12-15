@@ -29,6 +29,7 @@ import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { storage } from "@/lib/firebase";
 import { ExamPaperProblem, PrintOptions } from "@/types/exam";
 import { getSecureImageSrc } from "@/lib/imageHelper";
+import ExamBuilderTour from "@/components/ExamBuilderTour";
 
 
 // 난이도 정렬 순서
@@ -596,12 +597,19 @@ function ExamBuilderContent() {
 
   return (
     <div className="flex w-full h-[calc(100vh-64px)] bg-gray-50 font-sans overflow-hidden">
+
+      {/* 튜토리얼 컴포넌트 (페이지 로드 시 자동 실행) */}
+      <ExamBuilderTour />
       
       {/* ================================================================
         [LEFT SIDEBAR] 단원 선택 (탐색) - 기존 필터 탭의 상단 부분 이동
+        ID 추가: id="maker-unit-selection"
         ================================================================
       */}
-      <aside className={`w-72 flex-shrink-0 bg-white border-r border-gray-200 overflow-hidden flex flex-col z-20 relative ${isClinicMode ? 'opacity-50 pointer-events-none grayscale' : ''}`}>
+      <aside 
+        id="maker-unit-selection"
+        className={`w-72 flex-shrink-0 bg-white border-r border-gray-200 overflow-hidden flex flex-col z-20 relative ${isEditMode ? 'opacity-50 pointer-events-none grayscale' : ''}`}
+      >
         <div className="p-5 border-b border-gray-100 flex-shrink-0">
           <h1 className="text-xl font-bold text-slate-900 flex items-center gap-2">
             <Filter className="w-5 h-5 text-blue-600" /> 단원 선택
@@ -667,7 +675,8 @@ function ExamBuilderContent() {
       */}
       <main className="flex-1 flex flex-col h-full bg-slate-200/50 relative min-w-0">
         <header className="h-16 bg-white border-b border-gray-200 flex items-center justify-between px-6 flex-shrink-0 shadow-sm z-10">
-          <div className="flex items-center gap-4 flex-1">
+          {/* ID 추가: id="maker-exam-title" */}
+          <div id="maker-exam-title" className="flex items-center gap-4 flex-1">
             <div className="flex flex-col gap-1 w-full max-w-lg">
                 <input 
                   type="text" 
@@ -717,13 +726,20 @@ function ExamBuilderContent() {
           </div>
           
           <div className="flex gap-3">
-             <button onClick={handleSaveExam} disabled={isSaving} className="flex items-center gap-2 px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-bold text-sm shadow-md transition-all active:scale-95 disabled:opacity-50">
+             {/* ID 추가: id="maker-save-button" */}
+             <button 
+               id="maker-save-button"
+               onClick={handleSaveExam} 
+               disabled={isSaving} 
+               className="flex items-center gap-2 px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-bold text-sm shadow-md transition-all active:scale-95 disabled:opacity-50"
+             >
                <SaveIcon className="w-4 h-4" /> {isSaving ? "저장 중..." : "보관함 저장"}
              </button>
           </div>
         </header>
 
-        <div className="flex-1 overflow-y-auto p-10 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-transparent bg-slate-100">
+        {/* ID 추가: id="maker-preview-stage" */}
+        <div id="maker-preview-stage" className="flex-1 overflow-y-auto p-10 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-transparent bg-slate-100">
           <div className="flex flex-col items-center gap-8 pb-20">
              <ExamPaperLayout 
                ref={printRef}
@@ -744,10 +760,10 @@ function ExamBuilderContent() {
 
       {/* ================================================================
         [RIGHT SIDEBAR] 설정 및 순서 (새로 추가된 영역)
+        ID 추가: id="maker-right-sidebar"
         ================================================================
       */}
-      <aside className="w-80 flex-shrink-0 bg-white border-l border-gray-200 overflow-hidden flex flex-col z-20">
-        
+      <aside id="maker-right-sidebar" className="w-80 flex-shrink-0 bg-white border-l border-gray-200 overflow-hidden flex flex-col z-20">  
         {/* 탭 헤더 */}
         <div className="flex border-b border-gray-100 bg-white">
           <button 
@@ -770,7 +786,8 @@ function ExamBuilderContent() {
           {/* TAB 1: 구성 설정 (난이도, 옵션, 템플릿 등) */}
           {rightPanelTab === 'settings' && (
              // [수정] 최상위 div에서 isEditMode 잠금 클래스 제거 (개별 적용으로 변경)
-             <div className="absolute inset-0 overflow-y-auto p-5 custom-scrollbar space-y-8 animate-in fade-in slide-in-from-right-4 duration-300">
+             // ID 추가: id="maker-settings-panel"
+             <div id="maker-settings-panel" className="absolute inset-0 overflow-y-auto p-5 custom-scrollbar space-y-8 animate-in fade-in slide-in-from-right-4 duration-300">
                 
                 {/* [수정] 안내 메시지: isClinicMode일 때만 표시 */}
                 {isClinicMode && (
