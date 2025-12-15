@@ -17,16 +17,17 @@ const PUBLIC_PATHS = [
   "/company", 
   "/terms", 
   "/privacy",
-  "/share" // [추가] 공유 페이지 접근 허용
+  "/share"
 ];
 
-// 쇼케이스 등 일부 공개 경로는 startsWith로 처리
+// 2. [수정] 공개 경로 접두사 추가
+// OMR 페이지는 로그인 없이도 접근 가능해야 하므로 여기에 추가합니다.
 const PUBLIC_PREFIXES = [
-  "/showcase"
+  "/showcase",
+  "/student/omr" // 👈 [추가] OMR 페이지는 공개로 설정
 ];
 
 export default function RouteGuard({ children }: { children: React.ReactNode }) {
-  // [수정] isFirstLogin 추가
   const { user, userData, loading, isFirstLogin } = useAuth(); 
   const router = useRouter();
   const pathname = usePathname();
@@ -57,52 +58,49 @@ export default function RouteGuard({ children }: { children: React.ReactNode }) 
     }
 
     // 3. 로그인 유저 권한 검사
-    
-    // 3-1. 관리자(Admin)는 프리패스
     if (user.isAdmin) {
       setIsAuthorized(true);
       return;
     }
 
-    // 3-2. [핵심 수정] 유저 데이터가 없는 경우 (첫 로그인 처리)
     if (!userData) {
-      // (A) 첫 로그인 상태가 확인된 경우
       if (isFirstLogin === true) {
-        // 이미 셋업 페이지라면 렌더링 허용
         if (pathname === "/profile/setup") {
           setIsAuthorized(true);
           return;
         }
-        // 다른 페이지라면 셋업 페이지로 강제 이동
         router.replace("/profile/setup");
         return;
       }
-      
-      // (B) 아직 데이터 로딩 중인 경우 (isFirstLogin도 null) -> 대기
       return; 
     }
 
-    // 3-3. userData가 있는 정상 유저 권한 검사
     const { role, plan } = userData;
 
     // (A) 학생 라우트 제어
     if (pathname.startsWith("/student")) {
-      if (role === "instructor" || role === "director") {
+      // 강사나 원장이 학생 페이지 접근 시 대시보드로 이동 (OMR은 예외일 수 있으나, 보통 모바일로 접속하므로 유지)
+      // 단, 강사가 테스트로 OMR을 찍어볼 수도 있으므로 OMR은 허용해주는 게 좋습니다.
+      const isOmrPage = pathname.startsWith("/student/omr"); // 👈 체크 변수 추가
+
+      if (!isOmrPage && (role === "instructor" || role === "director")) {
         router.replace("/dashboard");
         return;
       }
       
       const isPaidStudent = plan === "STD_STANDARD" || plan === "STD_PREMIUM";
+      
+      // [수정] 유료 플랜 체크 예외 경로에 '/student/omr' 추가
+      // OMR 페이지는 플랜과 상관없이 접속 가능해야 합니다.
       if (role === "student" && !isPaidStudent) {
-        // 프로필 설정은 예외적으로 허용 (결제 유도를 위해)
-        if (!pathname.startsWith("/student/profile")) {
+        if (!pathname.startsWith("/student/profile") && !isOmrPage) { // 👈 !isOmrPage 조건 추가
            router.replace("/pricing"); 
            return;
         }
       }
     }
 
-    // (B) 앱 라우트 제어
+    // (B) 앱 라우트 제어 (기존 유지)
     const isAppRoute = 
       pathname.startsWith("/dashboard") || 
       pathname.startsWith("/manage") || 
@@ -127,7 +125,6 @@ export default function RouteGuard({ children }: { children: React.ReactNode }) 
 
   }, [user, userData, loading, isFirstLogin, pathname, router]);
 
-  // 차단 중일 때 로딩 표시
   if (loading || !isAuthorized) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-slate-50">

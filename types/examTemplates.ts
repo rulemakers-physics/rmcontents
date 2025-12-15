@@ -32,7 +32,7 @@ export const TEMPLATES: ExamTemplateStyle[] = [
   { 
     id: 'math-pro', 
     name: '심플', 
-    headerHeight: '110px', 
+    headerHeight: '120px', 
     contentPadding: '15mm',
     columnGap: '12mm', 
     problemGap: 'mb-8',

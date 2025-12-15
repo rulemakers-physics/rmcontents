@@ -196,7 +196,7 @@ const ExamPaperLayout = forwardRef<HTMLDivElement, ExamPaperLayoutProps>(
     }, [problems, printOptions.solutions, headerH]);
 
     // OMR 링크 생성 (배포된 도메인으로 변경 필요)
-    const omrLink = id ? `https://rulemakers.co.kr/student/omr/${id}` : "";
+    const omrLink = id ? `https://rmcontents1.web.app/student/omr/${id}` : "";
 
     // --- 헤더 렌더링 함수 ---
     const renderHeader = (pageNum: number, isSolution = false) => {
@@ -253,7 +253,7 @@ const ExamPaperLayout = forwardRef<HTMLDivElement, ExamPaperLayoutProps>(
                     <img 
                       src={getProxyImageSrc(academyLogo)} 
                       alt="Academy Logo" 
-                      className="h-12 object-contain"
+                      className="h-12 object-contain translate-y-[50px]"
                     />
                   )}
 
@@ -263,7 +263,7 @@ const ExamPaperLayout = forwardRef<HTMLDivElement, ExamPaperLayoutProps>(
                     {/* QR 코드 (점수 박스 왼쪽) */}
                     {omrLink && (
                       <div className="bg-white p-0.5 border border-slate-200 rounded flex flex-col items-center justify-center">
-                        <QRCode value={omrLink} size={48} />
+                        <QRCode value={omrLink} size={58} />
                         <span className="text-[8px] font-bold text-slate-500 mt-0.5">OMR 입력</span>
                       </div>
                     )}
