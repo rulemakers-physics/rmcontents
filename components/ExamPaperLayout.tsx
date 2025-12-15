@@ -245,31 +245,40 @@ const ExamPaperLayout = forwardRef<HTMLDivElement, ExamPaperLayoutProps>(
                    </div>
                 </div>
                 
-                {/* 우측 통합: QR 코드 + 로고 + 점수 박스 */}
+                {/* 우측 통합: 로고 (상단) + [QR 코드 - 점수 박스] (하단) */}
                 <div className="flex flex-col items-end gap-2 shrink-0">
-                  
-                  {/* 1. QR 코드 (id가 있을 때만) */}
-                  {omrLink && (
-                    <div className="flex flex-col items-center bg-white p-1 border border-slate-200 rounded mb-1">
-                      <QRCode value={omrLink} size={48} />
-                      <span className="text-[8px] font-bold text-slate-500 mt-0.5">OMR 입력</span>
-                    </div>
-                  )}
 
-                  {/* 2. 학원 로고 */}
+                  {/* 1. 학원 로고 (가장 상단에 배치) */}
                   {academyLogo && (
-                    <img src={getProxyImageSrc(academyLogo)} alt="Academy Logo" className="h-12 object-contain" />
+                    <img 
+                      src={getProxyImageSrc(academyLogo)} 
+                      alt="Academy Logo" 
+                      className="h-12 object-contain"
+                    />
                   )}
 
-                  {/* 3. 점수 박스 */}
-                  {template.showScoreBox && (
-                    <div className="flex border border-slate-800 text-xs">
-                       <div className="bg-slate-50 px-2 py-1 border-r border-slate-800 font-bold flex items-center">성명</div>
-                       <div className="w-16 border-r border-slate-800"></div>
-                       <div className="bg-slate-50 px-2 py-1 border-r border-slate-800 font-bold flex items-center">점수</div>
-                       <div className="w-12"></div>
-                    </div>
-                  )}
+                  {/* 2. 하단 그룹 (QR 코드 + 점수 박스를 가로로 배치) */}
+                  <div className="flex items-end gap-2">
+                    
+                    {/* QR 코드 (점수 박스 왼쪽) */}
+                    {omrLink && (
+                      <div className="bg-white p-0.5 border border-slate-200 rounded flex flex-col items-center justify-center">
+                        <QRCode value={omrLink} size={48} />
+                        <span className="text-[8px] font-bold text-slate-500 mt-0.5">OMR 입력</span>
+                      </div>
+                    )}
+
+                    {/* 점수 박스 (우측 끝) */}
+                    {template.showScoreBox && (
+                      <div className="flex border border-slate-800 text-xs bg-white">
+                        <div className="bg-slate-50 px-2 py-1 border-r border-slate-800 font-bold flex items-center">성명</div>
+                        <div className="w-16 border-r border-slate-800"></div>
+                        <div className="bg-slate-50 px-2 py-1 border-r border-slate-800 font-bold flex items-center">점수</div>
+                        <div className="w-12"></div>
+                      </div>
+                    )}
+                    
+                  </div>
                 </div>
              </div>
           </div>

@@ -594,7 +594,7 @@ function ExamBuilderContent() {
         {/* [신규] 잠금 오버레이 */}
         {isEditMode && (
           <div className="absolute inset-0 z-50 flex items-center justify-center bg-white/50 backdrop-blur-[1px]">
-            <div className="bg-slate-800 text-white text-xs px-3 py-1.5 rounded-full font-bold shadow-lg flex items-center gap-1">
+            <div className="bg-slate-800 text-white text-xs. px-3 py-1.5 rounded-full font-bold shadow-lg flex items-center gap-1">
               <Lock className="w-3 h-3" /> 클리닉 생성 모드 (필터 잠김)
             </div>
           </div>
@@ -667,6 +667,7 @@ function ExamBuilderContent() {
           <div className="flex flex-col items-center gap-8 pb-20">
              <ExamPaperLayout 
                ref={printRef}
+               id={examId || undefined}
                problems={examProblems || []} 
                title={examTitle}
                instructor={instructorName}
@@ -708,18 +709,21 @@ function ExamBuilderContent() {
           
           {/* TAB 1: 구성 설정 (난이도, 옵션, 템플릿 등) */}
           {rightPanelTab === 'settings' && (
-             <div className={`absolute inset-0 overflow-y-auto p-5 custom-scrollbar space-y-8 animate-in fade-in slide-in-from-right-4 duration-300 ${isEditMode ? 'opacity-50 pointer-events-none' : ''}`}>
-                {/* [신규] 잠금 메시지 */}
+             // [수정] 최상위 div에서 isEditMode 잠금 클래스 제거 (개별 적용으로 변경)
+             <div className="absolute inset-0 overflow-y-auto p-5 custom-scrollbar space-y-8 animate-in fade-in slide-in-from-right-4 duration-300">
+                
+                {/* [신규] 잠금 메시지 (유지) */}
                 {isEditMode && (
                   <div className="text-center p-4 bg-yellow-50 border border-yellow-100 rounded-xl mb-4">
-                    <p className="text-xs font-bold text-yellow-700">⚠️ 기존 시험지 편집 중</p>
-                    <p className="text-[10px] text-yellow-600 mt-1">
+                    <p className="text-base font-bold text-yellow-700">⚠️ 클리닉 생성 모드</p>
+                    <p className="text-[12px] text-yellow-600 mt-1">
                       문항 구성이 초기화되는 것을 막기 위해<br/>자동 생성 필터가 비활성화되었습니다.
                     </p>
                   </div>
                 )}
-                {/* 난이도 배분 */}
-                <div>
+
+                {/* [수정] 난이도 배분: 편집 모드 시 잠금 */}
+                <div className={isEditMode ? 'opacity-50 pointer-events-none' : ''}>
                   <h3 className="text-sm font-bold text-gray-900 mb-3 flex justify-between">
                     <span>난이도 배분</span>
                     <span className="text-blue-600">{questionCount}문항</span>
@@ -747,8 +751,8 @@ function ExamBuilderContent() {
                   </div>
                 </div>
 
-                {/* 문항 유형 */}
-                <div className="pt-4 border-t border-gray-100">
+                {/* [수정] 문항 유형: 편집 모드 시 잠금 */}
+                <div className={`pt-4 border-t border-gray-100 ${isEditMode ? 'opacity-50 pointer-events-none' : ''}`}>
                   <h3 className="text-sm font-bold text-gray-900 mb-3 flex items-center gap-2">
                     <CheckCircle2 className="w-4 h-4"/> 문항 유형
                   </h3>
@@ -764,8 +768,8 @@ function ExamBuilderContent() {
                   </div>
                 </div>
 
-                {/* 문항 필터 */}
-                <div className="pt-4 border-t border-gray-100">
+                {/* [수정] 문항 필터: 편집 모드 시 잠금 */}
+                <div className={`pt-4 border-t border-gray-100 ${isEditMode ? 'opacity-50 pointer-events-none' : ''}`}>
                   <h3 className="text-sm font-bold text-gray-900 mb-3 flex items-center gap-2">
                     <CheckSquare className="w-4 h-4"/> 문항 필터
                   </h3>

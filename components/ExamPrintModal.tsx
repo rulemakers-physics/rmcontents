@@ -133,6 +133,7 @@ export default function ExamPrintModal({ exam, onClose }: Props) {
                {/* [수정] subTitle, academyName 전달 추가 */}
                <ExamPaperLayout 
                  ref={printRef}
+                 id={exam.id}
                  problems={exam.problems || []}
                  title={exam.title}
                  instructor={exam.instructorName}
