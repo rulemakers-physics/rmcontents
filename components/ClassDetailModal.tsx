@@ -60,6 +60,20 @@ export default function ClassDetailModal({ classData, onClose }: Props) {
     fetchStudents();
   }, [classData]);
 
+  // [신규] 전화번호 자동 하이픈 포맷팅 함수 (StudentDetailModal과 동일)
+  const formatPhoneNumber = (value: string) => {
+    const numbers = value.replace(/[^0-9]/g, ""); // 숫자만 남김
+    if (numbers.length <= 3) return numbers;
+    if (numbers.length <= 7) return `${numbers.slice(0, 3)}-${numbers.slice(3)}`;
+    return `${numbers.slice(0, 3)}-${numbers.slice(3, 7)}-${numbers.slice(7, 11)}`;
+  };
+
+  // [신규] 입력 핸들러
+  const handlePhoneInput = (e: React.ChangeEvent<HTMLInputElement>, setter: (val: string) => void) => {
+    const formatted = formatPhoneNumber(e.target.value);
+    setter(formatted);
+  };
+
   // 학생 등록 핸들러
   const handleAddStudent = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -168,10 +182,26 @@ export default function ClassDetailModal({ classData, onClose }: Props) {
                       <input type="text" placeholder="학교" value={newSchool} onChange={(e) => setNewSchool(e.target.value)} className="w-full p-2.5 border border-slate-200 rounded-lg text-sm focus:border-blue-500 outline-none" />
                     </div>
                     <div className="md:col-span-1 space-y-1">
-                      <input type="text" placeholder="학생 연락처" value={newPhone} onChange={(e) => setNewPhone(e.target.value)} className="w-full p-2.5 border border-slate-200 rounded-lg text-sm focus:border-blue-500 outline-none" />
+                      {/* [수정] 학생 연락처 입력 필드 */}
+                      <input 
+                        type="text" 
+                        placeholder="학생 연락처" 
+                        value={newPhone} 
+                        onChange={(e) => handlePhoneInput(e, setNewPhone)} // 포맷팅 핸들러 적용
+                        maxLength={13} // 길이 제한
+                        className="w-full p-2.5 border border-slate-200 rounded-lg text-sm focus:border-blue-500 outline-none" 
+                      />
                     </div>
                     <div className="md:col-span-1 space-y-1">
-                      <input type="text" placeholder="학부모 연락처" value={newParentPhone} onChange={(e) => setNewParentPhone(e.target.value)} className="w-full p-2.5 border border-slate-200 rounded-lg text-sm focus:border-blue-500 outline-none bg-yellow-50/50 focus:bg-white" />
+                      {/* [수정] 학부모 연락처 입력 필드 */}
+                      <input 
+                        type="text" 
+                        placeholder="학부모 연락처" 
+                        value={newParentPhone} 
+                        onChange={(e) => handlePhoneInput(e, setNewParentPhone)} // 포맷팅 핸들러 적용
+                        maxLength={13} // 길이 제한
+                        className="w-full p-2.5 border border-slate-200 rounded-lg text-sm focus:border-blue-500 outline-none bg-yellow-50/50 focus:bg-white" 
+                      />
                     </div>
                     <div className="md:col-span-1">
                       <button type="submit" className="w-full h-[42px] bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-bold text-sm flex items-center justify-center gap-1 shadow-sm active:scale-95 transition-all">
@@ -258,7 +288,8 @@ export default function ClassDetailModal({ classData, onClose }: Props) {
       {selectedStudent && (
         <StudentDetailModal 
           student={selectedStudent} 
-          onClose={() => setSelectedStudent(null)} 
+          onClose={() => setSelectedStudent(null)}
+          onUpdate={fetchStudents}
         />
       )}
     </>

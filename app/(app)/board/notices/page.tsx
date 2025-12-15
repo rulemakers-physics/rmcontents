@@ -5,7 +5,7 @@
 import { useEffect, useState } from "react";
 import { db } from "@/lib/firebase";
 import { collection, query, orderBy, getDocs } from "firebase/firestore";
-import { MegaphoneIcon, ChevronRightIcon } from "@heroicons/react/24/outline";
+import { MegaphoneIcon, ChevronRightIcon, InboxIcon } from "@heroicons/react/24/outline";
 import { Notice } from "@/types/notice";
 
 export default function NoticesPage() {
@@ -26,7 +26,7 @@ export default function NoticesPage() {
   }, []);
 
   return (
-    <div className="max-w-4xl mx-auto p-8 min-h-full">
+    <div className="max-w-6xl mx-auto p-8 min-h-full">
       <div className="mb-8">
         <h1 className="text-2xl font-bold text-slate-900 flex items-center gap-2">
           <MegaphoneIcon className="w-7 h-7 text-blue-600" /> 공지사항
@@ -72,8 +72,21 @@ export default function NoticesPage() {
         ))}
         
         {notices.length === 0 && (
-          <div className="text-center py-20 text-slate-400 bg-white rounded-xl border border-dashed border-slate-300">
-            등록된 공지사항이 없습니다.
+          <div className="w-full flex flex-col items-center justify-center min-h-[50vh] bg-slate-50 rounded-2xl border-2 border-dashed border-slate-200 text-slate-500 mt-6">
+            {/* 변경 핵심:
+              1. w-full: 박스를 무조건 가로 100%로 늘립니다. (가장 중요)
+              2. border-2: 테두리를 조금 더 두껍게 해서 영역을 확실히 보여줍니다.
+              3. min-h-[50vh]: 높이는 유지하여 시원한 공간감을 줍니다.
+            */}
+            <div className="p-5 bg-white rounded-full shadow-sm border border-slate-100 mb-4">
+              <InboxIcon className="w-10 h-10 text-slate-400" />
+            </div>
+            <div className="text-center max-w-sm px-4">
+              <h3 className="text-lg font-bold text-slate-900 mb-1">등록된 공지사항이 없습니다</h3>
+              <p className="text-slate-400 text-sm break-keep">
+                새로운 소식이 올라오면 이곳에서 가장 먼저 확인하실 수 있습니다.
+              </p>
+            </div>
           </div>
         )}
       </div>

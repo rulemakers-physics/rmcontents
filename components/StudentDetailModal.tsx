@@ -30,9 +30,10 @@ import { useRouter } from "next/navigation";
 interface Props {
   student: StudentData;
   onClose: () => void;
+  onUpdate?: () => void; // [수정] 부모 컴포넌트 목록 새로고침을 위한 콜백 추가
 }
 
-export default function StudentDetailModal({ student, onClose }: Props) {
+export default function StudentDetailModal({ student, onClose, onUpdate }: Props) {
   const { user } = useAuth();
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<'info' | 'counseling' | 'analysis'>('counseling');
@@ -57,8 +58,20 @@ export default function StudentDetailModal({ student, onClose }: Props) {
     phone: student.phone || "",
     parentPhone: student.parentPhone || ""
   });
+  // [신규] 전화번호 자동 하이픈 포맷팅 함수
+  const formatPhoneNumber = (value: string) => {
+    const numbers = value.replace(/[^0-9]/g, ""); // 숫자만 남김
+    if (numbers.length <= 3) return numbers;
+    if (numbers.length <= 7) return `${numbers.slice(0, 3)}-${numbers.slice(3)}`;
+    return `${numbers.slice(0, 3)}-${numbers.slice(3, 7)}-${numbers.slice(7, 11)}`;
+  };
 
-  // [신규] 학생 정보 수정 핸들러
+  // [신규] 전화번호 입력 핸들러
+  const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>, field: 'phone' | 'parentPhone') => {
+    const formatted = formatPhoneNumber(e.target.value);
+    setEditData(prev => ({ ...prev, [field]: formatted }));
+  };
+
   const handleUpdateStudent = async () => {
     if (!editData.name.trim()) return toast.error("이름은 필수입니다.");
     
@@ -71,10 +84,10 @@ export default function StudentDetailModal({ student, onClose }: Props) {
       });
       toast.success("학생 정보가 수정되었습니다.");
       setIsEditing(false);
-      // 부모 컴포넌트(ClassDetailModal)에서 목록을 새로고침하려면
-      // 1. onClose()로 닫았다가 다시 열거나
-      // 2. ClassDetailModal이 onSnapshot으로 실시간 연동되어 있어야 함 (현재는 fetch 방식)
-      // 여기서는 일단 DB 업데이트 성공 메시지만 띄웁니다.
+      
+      // [수정] 수정 성공 시 부모 컴포넌트(ClassDetailModal)에 알림
+      if (onUpdate) onUpdate();
+      
     } catch (e) {
       console.error(e);
       toast.error("수정 실패");
@@ -236,10 +249,12 @@ export default function StudentDetailModal({ student, onClose }: Props) {
                 <PhoneIcon className="w-4 h-4" /> <span className="text-xs font-bold">학생 연락처</span>
               </div>
               {isEditing ? (
+                // [수정] 전화번호 입력에 포맷팅 핸들러 적용
                 <input 
                   type="text" 
                   value={editData.phone} 
-                  onChange={(e) => setEditData({...editData, phone: e.target.value})}
+                  onChange={(e) => handlePhoneChange(e, 'phone')}
+                  maxLength={13} // 010-0000-0000 길이 제한
                   className="w-full text-sm font-medium text-slate-700 border border-blue-300 rounded p-1 focus:ring-2 focus:ring-blue-200 outline-none"
                   placeholder="010-0000-0000"
                 />
@@ -253,10 +268,12 @@ export default function StudentDetailModal({ student, onClose }: Props) {
                 <UserCircleIcon className="w-4 h-4" /> <span className="text-xs font-bold">부모님 연락처</span>
               </div>
               {isEditing ? (
+                // [수정] 부모님 전화번호 입력에 포맷팅 핸들러 적용
                 <input 
                   type="text" 
                   value={editData.parentPhone} 
-                  onChange={(e) => setEditData({...editData, parentPhone: e.target.value})}
+                  onChange={(e) => handlePhoneChange(e, 'parentPhone')}
+                  maxLength={13}
                   className="w-full text-sm font-medium text-slate-700 border border-blue-300 rounded p-1 focus:ring-2 focus:ring-blue-200 outline-none"
                   placeholder="010-0000-0000"
                 />

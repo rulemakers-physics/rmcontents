@@ -665,7 +665,7 @@ export default function StoragePage() {
         {/* 모달 1: 폴더 생성 */}
         {isCreateFolderOpen && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
-            <div className="bg-white rounded-2xl shadow-xl p-6 w-full max-w-sm">
+            <div className="bg-white rounded-2xl shadow-xl p-6 w-full max-w-md">
               <h3 className="text-lg font-bold text-slate-900 mb-4">새 폴더 만들기</h3>
               <input 
                 autoFocus
