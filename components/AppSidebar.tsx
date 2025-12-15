@@ -96,7 +96,7 @@ export default function AppSidebar({ isCollapsed, toggleSidebar }: AppSidebarPro
         flex border-b border-slate-800/80 bg-[#0F172A] transition-all duration-300
         ${isCollapsed ? 'flex-col items-center justify-center py-4 gap-4' : 'flex-row items-center justify-between h-16 px-5'}
       `}>
-        <Link href="/dashboard" className="flex items-center gap-3 group">
+        <Link href="/" className="flex items-center gap-3 group">
           <div className="relative w-8 h-8 flex-shrink-0 transition-transform group-hover:scale-110 duration-200">
             <Image 
               src="/images/logo.png" 

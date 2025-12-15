@@ -204,19 +204,19 @@ export default function RequestDetailPage() {
   };
 
   if (isLoading || loading || !isAdmin) {
-    return <div className="flex min-h-screen items-center justify-center">로딩 중...</div>;
+    return <div className="flex min-h-full items-center justify-center">로딩 중...</div>;
   }
   if (error) {
-    return <div className="flex min-h-screen items-center justify-center text-red-500">{error}</div>;
+    return <div className="flex min-h-full items-center justify-center text-red-500">{error}</div>;
   }
   if (!request) {
-    return <div className="flex min-h-screen items-center justify-center">요청 정보를 찾을 수 없습니다.</div>;
+    return <div className="flex min-h-full items-center justify-center">요청 정보를 찾을 수 없습니다.</div>;
   }
   
   const isJobFinished = request.status === 'completed' || request.status === 'rejected';
 
   return (
-    <div className="flex min-h-screen flex-col">
+    <div className="flex min-h-full flex-col">
       <main className="flex-grow bg-gray-50 py-12">
         <div className="container mx-auto max-w-3xl px-6">
           <Link 

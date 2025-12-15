@@ -35,6 +35,7 @@ interface ExamPaperLayoutProps {
   subTitle?: string;
   academyName?: string;
   id?: string;
+  wrapperClassName?: string;
 }
 
 // --- [알고리즘] 문항 분배 함수 ---
@@ -153,7 +154,7 @@ function distributeItems(
 }
 
 const ExamPaperLayout = forwardRef<HTMLDivElement, ExamPaperLayoutProps>(
-  ({ id, problems = [], title, instructor, template, printOptions, isTeacherVersion, academyLogo, subTitle, academyName }, ref) => {
+  ({ id, problems = [], title, instructor, template, printOptions, isTeacherVersion, academyLogo, subTitle, academyName, wrapperClassName }, ref) => {
     
     const [reportTarget, setReportTarget] = React.useState<ExamPaperProblem | null>(null);
 
@@ -253,7 +254,7 @@ const ExamPaperLayout = forwardRef<HTMLDivElement, ExamPaperLayoutProps>(
                     <img 
                       src={getProxyImageSrc(academyLogo)} 
                       alt="Academy Logo" 
-                      className="h-12 object-contain translate-y-[50px]"
+                      className={`h-12 object-contain ${omrLink ? "translate-y-[50px]" : ""}`}
                     />
                   )}
 
@@ -271,9 +272,9 @@ const ExamPaperLayout = forwardRef<HTMLDivElement, ExamPaperLayoutProps>(
                     {/* 점수 박스 (우측 끝) */}
                     {template.showScoreBox && (
                       <div className="flex border border-slate-800 text-xs bg-white">
-                        <div className="bg-slate-50 px-2 py-1 border-r border-slate-800 font-bold flex items-center">성명</div>
+                        <div className="bg-slate-50 px-2 py-1 border-r border-slate-800 font-bold flex items-center text-slate-900">성명</div>
                         <div className="w-16 border-r border-slate-800"></div>
-                        <div className="bg-slate-50 px-2 py-1 border-r border-slate-800 font-bold flex items-center">점수</div>
+                        <div className="bg-slate-50 px-2 py-1 border-r border-slate-800 font-bold flex items-center text-slate-900">점수</div>
                         <div className="w-12"></div>
                       </div>
                     )}
@@ -334,10 +335,9 @@ const ExamPaperLayout = forwardRef<HTMLDivElement, ExamPaperLayoutProps>(
       <>
         <div 
           ref={ref} 
-          // ▼▼▼ [2. 수정할 코드] className 끝에 'no-select' 추가하고 onContextMenu 연결 ▼▼▼
-          className="w-full bg-gray-100 flex flex-col items-center gap-10 py-10 print:p-0 print:bg-white print:gap-0 no-select"
+          // ▼▼▼ [수정] wrapperClassName이 있으면 우선 적용, 없으면 기본값 사용 ▼▼▼
+          className={wrapperClassName || "w-full bg-gray-100 flex flex-col items-center gap-10 py-10 print:p-0 print:bg-white print:gap-0 no-select"}
           onContextMenu={handleContextMenu}
-          // ▲▲▲ 여기까지 수정하세요 ▲▲▲
         >
           
           {/* === [1] 문제지 영역 === */}
@@ -348,7 +348,7 @@ const ExamPaperLayout = forwardRef<HTMLDivElement, ExamPaperLayoutProps>(
               style={{
                 width: "210mm",
                 height: "297mm",
-                padding: `0 ${PADDING_X_MM}mm`,
+                padding: `5mm ${PADDING_X_MM}mm`,
                 pageBreakAfter: "always",
                 fontFamily: template.fontFamily
               }}

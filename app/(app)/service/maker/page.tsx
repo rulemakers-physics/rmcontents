@@ -9,7 +9,7 @@ import {
   Printer, Lock, ChevronDown, Filter, FileText, 
   LayoutTemplate, Image as ImageIcon, SaveIcon, ListOrdered, 
   RotateCcw, FileCheck, CheckSquare, Settings2, CheckCircle2,
-  Undo, Minus, Plus
+  Undo, Minus, Plus, GripVertical, Info
 } from "lucide-react";
 import { 
   Squares2X2Icon, ViewColumnsIcon, QueueListIcon 
@@ -738,11 +738,11 @@ function ExamBuilderContent() {
                           {level === '킬러' && <Lock className="w-3 h-3 text-red-400" />}
                         </div>
                         <div className="flex items-center gap-3">
-                          <button onClick={() => updateDifficultyCount(level, -1)} className="p-1 text-slate-400 hover:text-blue-600 bg-slate-50 rounded">
+                          <button onClick={() => updateDifficultyCount(level, -1)} className="p-1 text-slate-600 hover:text-blue-600 bg-slate-50 hover:bg-slate-100 rounded border border-slate-200 transition-colors">
                             <Minus className="w-3 h-3" />
                           </button>
-                          <span className="text-sm font-bold w-4 text-center">{difficultyCounts[level]}</span>
-                          <button onClick={() => updateDifficultyCount(level, 1)} className="p-1 text-slate-400 hover:text-blue-600 bg-slate-50 rounded">
+                          <span className="text-sm font-bold w-4 text-center text-slate-900">{difficultyCounts[level]}</span>
+                          <button onClick={() => updateDifficultyCount(level, 1)} className="p-1 text-slate-600 hover:text-blue-600 bg-slate-50 hover:bg-slate-100 rounded border border-slate-200 transition-colors">
                             <Plus className="w-3 h-3" />
                           </button>
                         </div>
@@ -854,11 +854,11 @@ function ExamBuilderContent() {
              </div>
           )}
 
-          {/* TAB 2: 순서/교체 (기존 코드 이동) */}
+          {/* TAB 2: 순서/교체 */}
           {rightPanelTab === 'order' && (
             <div className="absolute inset-0 flex flex-col animate-in fade-in slide-in-from-right-4 duration-300">
                <div className="p-4 border-b border-gray-100 bg-white z-10">
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between mb-3">
                   <span className="text-xs font-bold text-slate-500">총 {examProblems.length} 문항</span>
                   <button 
                     onClick={handleUndo}
@@ -871,6 +871,14 @@ function ExamBuilderContent() {
                   >
                     <Undo className="w-3.5 h-3.5" /> 되돌리기
                   </button>
+                </div>
+
+                {/* ▼▼▼ [2] 드래그 앤 드롭 안내 배너 추가 ▼▼▼ */}
+                <div className="flex items-start gap-2 p-2.5 bg-blue-50/50 border border-blue-100 rounded-lg text-xs text-blue-700">
+                  <Info className="w-4 h-4 flex-shrink-0 mt-0.5" />
+                  <span className="leading-relaxed font-medium">
+                    문항을 <strong>드래그</strong>하여 순서를 변경할 수 있습니다.
+                  </span>
                 </div>
               </div>
 
@@ -893,9 +901,16 @@ function ExamBuilderContent() {
                                     {...provided.draggableProps} 
                                     {...provided.dragHandleProps} 
                                     onContextMenu={(e) => e.preventDefault()}
-                                    className={`p-2 bg-white border rounded-lg flex items-center gap-3 shadow-sm group ${snapshot.isDragging ? 'shadow-lg border-blue-500 z-50' : 'border-gray-200 hover:border-blue-300'}`}
+                                    // ▼▼▼ [3] 커서 스타일 추가 (cursor-grab) ▼▼▼
+                                    className={`p-2 bg-white border rounded-lg flex items-center gap-3 shadow-sm group cursor-grab active:cursor-grabbing ${snapshot.isDragging ? 'shadow-lg border-blue-500 z-50' : 'border-gray-200 hover:border-blue-300'}`}
                                   >
+                                    {/* ▼▼▼ [4] 드래그 핸들 아이콘 추가 (시각적 힌트) ▼▼▼ */}
+                                    <div className="text-slate-300 group-hover:text-slate-400 transition-colors">
+                                      <GripVertical className="w-4 h-4" />
+                                    </div>
+
                                     <span className="w-6 h-6 flex-shrink-0 flex items-center justify-center bg-slate-100 rounded-full text-xs font-bold text-slate-500">{prob.number}</span>
+                                    
                                     <div className="relative w-10 h-10 bg-slate-50 rounded border border-slate-100 overflow-hidden flex-shrink-0">
                                       {prob.imageUrl ? (
                                         <img 
@@ -912,7 +927,13 @@ function ExamBuilderContent() {
                                       <p className="text-xs font-bold text-slate-800 truncate">{prob.minorTopic}</p>
                                       <span className="text-[10px] text-slate-500">{prob.difficulty}</span>
                                     </div>
-                                    <button onClick={() => handleReplaceProblem(prob.id, prob.majorTopic || "", prob.difficulty || "중")} className="p-1.5 hover:bg-blue-50 text-slate-400 hover:text-blue-600 rounded">
+                                    <button 
+                                      onClick={() => handleReplaceProblem(prob.id, prob.majorTopic || "", prob.difficulty || "중")} 
+                                      // 버튼 클릭 시 드래그 이벤트 전파 방지
+                                      onPointerDown={(e) => e.stopPropagation()}
+                                      className="p-1.5 hover:bg-blue-50 text-slate-400 hover:text-blue-600 rounded cursor-pointer"
+                                      title="유사 문항 교체"
+                                    >
                                       <RotateCcw className="w-3.5 h-3.5" />
                                     </button>
                                   </div>

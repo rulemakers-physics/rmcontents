@@ -2,6 +2,11 @@
 
 "use client";
 
+import { analyzeStudentWeakness, AnalysisResult } from '@/utils/analysisHelper';
+import WeaknessRadarChart from '@/components/WeaknessRadarChart';
+import { db } from '@/lib/firebase';
+import { doc, getDoc } from 'firebase/firestore';
+import { SavedExam } from '@/types/exam';
 import { useRef, useState } from "react";
 import { useReactToPrint } from "react-to-print";
 import { ExamResultData } from "@/types/grade";
@@ -55,6 +60,32 @@ export default function ReportViewModal({ result, onClose }: Props) {
       wrongProblems,
       sourceExamId: result.examId 
     });
+  };
+
+  const [aiAnalysisData, setAiAnalysisData] = useState<AnalysisResult[]>([]);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+
+  // [신규] AI 분석 실행 함수
+  const handleRunAIAnalysis = async (studentId: string) => {
+    if(!result.examId) return; // 원본 시험지 ID가 있어야 함
+    
+    setIsAnalyzing(true);
+    try {
+      // 1. 원본 시험지 정보 가져오기 (문항별 단원 정보 필요)
+      const examDoc = await getDoc(doc(db, "saved_exams", result.examId));
+      if(examDoc.exists()) {
+        const savedExam = { id: examDoc.id, ...examDoc.data() } as SavedExam;
+        
+        // 2. 헬퍼 함수로 분석 요청
+        const analysis = await analyzeStudentWeakness(result, savedExam, studentId);
+        setAiAnalysisData(analysis);
+        toast.success("AI 정밀 분석이 완료되었습니다.");
+      }
+    } catch(e) {
+      console.error(e);
+      toast.error("분석 중 오류가 발생했습니다.");
+    }
+    setIsAnalyzing(false);
   };
 
   return (
@@ -153,7 +184,21 @@ export default function ReportViewModal({ result, onClose }: Props) {
                           )}
                         </p>
                       </div>
+                      {/* 학생별 카드 내부 버튼 추가 */}
+                      <button 
+                        onClick={() => handleRunAIAnalysis(s.studentId)}
+                        className="mt-2 text-xs text-indigo-600 underline"
+                      >
+                        {isAnalyzing ? "분석 중..." : "AI 취약점 정밀 분석 보기"}
+                      </button>
 
+                      {/* 분석 결과가 있으면 차트 표시 */}
+                      {aiAnalysisData.length > 0 && (
+                        <div className="mt-4 p-4 bg-slate-50 rounded-xl border border-slate-100">
+                          <h4 className="text-sm font-bold text-slate-800 mb-2">AI 기반 단원별 숙련도</h4>
+                          <WeaknessRadarChart data={aiAnalysisData} />
+                        </div>
+                      )}
                       {/* [신규] 클리닉 생성 버튼 (오답 데이터가 있을 때만 활성화) */}
                       <div className="pt-3 border-t border-slate-100 flex justify-end print:hidden">
                         <button 

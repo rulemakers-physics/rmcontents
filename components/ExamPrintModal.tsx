@@ -121,7 +121,7 @@ export default function ExamPrintModal({ exam, onClose }: Props) {
             {/* 안내 문구 */}
             <div className="mt-auto p-4 bg-blue-50 border border-blue-100 rounded-xl text-xs text-blue-800 leading-relaxed">
               <p className="font-bold mb-1">ℹ️ Layout Info</p>
-              이 시험지는 <strong>{getLayoutName(printOptions.layoutMode)}</strong>로 설정되어 있습니다.
+              이 시험지는 <strong>{getLayoutName(printOptions.layoutMode)}</strong>입니다.
               <br/><br/>
               문항 간격과 배치는 시험지 생성 시 설정된 값을 따르며, 여기서는 수정할 수 없습니다.
             </div>
@@ -143,6 +143,7 @@ export default function ExamPrintModal({ exam, onClose }: Props) {
                  academyLogo={exam.academyLogo}
                  subTitle={exam.subTitle} // [New]
                  academyName={exam.academyName} // [New]
+                 wrapperClassName="w-full bg-gray-100 flex flex-col items-center gap-10 py-0 print:p-0 print:bg-white print:gap-0 no-select"
                />
             </div>
           </div>
