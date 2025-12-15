@@ -17,6 +17,19 @@ import { ActionItem } from "@/types/report";
 import { useAuth } from "@/context/AuthContext";
 import WeeklyReportModal from "./WeeklyReportModal";
 
+// [신규] 로컬 시간 기준 '이번 주 월요일(YYYY-MM-DD)' 반환 함수
+const getLocalMondayDate = () => {
+  const d = new Date();
+  const day = d.getDay() || 7; // 일요일(0)을 7로 변환
+  if (day !== 1) d.setDate(d.getDate() - day + 1);
+  
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const date = String(d.getDate()).padStart(2, '0');
+  
+  return `${year}-${month}-${date}`;
+};
+
 export default function DashboardActionCenter() {
   const { user } = useAuth();
   const router = useRouter();
@@ -43,17 +56,14 @@ export default function DashboardActionCenter() {
       const myClasses = classesSnap.docs.map(d => ({ id: d.id, ...d.data() }));
 
       // 2. 이번 주 월요일 날짜 계산
-      const today = new Date();
-      const day = today.getDay() || 7; 
-      if(day !== 1) today.setHours(-24 * (day - 1)); 
-      const thisWeekMonday = today.toISOString().split('T')[0];
+      const thisWeekMonday = getLocalMondayDate();
 
       // 3. 반별 리포트 미작성 확인
       for (const cls of myClasses) {
         const reportQ = query(
           collection(db, "weekly_reports"),
           where("classId", "==", cls.id),
-          where("weekStartDate", "==", thisWeekMonday)
+          where("weekStartDate", "==", thisWeekMonday) // 로컬 날짜 문자열로 비교
         );
         const reportSnap = await getDocs(reportQ);
 

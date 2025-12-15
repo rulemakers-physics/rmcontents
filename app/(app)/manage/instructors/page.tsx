@@ -39,21 +39,24 @@ export default function InstructorManagePage() {
     if (!newEmail || !newName) return toast.error("이름과 이메일을 입력해주세요.");
     if (!user || !userData) return;
 
+    // [핵심] 원장님의 현재 플랜을 가져옵니다.
+    const directorPlan = userData.plan || "FREE";
+
     setIsAdding(true);
     try {
-      // 1. [신규 로직] 이미 가입된 유저인지 이메일로 확인
+      // 1. 이미 가입된 유저인지 확인
       const q = query(collection(db, "users"), where("email", "==", newEmail));
       const querySnapshot = await getDocs(q);
 
       if (!querySnapshot.empty) {
-        // 1-A. 이미 존재하는 유저인 경우 -> 연결(Link)만 수행
+        // [Case A] 이미 존재하는 유저 -> 연동 및 플랜 업데이트
         const existingUserDoc = querySnapshot.docs[0];
         
-        if (confirm("이미 가입된 회원입니다. 우리 학원 강사로 등록(연동)하시겠습니까?")) {
+        if (confirm("이미 가입된 회원입니다. 우리 학원 강사로 등록하시겠습니까?\n(원장님의 요금제가 적용됩니다)")) {
           await updateDoc(doc(db, "users", existingUserDoc.id), {
             ownerId: user.uid, // 원장님 ID 연결
-            // role: 'instructor', // ※ 주의: 상대가 Admin일 수도 있으므로 role은 함부로 덮어쓰지 않는 게 안전합니다.
-            // 필요하다면: role: existingUserDoc.data().role === 'admin' ? 'admin' : 'instructor' 로직 추가
+            plan: directorPlan, // [수정] 원장님 플랜 적용
+            academy: userData.academy // 학원명도 동기화
           });
           toast.success("기존 회원을 강사로 등록했습니다.");
           setNewEmail("");
@@ -61,7 +64,7 @@ export default function InstructorManagePage() {
           fetchInstructors();
         }
       } else {
-        // 1-B. 존재하지 않는 유저인 경우 -> 초대용 임시 문서 생성 (기존 로직)
+        // [Case B] 신규 초대 (가계정 생성) -> 플랜 설정하여 생성
         const tempUid = `invited_${Date.now()}`; 
         await setDoc(doc(db, "users", tempUid), {
           uid: tempUid,
@@ -70,7 +73,7 @@ export default function InstructorManagePage() {
           role: "instructor",
           ownerId: user.uid,
           academy: userData.academy,
-          plan: "BASIC", // 원장님 플랜 따라가거나 기본 설정 (FREE로 해도 됨)
+          plan: directorPlan, // [수정] 원장님 플랜 적용 (BASIC -> directorPlan)
           coins: 0,
           createdAt: serverTimestamp(),
           isInvited: true
@@ -91,13 +94,8 @@ export default function InstructorManagePage() {
   const handleDelete = async (targetUid: string) => {
     if (!confirm("해당 강사를 삭제하시겠습니까?")) return;
     try {
-      // 실제 유저라면 ownerId 연결만 끊을지, 아니면 문서를 삭제할지 정책 결정 필요.
-      // 여기서는 '등록 해제' 개념으로 ownerId를 삭제(FieldDelete)하거나, 
-      // 초대 계정(isInvited)이라면 문서를 삭제하는 것이 맞습니다.
-      
-      // 편의상 문서 삭제로 유지하되, 실제 운영 시엔 updateDoc(..., { ownerId: deleteField() }) 권장
+      // 강사 삭제 시 플랜을 어떻게 처리할지는 정책에 따라 다름 (여기선 삭제만)
       await deleteDoc(doc(db, "users", targetUid));
-      
       toast.success("삭제되었습니다.");
       fetchInstructors();
     } catch (e) {
@@ -141,7 +139,9 @@ export default function InstructorManagePage() {
             <UserPlusIcon className="w-5 h-5" /> 등록하기
           </button>
         </div>
-        <p className="text-xs text-slate-400 mt-2">* 등록된 이메일로 강사가 로그인하면 자동으로 학원 소속으로 연동됩니다.</p>
+        <p className="text-xs text-slate-400 mt-2">
+          * 등록된 강사는 <strong>{userData?.plan} Plan</strong> 혜택을 자동으로 공유받습니다.
+        </p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -156,6 +156,10 @@ export default function InstructorManagePage() {
                 <p className="text-xs text-slate-500 flex items-center gap-1">
                   <EnvelopeIcon className="w-3 h-3" /> {inst.email}
                 </p>
+                {/* 강사의 현재 플랜 표시 */}
+                <span className="text-[10px] bg-slate-100 px-1.5 py-0.5 rounded text-slate-500 mt-1 inline-block">
+                  {inst.plan} Plan
+                </span>
               </div>
             </div>
             <button onClick={() => handleDelete(inst.uid)} className="text-slate-300 hover:text-red-500 p-2">

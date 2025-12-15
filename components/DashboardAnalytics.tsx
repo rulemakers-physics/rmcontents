@@ -187,9 +187,9 @@ export default function DashboardAnalytics() {
             <div>
               <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
                 <ClockIcon className="w-5 h-5 text-blue-600" />
-                월별 컨텐츠 제작 현황
+                월별 커스텀 컨텐츠 제작 현황
               </h3>
-              <p className="text-xs text-slate-500 mt-1">최근 요청 및 완료된 작업 건수</p>
+              <p className="text-xs text-slate-500 mt-1">최근 RuleMakers에 요청 및 완료된 작업 건수</p>
             </div>
             {/* 기간 필터 버튼 */}
             <div className="flex bg-slate-100 rounded-lg p-1">

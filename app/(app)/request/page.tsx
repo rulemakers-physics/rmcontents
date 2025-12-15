@@ -478,7 +478,9 @@ export default function RequestPage() {
                       참고 파일 (선택)
                     </label>
                     <p className="text-xs text-gray-500 mb-2">
-                      학교 기출 문제, 참고 자료 등 (PDF, PNG, JPG, JPEG)
+                      학교 기출 문제, 참고 자료 등 작업 간에 원하시는 <br/>
+                      시험지의 방향성과 관련된 자료를 업로드 해주세요 <br/>
+                      (PDF, PNG, JPG, JPEG)
                     </p>
                     
                     {/* 파일 목록 */}

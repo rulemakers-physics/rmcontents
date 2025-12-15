@@ -126,11 +126,18 @@ export default function GradeInputModal({ classData, preSelectedExamId, onClose 
     });
   };
 
-  // 점수 직접 입력 핸들러
+  // [수정] 점수 직접 입력 핸들러 (0~100 범위 제한 적용)
   const handleScoreChange = (studentId: string, val: string) => {
+    let numVal = Number(val);
+
+    // 유효성 검사 및 클램핑
+    if (isNaN(numVal)) numVal = 0;
+    if (numVal < 0) numVal = 0;
+    if (numVal > 100) numVal = 100;
+
     setGradingMap(prev => ({
       ...prev,
-      [studentId]: { ...prev[studentId], score: Number(val), isDetailed: false }
+      [studentId]: { ...prev[studentId], score: numVal, isDetailed: false }
     }));
   };
 

@@ -25,6 +25,18 @@ interface StudentFeedbackInput {
   homeworkState: string;
   testScore: string;
 }
+// [신규] 날짜 계산 헬퍼 (DashboardActionCenter와 로직 통일)
+const getLocalMondayDate = () => {
+  const d = new Date();
+  const day = d.getDay() || 7;
+  if (day !== 1) d.setDate(d.getDate() - day + 1);
+  
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const date = String(d.getDate()).padStart(2, '0');
+  
+  return `${year}-${month}-${date}`;
+};
 
 export default function WeeklyReportModal({ classData, onClose, onComplete }: Props) {
   const { user } = useAuth();
@@ -45,21 +57,18 @@ export default function WeeklyReportModal({ classData, onClose, onComplete }: Pr
     testAverage: 0
   });
 
-  // 기준일 계산 (이번 주 월요일 ~ 일요일)
-  const today = new Date();
-  const day = today.getDay() || 7; 
-  if(day !== 1) today.setHours(-24 * (day - 1));
+  // [수정] 기준일 계산 (로컬 시간 기준)
+  const thisWeekMondayStr = getLocalMondayDate();
   
-  // 시간 초기화 (00:00:00)
-  today.setHours(0, 0, 0, 0);
-  const thisWeekMondayStr = today.toISOString().split('T')[0];
-  const thisWeekMondayDate = new Date(today);
+  // 데이터 조회를 위한 Date 객체 생성 (문자열 기준)
+  const thisWeekMondayDate = new Date(thisWeekMondayStr);
+  thisWeekMondayDate.setHours(0, 0, 0, 0);
 
-  // 일요일 계산 (23:59:59)
-  const thisWeekSundayDate = new Date(today);
+  // 일요일 계산
+  const thisWeekSundayDate = new Date(thisWeekMondayDate);
   thisWeekSundayDate.setDate(thisWeekMondayDate.getDate() + 6);
   thisWeekSundayDate.setHours(23, 59, 59, 999);
-  const thisWeekSundayStr = thisWeekSundayDate.toISOString().split('T')[0];
+  const thisWeekSundayStr = thisWeekSundayDate.toISOString().split('T')[0]; // 범위 검색용이므로 ISO 유지해도 무방하나, 일관성을 위해 로컬 변환 권장
 
   // [핵심] 데이터 자동 수집 및 분석 로직
   useEffect(() => {

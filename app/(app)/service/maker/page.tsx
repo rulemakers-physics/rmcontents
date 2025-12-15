@@ -30,6 +30,7 @@ import { storage } from "@/lib/firebase";
 import { ExamPaperProblem, PrintOptions } from "@/types/exam";
 import { getSecureImageSrc } from "@/lib/imageHelper";
 
+
 // 난이도 정렬 순서
 const DIFFICULTY_ORDER: Record<string, number> = {
   '기본': 1, '하': 2, '중': 3, '상': 4, '킬러': 5
@@ -62,6 +63,9 @@ function ExamBuilderContent() {
   const [usedProblemIds, setUsedProblemIds] = useState<string[]>([]);
   const [excludeNonCurriculum, setExcludeNonCurriculum] = useState(false);
 
+  // [수정] 컴포넌트 상단 state 정의 부분에 추가
+  const isDbLoadedRef = useRef(false); // DB에서 불러온 직후인지 체크하는 ref
+
   // 메타데이터 & 옵션
   const [examTitle, setExamTitle] = useState("제목을 입력해주세요");
   const [subTitle, setSubTitle] = useState("2025학년도 1학기 대비"); 
@@ -91,6 +95,8 @@ function ExamBuilderContent() {
   const [targetQuestionTypes, setTargetQuestionTypes] = useState<string[]>(['SELECTION', 'ESSAY']);
   // 레이아웃 모드 상태
   const [layoutMode, setLayoutMode] = useState<LayoutMode>('dense');
+  // [신규] 클리닉 모드 여부 상태 추가
+  const [isClinicMode, setIsClinicMode] = useState(false);
 
   // [누락 수정] 문항 유형 토글 핸들러
   const toggleQuestionType = (type: string) => {
@@ -160,6 +166,9 @@ function ExamBuilderContent() {
 
   // 대단원 선택 핸들러
   const handleMajorTopicChange = (majorName: string, isChecked: boolean) => {
+    // [추가] 사용자가 직접 조작했으므로 보호 모드 해제
+    isDraftLoadedRef.current = false;
+    isDbLoadedRef.current = false;
     const targetMajor = SCIENCE_UNITS.flatMap(u => u.majorTopics).find(m => m.name === majorName);
     if (!targetMajor) return;
 
@@ -177,6 +186,8 @@ function ExamBuilderContent() {
 
   // [수정 1] 소단원 선택 시 부모 대단원 자동 체크 및 문제 목록 초기화
   const handleMinorTopicChange = (minor: string, isChecked: boolean) => {
+    isDraftLoadedRef.current = false;
+    isDbLoadedRef.current = false;
     // 1. 소단원 상태 업데이트
     setSelectedMinorTopics(prev => {
       if (isChecked) return [...prev, minor];
@@ -206,6 +217,8 @@ function ExamBuilderContent() {
 
   // 난이도별 문항 수 조절 핸들러
   const updateDifficultyCount = (level: Difficulty, delta: number) => {
+    isDraftLoadedRef.current = false;
+    isDbLoadedRef.current = false;
     if (level === '킬러' && delta > 0 && userPlan !== 'MAKERS') {
       toast.error("킬러 문항은 Maker's Plan 전용입니다.");
       return;
@@ -258,22 +271,37 @@ function ExamBuilderContent() {
     }
   }, [examId, isMounted]);
 
-  // [수정] 문제 배분 및 정렬 로직 (버그 수정됨)
   useEffect(() => {
-    if (!isLoaded || isFetching) return;
+  // 로딩 중이거나 아직 준비 안됐으면 리턴
+  if (!isLoaded || isFetching) return;
 
-    // 1. 선택된 소단원이 없는 경우 처리
-    if (selectedMinorTopics.length === 0) {
-      // ★ [Fix] examId가 존재한다는 것은 '불러오기' 모드라는 뜻입니다.
-      // 이 경우 사용자가 필터를 건드리지 않았다면 기존 문제를 유지해야 합니다.
-      if (examId) return;
+  // ---------------------------------------------------------------
+  // [핵심 수정] 강력한 가드 절 (Guard Clauses)
+  // ---------------------------------------------------------------
+  
+  // 1. 클리닉 모드라면 절대 자동 생성하지 않음 (문제 보존 최우선)
+  if (isClinicMode) return;
 
-      // 드래프트를 불러온 직후가 아니라면 초기화
-      if (!isDraftLoadedRef.current) {
-         setExamProblems([]);
-      }
-      return;
-    }
+  // 2. DB에서 방금 불러온 상태라면, 필터 상태가 세팅되면서 발생하는 트리거를 무시
+  if (isDbLoadedRef.current) {
+    isDbLoadedRef.current = false; // 플래그 해제 (다음 변경부터는 허용)
+    return; 
+  }
+
+  // ▼▼▼ [수정] 여기서 플래그를 끄지(= false) 않고, 리턴만 합니다. ▼▼▼
+  if (isDraftLoadedRef.current || isDbLoadedRef.current) {
+    return; 
+  }
+  // ---------------------------------------------------------------
+
+  // 선택된 소단원이 없는 경우 처리
+  if (selectedMinorTopics.length === 0) {
+    // 이미 문제가 있고(불러오기 등), 사용자가 직접 다 지운게 아니라면 유지
+    if (examId && examProblems.length > 0) return;
+    
+    setExamProblems([]);
+    return;
+  }
 
     if (isDraftLoadedRef.current) {
       isDraftLoadedRef.current = false; 
@@ -324,7 +352,7 @@ function ExamBuilderContent() {
 
     setExamProblems(formatted);
 
-  }, [fetchedProblems, difficultyCounts, isLoaded, isFetching, selectedMinorTopics]); // examId 제거
+  }, [fetchedProblems, difficultyCounts, isLoaded, isFetching, selectedMinorTopics, isClinicMode, examId]);
 
   // 문제 교체 핸들러
   const handleReplaceProblem = useCallback(async (problemId: string, currentMajor: string, currentDifficulty: string) => {
@@ -418,7 +446,7 @@ function ExamBuilderContent() {
     }
   }, [examProblems, examTitle, examId, isMounted, selectedMajorTopics, selectedMinorTopics]);
 
-  // DB 로드 (저장된 시험지)
+  // [수정] DB 로드 로직에서 isClinic 여부 확인하여 모드 설정
   useEffect(() => {
     if (!examId) return;
     const loadExam = async () => {
@@ -427,19 +455,42 @@ function ExamBuilderContent() {
         const docSnap = await getDoc(docRef);
         if (docSnap.exists()) {
           const data = docSnap.data();
+          
+          // 1. 기본 정보 세팅
           setExamTitle(data.title);
-          setExamProblems(data.problems || []);
           setInstructorName(data.instructorName);
           if (data.subTitle) setSubTitle(data.subTitle);
           if (data.academyName) setAcademyName(data.academyName);
           if (data.academyLogo) setAcademyLogo(data.academyLogo);
+
+          // 2. 템플릿 및 옵션 세팅
           const savedTemplate = TEMPLATES.find(t => t.id === data.templateId);
           if (savedTemplate) setCurrentTemplate(savedTemplate);
           if (data.layoutMode) setLayoutMode(data.layoutMode as LayoutMode);
           if (data.questionPadding) setPrintOptions((prev: any) => ({ ...prev, questionPadding: data.questionPadding }));
+
+          // 3. [중요] 단원(필터) 상태 복구
+          // 저장할 때 selectedMajorTopics 등을 저장하도록 수정해야 완벽하게 동작합니다.
+          if (data.selectedMajorTopics) setSelectedMajorTopics(data.selectedMajorTopics);
+          if (data.selectedMinorTopics) setSelectedMinorTopics(data.selectedMinorTopics);
+
+          // 4. [핵심] 클리닉 모드 설정
+          if (data.isClinic) {
+            setIsClinicMode(true);
+          } else {
+            setIsClinicMode(false);
+          }
+
+          // 5. 문제 목록 설정
+          setExamProblems(data.problems || []);
+
+          // 6. [핵심] "방금 DB에서 로드했음"을 표시하여 자동 생성 useEffect 차단
+          isDbLoadedRef.current = true;
+
           toast.success("시험지를 불러왔습니다.");
         }
       } catch (error) {
+        console.error(error);
         toast.error("불러오기 실패");
       } finally {
         setIsLoaded(true);
@@ -505,6 +556,7 @@ function ExamBuilderContent() {
         solutionHeight: p.solutionHeight
       }));
 
+      // [수정]
       await addDoc(collection(db, "saved_exams"), {
         userId: user.uid,
         instructorName,
@@ -512,13 +564,21 @@ function ExamBuilderContent() {
         subTitle, 
         academyName,
         problems: cleanProblems,
+        
+        // [추가] 단원 선택 상태도 함께 저장해야 불러올 때 복구 가능
+        selectedMajorTopics, 
+        selectedMinorTopics,
+        
         templateId: currentTemplate.id,
         layoutMode: layoutMode,
         questionPadding: printOptions.questionPadding,
         academyLogo: academyLogo, 
         createdAt: serverTimestamp(),
         problemCount: examProblems.length,
-      });
+        
+        // [추가] 현재 모드가 클리닉인지 여부도 명시적 저장 (이미 isClinicMode state가 있다면)
+        isClinic: isClinicMode 
+      }); 
       
       toast.success("시험지가 보관함에 저장되었습니다!");
       router.push("/service/storage");
@@ -541,7 +601,7 @@ function ExamBuilderContent() {
         [LEFT SIDEBAR] 단원 선택 (탐색) - 기존 필터 탭의 상단 부분 이동
         ================================================================
       */}
-      <aside className={`w-72 flex-shrink-0 bg-white border-r border-gray-200 overflow-hidden flex flex-col z-20 relative ${isEditMode ? 'opacity-50 pointer-events-none grayscale' : ''}`}>
+      <aside className={`w-72 flex-shrink-0 bg-white border-r border-gray-200 overflow-hidden flex flex-col z-20 relative ${isClinicMode ? 'opacity-50 pointer-events-none grayscale' : ''}`}>
         <div className="p-5 border-b border-gray-100 flex-shrink-0">
           <h1 className="text-xl font-bold text-slate-900 flex items-center gap-2">
             <Filter className="w-5 h-5 text-blue-600" /> 단원 선택
@@ -591,11 +651,11 @@ function ExamBuilderContent() {
             ))}
           </div>
         </div>
-        {/* [신규] 잠금 오버레이 */}
-        {isEditMode && (
+        {/* [수정] 잠금 오버레이: isClinicMode일 때만 표시 */}
+        {isClinicMode && (
           <div className="absolute inset-0 z-50 flex items-center justify-center bg-white/50 backdrop-blur-[1px]">
-            <div className="bg-slate-800 text-white text-xs. px-3 py-1.5 rounded-full font-bold shadow-lg flex items-center gap-1">
-              <Lock className="w-3 h-3" /> 클리닉 생성 모드 (필터 잠김)
+            <div className="bg-slate-800 text-white text-xs px-3 py-1.5 rounded-full font-bold shadow-lg flex items-center gap-1">
+              <Lock className="w-3 h-3" /> 클리닉 모드 (필터 잠김)
             </div>
           </div>
         )}
@@ -712,18 +772,18 @@ function ExamBuilderContent() {
              // [수정] 최상위 div에서 isEditMode 잠금 클래스 제거 (개별 적용으로 변경)
              <div className="absolute inset-0 overflow-y-auto p-5 custom-scrollbar space-y-8 animate-in fade-in slide-in-from-right-4 duration-300">
                 
-                {/* [신규] 잠금 메시지 (유지) */}
-                {isEditMode && (
+                {/* [수정] 안내 메시지: isClinicMode일 때만 표시 */}
+                {isClinicMode && (
                   <div className="text-center p-4 bg-yellow-50 border border-yellow-100 rounded-xl mb-4">
-                    <p className="text-base font-bold text-yellow-700">⚠️ 클리닉 생성 모드</p>
+                    <p className="text-base font-bold text-yellow-700">⚠️ 클리닉 수정 모드</p>
                     <p className="text-[12px] text-yellow-600 mt-1">
-                      문항 구성이 초기화되는 것을 막기 위해<br/>자동 생성 필터가 비활성화되었습니다.
+                      오답 클리닉의 구조 유지를 위해<br/>자동 생성 필터가 제한됩니다.
                     </p>
                   </div>
                 )}
 
                 {/* [수정] 난이도 배분: 편집 모드 시 잠금 */}
-                <div className={isEditMode ? 'opacity-50 pointer-events-none' : ''}>
+                <div className={isClinicMode ? 'opacity-50 pointer-events-none' : ''}>
                   <h3 className="text-sm font-bold text-gray-900 mb-3 flex justify-between">
                     <span>난이도 배분</span>
                     <span className="text-blue-600">{questionCount}문항</span>
@@ -751,8 +811,8 @@ function ExamBuilderContent() {
                   </div>
                 </div>
 
-                {/* [수정] 문항 유형: 편집 모드 시 잠금 */}
-                <div className={`pt-4 border-t border-gray-100 ${isEditMode ? 'opacity-50 pointer-events-none' : ''}`}>
+                {/* [수정] 문항 유형: 클리닉 모드일 때만 잠금 (기존 isEditMode 삭제) */}
+                <div className={`pt-4 border-t border-gray-100 ${isClinicMode ? 'opacity-50 pointer-events-none' : ''}`}>
                   <h3 className="text-sm font-bold text-gray-900 mb-3 flex items-center gap-2">
                     <CheckCircle2 className="w-4 h-4"/> 문항 유형
                   </h3>
@@ -768,8 +828,8 @@ function ExamBuilderContent() {
                   </div>
                 </div>
 
-                {/* [수정] 문항 필터: 편집 모드 시 잠금 */}
-                <div className={`pt-4 border-t border-gray-100 ${isEditMode ? 'opacity-50 pointer-events-none' : ''}`}>
+                {/* [수정] 문항 필터: 클리닉 모드일 때만 잠금 (기존 isEditMode 삭제) */}
+                <div className={`pt-4 border-t border-gray-100 ${isClinicMode ? 'opacity-50 pointer-events-none' : ''}`}>
                   <h3 className="text-sm font-bold text-gray-900 mb-3 flex items-center gap-2">
                     <CheckSquare className="w-4 h-4"/> 문항 필터
                   </h3>
