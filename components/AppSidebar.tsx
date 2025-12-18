@@ -47,9 +47,9 @@ const MENU_GROUPS = [
       iconColor: "text-violet-500",
     },
     items: [
-      { name: "문제은행 (Maker)", href: "/service/maker", icon: BeakerIcon },
+      { name: "문제은행", href: "/service/maker", icon: BeakerIcon },
       { name: "내 보관함", href: "/service/storage", icon: FolderIcon },
-      { name: "작업 요청", href: "/request", icon: DocumentPlusIcon },
+      { name: "컨텐츠 제작 요청", href: "/request", icon: DocumentPlusIcon },
     ]
   },
   {

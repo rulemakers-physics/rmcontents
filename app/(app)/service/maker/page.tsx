@@ -48,7 +48,7 @@ function ExamBuilderContent() {
 
   // 난이도별 문항 수 배분 상태
   const [difficultyCounts, setDifficultyCounts] = useState<Record<Difficulty, number>>({
-    "기본": 5, "하": 5, "중": 10, "상": 0, "킬러": 0
+    "기본": 0, "하": 5, "중": 10, "상": 5, "킬러": 0
   });
   
   // 총 문항 수 자동 계산

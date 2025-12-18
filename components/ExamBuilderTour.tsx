@@ -69,7 +69,7 @@ export default function ExamBuilderTour() {
         },
       ],
       // 투어 종료 시 처리
-      onDestroy: () => {
+      onDestroyed: () => {
         localStorage.setItem("hasSeenExamBuilderTour_v3", "true");
       },
     });

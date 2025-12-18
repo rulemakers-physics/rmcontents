@@ -4,7 +4,6 @@
 
 import { useEffect, useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
 import { useAuth } from "@/context/AuthContext";
 import { db } from "@/lib/firebase";
 import {
@@ -15,8 +14,7 @@ import {
   doc,
   updateDoc,
   serverTimestamp,
-  onSnapshot,
-  Timestamp
+  onSnapshot
 } from "firebase/firestore";
 import { toast } from "react-hot-toast";
 
@@ -26,16 +24,10 @@ import { TableSkeleton } from "@/components/SkeletonLoader";
 import EmptyState from "@/components/EmptyState";
 import RequestDetailModal from "@/components/RequestDetailModal";
 import FeatureTour from "@/components/FeatureTour";
-// [신규] 대시보드 위젯 추가
 import DashboardActionCenter from "@/components/DashboardActionCenter";
 import DashboardAnalytics from "@/components/DashboardAnalytics";
 
-// 아이콘
-import { 
-  BeakerIcon, 
-  DocumentTextIcon, 
-  ChevronRightIcon 
-} from "@heroicons/react/24/outline";
+// 아이콘 (사용하지 않는 아이콘은 제거했습니다)
 import { RequestData } from "@/types/request";
 
 export default function DashboardPage() {
@@ -92,11 +84,9 @@ export default function DashboardPage() {
     }
   }, [user, loading, isFirstLogin, router]);
 
-  // [2. 추가] 투어 리셋 핸들러
+  // 투어 리셋 핸들러
   const handleResetTour = () => {
-    // 로컬 스토리지에서 '봤음' 기록 삭제
     localStorage.removeItem("hasSeenDashboardTour_v2");
-    // 페이지를 새로고침하여 투어 컴포넌트가 다시 마운트되도록 함
     window.location.reload();
   };
 
@@ -110,7 +100,6 @@ export default function DashboardPage() {
       try {
         const docRef = doc(db, "requests", request.id);
         await updateDoc(docRef, { unreadCountInstructor: 0 });
-        // 로컬 상태 즉시 반영 (깜빡임 방지)
         setRequests(prev => 
           prev.map(r => r.id === request.id ? { ...r, unreadCountInstructor: 0 } : r)
         );
@@ -127,7 +116,7 @@ export default function DashboardPage() {
 
   const handleSaveChanges = async (updatedData: Partial<RequestData>) => {
     if (!selectedRequest) return;
-    setIsLoading(true); // 저장 중 로딩 표시 (선택 사항)
+    setIsLoading(true);
     try {
       const docRef = doc(db, "requests", selectedRequest.id);
       await updateDoc(docRef, {
@@ -177,66 +166,9 @@ export default function DashboardPage() {
               오늘도 학생들을 위한 최고의 컨텐츠를 준비해보세요.
             </p>
           </div>
-          
-          {/* ▼▼▼ [신규] 액션 센터 위젯 추가 ▼▼▼ */}
-          {userData && (
-            <DashboardActionCenter />
-          )}
-          {/* ▲▲▲ [신규] ▲▲▲ */}
 
-          {/* 4. [신규] 전문 분석 대시보드 (차트) */}
-          <DashboardAnalytics />
-
-          {/* 2. 통계 위젯 (컴포넌트 적용) */}
-          {userData && (
-            <UserStatsWidget 
-              userData={userData} 
-              activeRequestsCount={activeRequestsCount} 
-            />
-          )}
-
-          {/* 3. Quick Actions (서비스 연결 카드) */}
-          <div className="grid md:grid-cols-2 gap-6 mb-10">
-            {/* A. 문제은행 바로가기 */}
-            <Link 
-              href="/service/maker"
-              className="group relative flex items-center justify-between p-6 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-2xl shadow-lg hover:shadow-xl transition-all hover:-translate-y-1 overflow-hidden"
-            >
-               <div className="relative z-10">
-                 <div className="flex items-center gap-2 mb-2">
-                   <BeakerIcon className="w-6 h-6 text-blue-200" />
-                   <span className="text-xs font-bold text-blue-100 bg-white/20 px-2 py-0.5 rounded-full">BETA</span>
-                 </div>
-                 <h3 className="text-xl font-bold text-white mb-1">자체 제작 문제은행</h3>
-                 <p className="text-blue-100 text-sm">원하는 문제를 골라 시험지를 직접 만드세요.</p>
-               </div>
-               <div className="relative z-10 bg-white/10 p-2 rounded-full group-hover:bg-white/20 transition-colors">
-                 <ChevronRightIcon className="w-6 h-6 text-white" />
-               </div>
-               {/* 데코레이션 */}
-               <div className="absolute right-[-20px] bottom-[-20px] w-32 h-32 bg-white/10 rounded-full blur-2xl group-hover:scale-150 transition-transform duration-500" />
-            </Link>
-
-            {/* B. 맞춤 제작 요청하기 */}
-            <Link 
-              href="/request"
-              className="group relative flex items-center justify-between p-6 bg-white border border-slate-200 rounded-2xl shadow-sm hover:shadow-md hover:border-blue-300 transition-all hover:-translate-y-1"
-            >
-               <div>
-                 <div className="flex items-center gap-2 mb-2">
-                   <DocumentTextIcon className="w-6 h-6 text-slate-400 group-hover:text-blue-500 transition-colors" />
-                 </div>
-                 <h3 className="text-xl font-bold text-slate-900 mb-1">맞춤 제작 요청</h3>
-                 <p className="text-slate-500 text-sm">기출 분석 및 변형 문제를 전문가에게 맡기세요.</p>
-               </div>
-               <div className="bg-slate-50 p-2 rounded-full group-hover:bg-blue-50 transition-colors">
-                 <ChevronRightIcon className="w-6 h-6 text-slate-400 group-hover:text-blue-500" />
-               </div>
-            </Link>
-          </div>
-          
-          {/* 4. 요청 내역 리스트 */}
-          <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+          {/* 2. [위치 이동] 요청 내역 리스트 (최상단) */}
+          <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden mb-10">
             <div className="px-6 py-5 border-b border-slate-100 flex justify-between items-center">
               <h2 className="text-lg font-bold text-slate-800">최근 요청 내역</h2>
               <span className="text-xs text-slate-400">최근 3개월 내역</span>
@@ -317,15 +249,38 @@ export default function DashboardPage() {
               </div>
             )}
           </div>
-          {/* 이용 가이드 다시 보기 버튼 */}
-            <div className="flex justify-end p-4 border-t border-slate-100">
+          {/* 5. 통계 위젯 (하단 배치) */}
+          {userData && (
+            <div className="mb-6">
+              <UserStatsWidget 
+                userData={userData} 
+                activeRequestsCount={activeRequestsCount} 
+              />
+            </div>
+          )}
+          {/* 3. 액션 센터 위젯 (요청 내역 아래로 이동) */}
+          {userData && (
+            <div className="mb-6">
+               <DashboardActionCenter />
+            </div>
+          )}
+
+          {/* 4. 전문 분석 대시보드 (차트) */}
+          <div className="mb-6">
+            <DashboardAnalytics />
+          </div>
+
+
+          {/* 이용 가이드 다시 보기 버튼 (페이지 최하단) 
+            <div className="flex justify-end p-4 border-t border-slate-100 mt-8">
               <button 
-                onClick={handleResetTour} // 이제 함수가 정의되어 정상 작동합니다.
+                onClick={handleResetTour} 
                 className="text-xs text-slate-400 hover:text-blue-600 underline flex items-center gap-1"
               >
                 💡 이용 가이드 다시 보기
               </button>
             </div>
+            */}
         </div>
       </main>
 
