@@ -16,9 +16,13 @@ import {
   CheckCircleIcon,
   ClockIcon,
   CloudArrowUpIcon,
-  PaperClipIcon
+  PaperClipIcon,
+  ExclamationTriangleIcon
 } from "@heroicons/react/24/outline";
-
+import { loadTossPayments } from "@tosspayments/payment-sdk"; // 추가 필요
+import { httpsCallable } from "firebase/functions"; // 추가 필요
+import { functions } from "@/lib/firebase"; // functions 인스턴스 import 가정
+const CLIENT_KEY = process.env.NEXT_PUBLIC_TOSS_CLIENT_KEY!;
 export default function BillingPage() {
   const { user, userData, loading } = useAuth();
   
@@ -158,6 +162,35 @@ export default function BillingPage() {
       toast.error("저장에 실패했습니다.");
     }
     setIsSaving(false);
+  };
+
+  // [신규] 카드 변경 핸들러
+  const handleChangeCard = async () => {
+    try {
+      const tossPayments = await loadTossPayments(CLIENT_KEY);
+      // '카드 변경' 모드로 빌링키 발급 요청 -> Success URL에서 처리
+      await tossPayments.requestBillingAuth("카드", {
+        customerKey: user!.uid,
+        successUrl: `${window.location.origin}/payment/callback?mode=update`, // mode=update 파라미터 추가
+        failUrl: `${window.location.origin}/payment/fail`,
+      });
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  // [신규] 구독 해지 핸들러
+  const handleCancelSubscription = async () => {
+    if (!confirm("정말 해지하시겠습니까?\n다음 결제일 전까지만 이용 가능합니다.")) return;
+    
+    try {
+      const cancelFn = httpsCallable(functions, 'cancelSubscription');
+      await cancelFn();
+      toast.success("해지 예약되었습니다. 다음 결제일에 결제되지 않습니다.");
+      window.location.reload(); // 상태 갱신
+    } catch (e) {
+      toast.error("해지 처리에 실패했습니다.");
+    }
   };
 
   if (loading) return <div className="p-10 text-center">로딩 중...</div>;
@@ -355,6 +388,37 @@ export default function BillingPage() {
                 </div>
               </form>
             </div>
+            {/* [수정] 상태별 메시지 표시 */}
+            {userData?.subscriptionStatus === 'PAYMENT_FAILED' && (
+               <div className="bg-red-500/20 border border-red-500/50 p-3 rounded-lg text-sm text-red-200 mb-4 flex items-center gap-2">
+                 <ExclamationTriangleIcon className="w-5 h-5" />
+                 <span>결제에 실패했습니다. 카드를 변경해주세요.</span>
+               </div>
+            )}
+            
+            {userData?.subscriptionStatus === 'SCHEDULED_CANCEL' && (
+               <div className="bg-orange-500/20 border border-orange-500/50 p-3 rounded-lg text-sm text-orange-200 mb-4">
+                 <span>해지 예약 상태입니다. ({userData.nextPaymentDate?.toDate().toLocaleDateString()} 종료)</span>
+               </div>
+            )}
+
+            <div className="mt-6 flex gap-2">
+              <button 
+                onClick={handleChangeCard}
+                className="flex-1 py-3 bg-white text-slate-900 font-bold rounded-xl hover:bg-slate-100 transition-colors text-sm"
+              >
+                카드 변경
+              </button>
+              
+              {userData?.subscriptionStatus === 'ACTIVE' && (
+                <button 
+                  onClick={handleCancelSubscription}
+                  className="flex-1 py-3 bg-slate-800 text-slate-400 font-bold rounded-xl hover:bg-slate-700 transition-colors text-sm"
+                >
+                  구독 해지
+                </button>
+              )}
+          </div>
           </div>
           
           <div className="mt-4 p-4 bg-yellow-50 border border-yellow-100 rounded-xl text-xs text-yellow-800 leading-relaxed">

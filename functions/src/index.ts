@@ -541,7 +541,7 @@ export const registerSubscription = functions
 
       // 플랜별 가격
       const PLAN_PRICES: Record<string, number> = {
-        "Basic Plan": 129000,
+        "Basic Plan": 198000,
         "Student Premium Plan": 19900,
       };
       const amount = PLAN_PRICES[planName] || 0;
@@ -648,5 +648,172 @@ export const registerSubscription = functions
         status: "FAIL",
         message: error.message || "Subscription processing failed",
       });
+    }
+  });
+
+  /**
+ * [신규] 정기 결제 스케줄러 (매일 오전 9시 실행)
+ * - nextPaymentDate가 오늘(또는 과거)인 유저를 찾아 결제를 시도합니다.
+ */
+export const processRecurringPayments = functions
+  .runWith({ timeoutSeconds: 540 }) // 많은 유저를 처리할 수 있도록 시간 연장
+  .region("asia-east1")
+  .pubsub.schedule("0 9 * * *") // 매일 오전 9시 (KST 기준 확인 필요, 기본 UTC 0시)
+  .timeZone("Asia/Seoul")
+  .onRun(async (context) => {
+    const today = new Date();
+    
+    // 1. 결제일이 되었거나 지난 유저 조회 (subscriptionStatus가 ACTIVE이거나 TRIAL인 경우)
+    // 주의: TRIAL 상태인 유저도 4주가 지났다면 첫 결제를 해야 하므로 포함해야 합니다.
+    const usersSnap = await admin.firestore().collection("users")
+      .where("nextPaymentDate", "<=", today)
+      .where("billingKey", "!=", null) // 빌링키가 있는 유저만
+      .get();
+
+    if (usersSnap.empty) {
+      console.log("오늘 결제 예정인 유저가 없습니다.");
+      return null;
+    }
+
+    console.log(`총 ${usersSnap.size}명의 정기 결제를 처리합니다.`);
+
+    const TOSS_SECRET_KEY = process.env.TOSS_SECRET_KEY;
+    const encryptedSecretKey = Buffer.from(TOSS_SECRET_KEY + ":").toString("base64");
+
+    // 2. 유저별 순차 결제 진행
+    for (const userDoc of usersSnap.docs) {
+      const userData = userDoc.data();
+      const { billingKey, plan, uid } = userData;
+      
+      // 가격 결정 (Basic Plan: 198,000원)
+      const amount = plan === 'BASIC' ? 198000 : 19900; 
+      const orderId = `sub_${uid}_${Date.now()}`;
+
+      try {
+        // Toss에 결제 요청
+        const response = await axios.post(
+          `https://api.tosspayments.com/v1/billing/${encodeURIComponent(billingKey)}`,
+          {
+            customerKey: uid,
+            amount: amount,
+            orderId: orderId,
+            orderName: `${plan} 정기결제`,
+          },
+          {
+            headers: {
+              Authorization: `Basic ${encryptedSecretKey}`,
+              "Content-Type": "application/json",
+            },
+          }
+        );
+
+        if (response.status === 200) {
+          // 성공 시: 다음 결제일을 30일 뒤로 업데이트하고 상태를 ACTIVE로 확정
+          const nextDate = new Date();
+          nextDate.setDate(nextDate.getDate() + 30);
+
+          await userDoc.ref.update({
+            subscriptionStatus: "ACTIVE", // TRIAL이었다면 ACTIVE로 변경됨
+            nextPaymentDate: admin.firestore.Timestamp.fromDate(nextDate),
+            lastPaymentDate: admin.firestore.FieldValue.serverTimestamp(),
+          });
+
+          // 결제 기록 저장
+          await admin.firestore().collection("payments").add({
+            userId: uid,
+            orderId,
+            amount,
+            status: "DONE",
+            method: "RECURRING",
+            approvedAt: response.data.approvedAt,
+            rawResponse: response.data,
+          });
+          
+          console.log(`[Success] ${uid} 결제 성공`);
+        }
+      } catch (error: any) {
+        console.error(`[Fail] ${uid} 결제 실패:`, error.response?.data || error.message);
+        
+        // [추가] 결제 실패 시 처리 로직
+        // 1. 유저 상태를 'PAYMENT_FAILED'로 변경 -> 프론트에서 감지하여 경고 배너 표시
+        await userDoc.ref.update({
+          subscriptionStatus: "PAYMENT_FAILED",
+          lastPaymentFailReason: error.response?.data?.message || "잔액 부족 또는 카드 오류",
+          updatedAt: admin.firestore.FieldValue.serverTimestamp()
+        });
+
+        // (선택) 실패 알림을 notifications 컬렉션에 추가
+        await admin.firestore().collection("notifications").add({
+          userId: uid,
+          type: "error",
+          title: "결제 실패 알림",
+          message: "등록된 카드로 결제에 실패했습니다. 결제 수단을 변경해주세요.",
+          isRead: false,
+          createdAt: admin.firestore.FieldValue.serverTimestamp()
+        });
+      }
+    }
+    return null;
+  });
+
+  /**
+ * [신규] 카드 변경 (빌링키 업데이트)
+ * - 결제를 발생시키지 않고, 빌링키만 새로 발급받아 교체합니다.
+ */
+export const updateCard = functions
+  .region("asia-east1")
+  .https.onCall(async (data, context) => {
+    if (!context.auth) throw new functions.https.HttpsError("unauthenticated", "로그인 필요");
+
+    const { authKey, customerKey } = data;
+    const userId = context.auth.uid;
+
+    const TOSS_SECRET_KEY = process.env.TOSS_SECRET_KEY;
+    const encryptedSecretKey = Buffer.from(TOSS_SECRET_KEY + ":").toString("base64");
+
+    try {
+      // 1. 새 빌링키 발급
+      const response = await axios.post(
+        "https://api.tosspayments.com/v1/billing/authorizations/issue",
+        { authKey, customerKey },
+        { headers: { Authorization: `Basic ${encryptedSecretKey}` } }
+      );
+
+      const newBillingKey = response.data.billingKey;
+
+      // 2. DB 업데이트
+      await admin.firestore().collection("users").doc(userId).update({
+        billingKey: newBillingKey,
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      });
+
+      // 만약 결제 실패 상태였다면, 다시 활성 상태로 복구 시도 가능 (정책에 따라 결정)
+      // await admin.firestore().collection("users").doc(userId).update({ subscriptionStatus: 'ACTIVE' });
+
+      return { status: "SUCCESS" };
+    } catch (error: any) {
+      console.error("[Card Update Fail]", error.response?.data || error);
+      throw new functions.https.HttpsError("internal", "카드 변경 실패");
+    }
+  });
+
+/**
+ * [신규] 구독 해지 예약
+ * - 즉시 해지가 아니라, 다음 결제일에 결제가 되지 않도록 상태를 변경합니다.
+ */
+export const cancelSubscription = functions
+  .region("asia-east1")
+  .https.onCall(async (data, context) => {
+    if (!context.auth) throw new functions.https.HttpsError("unauthenticated", "로그인 필요");
+    const userId = context.auth.uid;
+
+    try {
+      await admin.firestore().collection("users").doc(userId).update({
+        subscriptionStatus: "SCHEDULED_CANCEL", // "해지 예약" 상태
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      });
+      return { status: "SUCCESS" };
+    } catch (error) {
+      throw new functions.https.HttpsError("internal", "해지 처리 실패");
     }
   });

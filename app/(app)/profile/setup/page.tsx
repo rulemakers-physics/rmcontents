@@ -118,7 +118,7 @@ export default function ProfileSetupPage() {
           <p className="text-slate-500">선택하신 유형에 따라 제공되는 기능이 달라집니다.</p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-6xl w-full">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-6xl w-full">
           
           {/* 1. 운영자 (원장/대표강사) -> DB: director */}
           <button 
@@ -164,7 +164,7 @@ export default function ProfileSetupPage() {
                 </span>
               </div>
               <p className="text-slate-500 mt-3 text-sm break-keep leading-relaxed">
-                "이미 가입된 곳에 합류합니다."<br/>
+                "이미 서비스를 이용중인 곳에 합류합니다."<br/>
                 원장님이나 대표 강사님께 초대받아 수업 자료를 이용하고 학생을 관리하실 분
               </p>
             </div>
@@ -172,6 +172,10 @@ export default function ProfileSetupPage() {
           </button>
 
           {/* 3. 학생 (Student) -> DB: student */}
+          {/* [런칭 제외] 학생 선택 버튼 주석 처리 
+            나중에 학생 기능을 오픈할 때 이 주석을 해제하세요.
+          */}
+          {/*
           <button 
             onClick={() => setSelectedRole('student')}
             className="group relative bg-white p-8 rounded-3xl border-2 border-slate-200 hover:border-emerald-500 hover:shadow-xl transition-all text-left flex flex-col h-80 justify-between overflow-hidden"
@@ -195,6 +199,7 @@ export default function ProfileSetupPage() {
             </div>
             <div className="absolute bottom-0 right-0 w-32 h-32 bg-emerald-50 rounded-tl-full opacity-0 group-hover:opacity-100 transition-opacity translate-y-10 group-hover:translate-y-0" />
           </button>
+          */}
         </div>
       </div>
     );

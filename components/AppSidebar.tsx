@@ -141,7 +141,7 @@ export default function AppSidebar({ isCollapsed, toggleSidebar }: AppSidebarPro
                 const isActive = pathname.startsWith(item.href);
                 // 테마 적용 로직
                 const { theme } = group;
-
+                
                 return (
                   <Link
                     key={item.href}

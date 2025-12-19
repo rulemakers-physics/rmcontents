@@ -60,7 +60,7 @@ export default function SubscribePage() {
             <div className="text-right">
               <p className="text-xs text-slate-500 font-medium">첫 결제 예정일</p>
               <p className="text-sm font-bold text-slate-700">{nextPaymentDateStr} 부터</p>
-              <p className="text-xs text-slate-400">매월 199,000원</p>
+              <p className="text-xs text-slate-400">매월 198,000원</p>
             </div>
           </div>
 

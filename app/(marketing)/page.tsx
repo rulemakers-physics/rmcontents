@@ -987,9 +987,9 @@ export default function HomePage() {
                 title="Basic Plan"
                 subtitle="기본 문제은행 및 내신 대비 자료"
                 planType="구독형"
-                originalPrice="월 198,000원"
-                price="월 129,000원"
-                promotionText="2025년 Early Bird 특가"
+                originalPrice="" // [수정] 삭제
+                price="월 198,000원" // [수정] 가격 변경
+                promotionText="🎁 첫 4주 무료 체험 혜택!" // [수정] 강조 문구 변경
                 features={[
                 { text: "기본 문제은행 서비스", included: true },
                 { text: "기출 분석 및 내신대비 모의고사 4회분 제공", included: true },

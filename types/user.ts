@@ -55,7 +55,8 @@ export interface UserData {
   // [신규] 무료 체험 및 구독 상태 관리를 위한 필드
   trialStartDate?: Timestamp | null;
   billingKey?: string;        // 카드 등록 여부 확인용 (존재하면 카드 등록됨)
-  subscriptionStatus?: 'NONE' | 'TRIAL' | 'ACTIVE' | 'PAUSED' | 'CANCELED';
+  // [수정] 결제 실패 및 해지 예약 상태 추가
+  subscriptionStatus?: 'NONE' | 'TRIAL' | 'ACTIVE' | 'PAUSED' | 'CANCELED' | 'PAYMENT_FAILED' | 'SCHEDULED_CANCEL';
   nextPaymentDate?: Timestamp; // 다음 결제 예정일
 
   businessInfo?: BusinessInfo; 

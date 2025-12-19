@@ -249,7 +249,8 @@ export default function ContactPage() {
                 </div>
                 <div className="p-4 bg-slate-50 rounded-xl border border-slate-100">
                   <h4 className="font-bold text-slate-800 text-sm mb-1">Q. 베이직 플랜은 구독료 외의 도입비용이 있나요?</h4>
-                  <p className="text-sm text-slate-500">현재 신규 런칭 프로모션으로 도입 비용 100만원 면제, 월 구독료 198,000원은 129,000원으로 제공됩니다.</p>
+                  <p className="text-sm text-slate-500">현재 신규 런칭 프로모션으로 도입 비용 100만원이 전액 면제되며, 
+                  <span className="text-blue-600 font-bold ml-1">첫 4주는 무료</span>로 이용하실 수 있습니다. (이후 월 198,000원)</p>
                 </div>
               </div>
             </div>

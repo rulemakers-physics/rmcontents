@@ -29,11 +29,12 @@ const INSTRUCTOR_PLANS = [
   {
     id: "BASIC",
     name: "Basic Plan",
-    tag: "Early Bird 특가",
-    originalPrice: "198,000",
-    price: "129,000",
-    period: "/월",
-    desc: "합리적인 가격으로 시작하는 스마트한 내신 대비",
+    tag: "첫 4주 무료 체험", // [강조] 태그 변경
+    originalPrice: "", // 할인가 표기 제거
+    price: "198,000원", // [수정] 가격 변경
+    period: "/월", // price에 포함하여 공란 처리
+    desc: "첫 달 0원으로 부담 없이 시작하세요", // [수정] 설명 문구 변경
+    promotionText: "🎁 지금 가입 시 첫 4주 100% 무료!", // [신규] 강조 문구 추가 (ServicePlanCard에서 붉은색으로 표시됨)
     features: [
       "기본 문제은행 무제한 이용",
       "학교별 기출 분석 및 내신대비 모의고사 4회분",
@@ -42,7 +43,7 @@ const INSTRUCTOR_PLANS = [
       "PDF 시험지 생성 및 정답과 해설 제공",
     ],
     highlight: false,
-    buttonText: "지금 시작하기",
+    buttonText: "무료로 시작하기", // 버튼 텍스트 변경
     buttonStyle: "bg-white text-slate-900 border border-slate-200 hover:bg-slate-50",
   },
   {
@@ -194,8 +195,8 @@ export default function PricingPage() {
       {/* 2. Target Toggle & Pricing Cards */}
       <section className="py-16 px-6 -mt-10 relative z-20">
         <div className="container mx-auto max-w-6xl">
-          
-          {/* 타겟 전환 토글 */}
+          {/* ▼▼▼ [수정] 관리자(Admin)에게만 토글 버튼 표시 ▼▼▼ */}
+        {user?.isAdmin && (
           <div className="flex justify-center mb-12">
             <div className="bg-white p-1.5 rounded-full flex shadow-md border border-slate-200">
               <button 
@@ -216,10 +217,34 @@ export default function PricingPage() {
                     : 'text-slate-500 hover:text-slate-900'
                 }`}
               >
-                <AcademicCapIcon className="w-4 h-4" /> 학생용
+                <AcademicCapIcon className="w-4 h-4" /> 학생용 (Admin Only)
               </button>
             </div>
           </div>
+        )}
+        {/* ▲▲▲ [수정 끝] ▲▲▲ */}
+          
+          {/* [런칭 제외] 타겟 전환 토글 주석 처리 
+           강사용 플랜만 보여주기 위해 토글 전체를 숨깁니다.
+        */}
+        {/*
+        <div className="flex justify-center mb-12">
+          <div className="bg-white p-1.5 rounded-full flex shadow-md border border-slate-200">
+            <button 
+              onClick={() => setTarget('instructor')}
+              className={`...`}
+            >
+              <BuildingLibraryIcon className="w-4 h-4" /> 강사/학원용
+            </button>
+            <button 
+              onClick={() => setTarget('student')}
+              className={`...`}
+            >
+              <AcademicCapIcon className="w-4 h-4" /> 학생용
+            </button>
+          </div>
+        </div>
+        */}
 
           <div className="grid md:grid-cols-2 gap-8 items-stretch">
             {currentPlans.map((plan, idx) => (

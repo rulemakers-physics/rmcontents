@@ -1,5 +1,3 @@
-// components/RouteGuard.tsx
-
 "use client";
 
 import { useEffect, useState } from "react";
@@ -19,7 +17,7 @@ const PUBLIC_PATHS = [
   "/terms", 
   "/privacy",
   "/share",
-  "/payment/subscribe", // 결제 페이지는 접근 가능해야 함
+  "/payment/subscribe",
   "/payment/callback",
   "/payment/fail"
 ];
@@ -30,23 +28,21 @@ const PUBLIC_PREFIXES = [
 ];
 
 export default function RouteGuard({ children }: { children: React.ReactNode }) {
-  // [수정] isUserDataLoaded 가져오기
   const { user, userData, loading, isFirstLogin, isUserDataLoaded } = useAuth(); 
   const router = useRouter();
   const pathname = usePathname();
   
   const [isAuthorized, setIsAuthorized] = useState(false);
 
-  // 경로 변경 시 권한 체크 상태 초기화
   useEffect(() => {
     setIsAuthorized(false);
   }, [pathname]);
 
   useEffect(() => {
-    // 1. 기본 인증 로딩 중이면 대기
+    // 1. 로딩 중 대기
     if (loading) return;
 
-    // 2. 공개 페이지는 즉시 통과
+    // 2. 공개 페이지 통과
     const isPublic = 
       PUBLIC_PATHS.includes(pathname) || 
       PUBLIC_PREFIXES.some(prefix => pathname.startsWith(prefix));
@@ -56,24 +52,22 @@ export default function RouteGuard({ children }: { children: React.ReactNode }) 
       return;
     }
 
-    // 3. 비로그인 유저 -> 로그인 페이지로
+    // 3. 비로그인 -> 로그인으로
     if (!user) {
       router.replace("/login"); 
       return;
     }
 
-    // 4. [핵심] 유저 데이터가 아직 로드되지 않았다면 대기 (여기서 뚫리는 것 방지)
+    // 4. 유저 데이터 로딩 대기
     if (!isUserDataLoaded) return;
 
-    // --- 여기부터는 userData가 확실히 있는 상태 ---
-
     // 5. 관리자 프리패스
-    if (user.isAdmin) {
+    if (user.isAdmin || userData?.role === 'admin') {
       setIsAuthorized(true);
       return;
     }
 
-    // 6. 프로필 미설정 유저 -> 설정 페이지로
+    // 6. 프로필 미설정 유저 -> 설정으로
     if (!userData && isFirstLogin === true) {
       if (pathname !== "/profile/setup") {
         router.replace("/profile/setup");
@@ -83,44 +77,47 @@ export default function RouteGuard({ children }: { children: React.ReactNode }) 
       return;
     }
 
-    // userData가 없는데 FirstLogin도 아닌 이상한 상황 (DB 오류 등)
     if (!userData) return; 
 
-    // 7. 강사/원장님 권한 체크
+    // [강사 전용 페이지 목록 정의]
+    const isServicePage = 
+      pathname.startsWith("/service") || 
+      pathname.startsWith("/manage") ||
+      pathname.startsWith("/request");
+
+    // 7. 강사/원장 권한 체크
     if (userData.role === 'instructor' || userData.role === 'director') {
       
-      // 유료 회원은 프리패스
+      // (1) 유료 회원이거나 체험 중이면 통과
       if (userData.plan !== 'FREE') {
         setIsAuthorized(true);
         return;
       }
 
-      // ★ FREE 회원이 서비스 기능에 접근할 때 체크
-      const isServicePage = 
-        pathname.startsWith("/service") || 
-        pathname.startsWith("/manage") ||
-        pathname.startsWith("/request");
-
+      // (2) FREE 회원이 서비스 페이지 접근 시 -> 무료 체험 여부 체크
       if (isServicePage) {
-        // (1) 체험 시작 안 함 -> 대시보드로 튕기기
+        // 체험 시작일이 없거나 상태가 NONE이면 차단
         if (!userData.trialStartDate || userData.subscriptionStatus === 'NONE') {
           toast("서비스 이용을 위해 대시보드에서 무료 체험을 시작해주세요.", { icon: "👋" });
           router.replace("/dashboard");
           return;
         }
 
-        // (2) 체험 기간 체크 로직 (기존과 동일)
+        // 체험 기간 만료 체크 (기존 로직 유지)
         const now = Date.now();
         const startDate = userData.trialStartDate.toDate().getTime();
         const daysSinceStart = (now - startDate) / (1000 * 60 * 60 * 24);
 
+        // 14일 ~ 30일: 카드 미등록 시 차단
         if (daysSinceStart >= 14 && daysSinceStart < 30) {
           if (!userData.billingKey) {
             toast.error("무료 체험 연장을 위해 카드 등록이 필요합니다.");
             router.replace("/payment/subscribe");
             return;
           }
-        } else if (daysSinceStart >= 30) {
+        } 
+        // 30일 이후: 유료 전환 안 됐으면 차단
+        else if (daysSinceStart >= 30) {
           if (userData.subscriptionStatus !== 'ACTIVE') {
              toast.error("무료 체험 기간이 종료되었습니다.");
              router.replace("/pricing");
@@ -128,9 +125,22 @@ export default function RouteGuard({ children }: { children: React.ReactNode }) 
           }
         }
       }
+    } 
+    // 8. [보안 수정] 학생 등 기타 역할이 강사 전용 페이지 접근 시 차단
+    else {
+      if (isServicePage || pathname.startsWith("/admin")) {
+        toast.error("접근 권한이 없습니다.");
+        // 학생이면 학생 대시보드로, 아니면 홈으로
+        if (userData.role === 'student') {
+          router.replace("/student/dashboard");
+        } else {
+          router.replace("/");
+        }
+        return;
+      }
     }
 
-    // 8. 학생 권한 체크 (기존 유지)
+    // 9. 학생 페이지 접근 제어 (강사가 학생 페이지 접근 시 차단)
     if (pathname.startsWith("/student") && !pathname.startsWith("/student/omr")) {
        if (userData.role === 'instructor' || userData.role === 'director') {
          router.replace("/dashboard");
@@ -143,10 +153,7 @@ export default function RouteGuard({ children }: { children: React.ReactNode }) 
 
   }, [user, userData, loading, isFirstLogin, isUserDataLoaded, pathname, router]);
 
-  // 로딩 중이거나 권한 확인 전이면 로딩 화면 표시
   if (loading || !isUserDataLoaded || !isAuthorized) {
-    // 공개 페이지면서 비로그인 상태일 때는 바로 보여주기 위해 예외 처리할 수도 있지만,
-    // 위 useEffect 로직 흐름상 isAuthorized가 true가 되므로 괜찮음.
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-slate-50">
         <div className="w-10 h-10 border-4 border-slate-200 border-t-blue-600 rounded-full animate-spin"></div>
