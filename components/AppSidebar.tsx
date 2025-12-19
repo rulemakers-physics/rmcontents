@@ -31,7 +31,7 @@ const MENU_GROUPS = [
     items: [
       { name: "대시보드", href: "/dashboard", icon: HomeIcon },
       { name: "공지사항", href: "/board/notices", icon: MegaphoneIcon },
-      //{ name: "결제/세금", href: "/profile/billing", icon: CreditCardIcon },
+      { name: "결제 관리", href: "/profile/billing", icon: CreditCardIcon },
       { name: "프로필 설정", href: "/profile/settings", icon: UserCircleIcon },
     ]
   },

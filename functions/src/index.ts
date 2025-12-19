@@ -517,11 +517,8 @@ export const notifyUserOnVerificationChange = functions
     }
   });
 
-  /**
- * [신규] 정기결제 등록 및 첫 결제 처리
- * 1. authKey로 billingKey 발급
- * 2. billingKey로 즉시 결제 요청
- * 3. 성공 시 DB에 billingKey 저장 및 유저 플랜 업데이트
+/**
+ * [신규] 정기결제 등록 및 첫 결제 처리 (무료 체험 로직 포함)
  */
 export const registerSubscription = functions
   .region("asia-east1")
@@ -537,11 +534,14 @@ export const registerSubscription = functions
     }
 
     try {
-      const { authKey, customerKey, planName, userId } = req.body;
+      // isTrialExtension 파라미터 추가
+      const { authKey, customerKey, planName, userId, isTrialExtension } = req.body;
+
+      console.log(`[Billing] 요청 시작 - User: ${userId}, Plan: ${planName}, TrialExtension: ${isTrialExtension}`);
 
       // 플랜별 가격
       const PLAN_PRICES: Record<string, number> = {
-        "Basic Plan": 198000,
+        "Basic Plan": 198000, 
         "Student Premium Plan": 19900,
       };
       const amount = PLAN_PRICES[planName] || 0;
@@ -571,7 +571,10 @@ export const registerSubscription = functions
           }
         );
       } catch (e: any) {
-        console.error("[Billing] 빌링키 발급 실패:", e.response?.data);
+        // 에러 상세 로깅
+        console.error("[Billing] 빌링키 발급 API 에러 응답:", JSON.stringify(e.response?.data));
+        console.error("[Billing] 사용된 Secret Key (앞 5자리):", TOSS_SECRET_KEY.substring(0, 5) + "***");
+        
         throw new Error(`빌링키 발급 실패: ${e.response?.data?.message || e.message}`);
       }
 
@@ -583,19 +586,37 @@ export const registerSubscription = functions
       }
 
       // ---------------------------------------------------------
-      // [단계 2] 첫 결제 요청 (billingKey 사용)
+      // [단계 2] 분기 처리: 무료 체험 연장 vs 즉시 결제
       // ---------------------------------------------------------
+      
+      // [Case A] 무료 체험 연장인 경우 (결제 스킵)
+      if (isTrialExtension) {
+        console.log(`[Billing] 무료 체험 연장 모드: 즉시 결제를 건너뜁니다.`);
+        
+        // 14일 뒤로 다음 결제일 설정
+        const nextPaymentDate = new Date();
+        nextPaymentDate.setDate(nextPaymentDate.getDate() + 14);
+
+        await admin.firestore().collection("users").doc(userId).update({
+          billingKey: billingKey,
+          subscriptionStatus: "ACTIVE", // 혹은 TRIAL 유지
+          plan: planName === "Student Premium Plan" ? "STD_PREMIUM" : "BASIC",
+          nextPaymentDate: admin.firestore.Timestamp.fromDate(nextPaymentDate),
+          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
+
+        res.status(200).json({ status: "SUCCESS", message: "Free trial extended", billingKey });
+        return;
+      }
+
+      // [Case B] 즉시 결제 (기존 로직)
       const orderId = `sub_${userId}_${Date.now()}`;
-      
-      // ★ 중요: billingKey에 특수문자가 있을 수 있으므로 encodeURIComponent 사용
-      const paymentUrl = `https://api.tosspayments.com/v1/billing/${encodeURIComponent(billingKey)}`;
-      
-      console.log(`[Billing] 3. 결제 요청 시작 (URL: ${paymentUrl})`);
+      console.log(`[Billing] 3. 결제 요청 시작 (URL: .../billing/${billingKey})`);
 
       let paymentResponse;
       try {
         paymentResponse = await axios.post(
-          paymentUrl,
+          `https://api.tosspayments.com/v1/billing/${encodeURIComponent(billingKey)}`,
           {
             customerKey,
             amount,
@@ -612,21 +633,21 @@ export const registerSubscription = functions
         );
       } catch (e: any) {
         console.error("[Billing] 결제 승인 실패:", e.response?.data);
-        // 여기서 "빌링키가 존재하지 않습니다"가 뜨는지 확인해야 함
         throw new Error(`결제 승인 실패: ${e.response?.data?.message || e.message}`);
       }
 
-      // ---------------------------------------------------------
-      // [단계 3] DB 업데이트
-      // ---------------------------------------------------------
       if (paymentResponse.status === 200) {
         console.log(`[Billing] 4. 결제 성공! DB 업데이트 진행`);
         
+        // 결제 성공 시: 다음 결제일은 30일 뒤
+        const nextPaymentDate = new Date();
+        nextPaymentDate.setDate(nextPaymentDate.getDate() + 30);
+
         await admin.firestore().collection("users").doc(userId).update({
           plan: planName.includes("Student") ? "STD_PREMIUM" : "BASIC",
           billingKey: billingKey,
           subscriptionStatus: "ACTIVE",
-          nextPaymentDate: admin.firestore.Timestamp.fromDate(new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)),
+          nextPaymentDate: admin.firestore.Timestamp.fromDate(nextPaymentDate),
           updatedAt: admin.firestore.FieldValue.serverTimestamp(),
         });
 
@@ -652,45 +673,53 @@ export const registerSubscription = functions
   });
 
   /**
- * [신규] 정기 결제 스케줄러 (매일 오전 9시 실행)
- * - nextPaymentDate가 오늘(또는 과거)인 유저를 찾아 결제를 시도합니다.
+ * [수정됨] 정기 결제 스케줄러 (해지 예약 처리 로직 추가)
  */
 export const processRecurringPayments = functions
-  .runWith({ timeoutSeconds: 540 }) // 많은 유저를 처리할 수 있도록 시간 연장
+  .runWith({ timeoutSeconds: 540 })
   .region("asia-east1")
-  .pubsub.schedule("0 9 * * *") // 매일 오전 9시 (KST 기준 확인 필요, 기본 UTC 0시)
+  .pubsub.schedule("0 9 * * *") // 매일 오전 9시 실행
   .timeZone("Asia/Seoul")
   .onRun(async (context) => {
     const today = new Date();
     
-    // 1. 결제일이 되었거나 지난 유저 조회 (subscriptionStatus가 ACTIVE이거나 TRIAL인 경우)
-    // 주의: TRIAL 상태인 유저도 4주가 지났다면 첫 결제를 해야 하므로 포함해야 합니다.
+    // 1. 결제일이 도래한 유저 조회 (빌링키 보유자)
     const usersSnap = await admin.firestore().collection("users")
       .where("nextPaymentDate", "<=", today)
-      .where("billingKey", "!=", null) // 빌링키가 있는 유저만
+      .where("billingKey", "!=", null)
       .get();
 
     if (usersSnap.empty) {
-      console.log("오늘 결제 예정인 유저가 없습니다.");
+      console.log("오늘 처리할 결제/해지 대상이 없습니다.");
       return null;
     }
-
-    console.log(`총 ${usersSnap.size}명의 정기 결제를 처리합니다.`);
 
     const TOSS_SECRET_KEY = process.env.TOSS_SECRET_KEY;
     const encryptedSecretKey = Buffer.from(TOSS_SECRET_KEY + ":").toString("base64");
 
-    // 2. 유저별 순차 결제 진행
     for (const userDoc of usersSnap.docs) {
       const userData = userDoc.data();
-      const { billingKey, plan, uid } = userData;
-      
-      // 가격 결정 (Basic Plan: 198,000원)
+      const { billingKey, plan, uid, subscriptionStatus } = userData;
+
+      // [핵심 로직 1] 해지 예약자인 경우 -> 결제 스킵 & 구독 종료 처리
+      if (subscriptionStatus === 'SCHEDULED_CANCEL') {
+        console.log(`[Cancel] ${uid}님의 구독이 예약 해지되었습니다.`);
+        await userDoc.ref.update({
+          subscriptionStatus: "CANCELED", // 상태 변경
+          billingKey: null,               // 빌링키 삭제 (더 이상 결제 불가)
+          plan: "FREE",                   // 플랜 다운그레이드
+          canceledAt: admin.firestore.FieldValue.serverTimestamp(),
+          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
+        continue; // 다음 유저로 넘어감 (결제 로직 실행 X)
+      }
+
+      // [핵심 로직 2] 결제 진행 (ACTIVE 또는 TRIAL 상태인 경우)
+      // 가격 결정
       const amount = plan === 'BASIC' ? 198000 : 19900; 
       const orderId = `sub_${uid}_${Date.now()}`;
 
       try {
-        // Toss에 결제 요청
         const response = await axios.post(
           `https://api.tosspayments.com/v1/billing/${encodeURIComponent(billingKey)}`,
           {
@@ -699,26 +728,20 @@ export const processRecurringPayments = functions
             orderId: orderId,
             orderName: `${plan} 정기결제`,
           },
-          {
-            headers: {
-              Authorization: `Basic ${encryptedSecretKey}`,
-              "Content-Type": "application/json",
-            },
-          }
+          { headers: { Authorization: `Basic ${encryptedSecretKey}`, "Content-Type": "application/json" } }
         );
 
         if (response.status === 200) {
-          // 성공 시: 다음 결제일을 30일 뒤로 업데이트하고 상태를 ACTIVE로 확정
+          // 결제 성공: 다음 결제일 +30일 & 상태 ACTIVE 유지
           const nextDate = new Date();
           nextDate.setDate(nextDate.getDate() + 30);
 
           await userDoc.ref.update({
-            subscriptionStatus: "ACTIVE", // TRIAL이었다면 ACTIVE로 변경됨
+            subscriptionStatus: "ACTIVE", // TRIAL이었어도 이제 ACTIVE가 됨
             nextPaymentDate: admin.firestore.Timestamp.fromDate(nextDate),
             lastPaymentDate: admin.firestore.FieldValue.serverTimestamp(),
           });
 
-          // 결제 기록 저장
           await admin.firestore().collection("payments").add({
             userId: uid,
             orderId,
@@ -728,28 +751,16 @@ export const processRecurringPayments = functions
             approvedAt: response.data.approvedAt,
             rawResponse: response.data,
           });
-          
-          console.log(`[Success] ${uid} 결제 성공`);
+          console.log(`[Success] ${uid} 정기 결제 성공`);
         }
       } catch (error: any) {
-        console.error(`[Fail] ${uid} 결제 실패:`, error.response?.data || error.message);
+        console.error(`[Fail] ${uid} 결제 실패:`, error.response?.data?.message);
         
-        // [추가] 결제 실패 시 처리 로직
-        // 1. 유저 상태를 'PAYMENT_FAILED'로 변경 -> 프론트에서 감지하여 경고 배너 표시
+        // 결제 실패 처리
         await userDoc.ref.update({
           subscriptionStatus: "PAYMENT_FAILED",
-          lastPaymentFailReason: error.response?.data?.message || "잔액 부족 또는 카드 오류",
+          lastPaymentFailReason: error.response?.data?.message || "알 수 없는 오류",
           updatedAt: admin.firestore.FieldValue.serverTimestamp()
-        });
-
-        // (선택) 실패 알림을 notifications 컬렉션에 추가
-        await admin.firestore().collection("notifications").add({
-          userId: uid,
-          type: "error",
-          title: "결제 실패 알림",
-          message: "등록된 카드로 결제에 실패했습니다. 결제 수단을 변경해주세요.",
-          isRead: false,
-          createdAt: admin.firestore.FieldValue.serverTimestamp()
         });
       }
     }

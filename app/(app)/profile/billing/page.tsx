@@ -73,6 +73,24 @@ export default function BillingPage() {
     }
   }, [userData]);
 
+  // [신규] 날짜 및 D-Day 계산 로직
+  const getPaymentInfo = () => {
+    if (!userData?.nextPaymentDate) return null;
+    
+    const nextDate = userData.nextPaymentDate.toDate();
+    const today = new Date();
+    const diffTime = nextDate.getTime() - today.getTime();
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)); // 남은 일수 올림
+
+    return {
+      dateString: nextDate.toLocaleDateString("ko-KR", { year: 'numeric', month: '2-digit', day: '2-digit' }),
+      daysLeft: diffDays > 0 ? diffDays : 0
+    };
+  };
+
+  const paymentInfo = getPaymentInfo();
+  const isTrial = userData?.subscriptionStatus === 'TRIAL';
+
   // 파일 선택 핸들러
   const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
@@ -207,28 +225,94 @@ export default function BillingPage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         
-        {/* 왼쪽: 구독 정보 */}
+        {/* [수정] 왼쪽: 구독 정보 카드 */}
         <div className="lg:col-span-1 space-y-6">
-          <div className="bg-slate-900 text-white p-6 rounded-2xl shadow-lg relative overflow-hidden">
+          <div className={`p-6 rounded-2xl shadow-lg relative overflow-hidden text-white ${
+            userData?.subscriptionStatus === 'PAYMENT_FAILED' ? 'bg-red-900' : 
+            userData?.subscriptionStatus === 'SCHEDULED_CANCEL' ? 'bg-slate-700' :
+            'bg-slate-900'
+          }`}>
             <div className="absolute top-0 right-0 p-4 opacity-10">
               <CreditCardIcon className="w-24 h-24" />
             </div>
-            <h3 className="text-sm font-bold text-slate-400 uppercase tracking-wider mb-1">Current Plan</h3>
-            <div className="text-3xl font-extrabold mb-4">{userData?.plan || 'FREE'} Plan</div>
             
-            <div className="space-y-3 text-sm text-slate-300">
-              <div className="flex items-center gap-2">
-                <CheckCircleIcon className="w-5 h-5 text-green-400" />
-                <span>현재 이용 중인 서비스입니다.</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <ClockIcon className="w-5 h-5 text-blue-400" />
-                <span>다음 결제일: 2025. 11. 01</span>
+            {/* 상단 뱃지 (체험 중 / 활성 / 해지예약) */}
+            <div className="flex items-center gap-2 mb-2">
+              <h3 className="text-sm font-bold text-slate-400 uppercase tracking-wider">Current Plan</h3>
+              {isTrial && <span className="text-[10px] bg-indigo-500 px-2 py-0.5 rounded-full font-bold">무료 체험 중</span>}
+              {userData?.subscriptionStatus === 'SCHEDULED_CANCEL' && <span className="text-[10px] bg-orange-500 px-2 py-0.5 rounded-full font-bold">해지 예약됨</span>}
+            </div>
+
+            <div className="text-3xl font-extrabold mb-6">
+              {userData?.plan || 'FREE'} Plan
+            </div>
+            
+            <div className="space-y-4 text-sm text-slate-300">
+              
+              {/* 결제일 정보 표시 */}
+              {paymentInfo ? (
+                <>
+                  <div className="flex items-center gap-2">
+                    <ClockIcon className="w-5 h-5 text-blue-400" />
+                    <span>
+                      {userData?.subscriptionStatus === 'SCHEDULED_CANCEL' ? '이용 종료일' : '다음 결제일'}: 
+                      <strong className="text-white ml-1">{paymentInfo.dateString}</strong>
+                    </span>
+                  </div>
+                  
+                  {/* 무료 체험 기간 카운트다운 */}
+                  {isTrial && (
+                    <div className="bg-white/10 p-3 rounded-lg border border-white/10">
+                      <p className="text-xs text-indigo-300 font-bold mb-1">FREE TRIAL</p>
+                      <p className="text-white">
+                        무료 체험 종료까지 <span className="text-yellow-400 font-bold text-lg">{paymentInfo.daysLeft}일</span> 남았습니다.
+                      </p>
+                    </div>
+                  )}
+                </>
+              ) : (
+                <div className="flex items-center gap-2">
+                  <CheckCircleIcon className="w-5 h-5 text-slate-500" />
+                  <span>예정된 결제가 없습니다.</span>
+                </div>
+              )}
+
+              {userData?.subscriptionStatus === 'ACTIVE' && !isTrial && (
+                <div className="flex items-center gap-2">
+                  <CheckCircleIcon className="w-5 h-5 text-green-400" />
+                  <span>정상 이용 중입니다.</span>
+                </div>
+              )}
+            </div>
+
+            {/* 하단 버튼 영역 (해지 상태 등 반영) */}
+            <div className="mt-6 flex flex-col gap-2">
+              {/* 상태 메시지 및 버튼 */}
+              {userData?.subscriptionStatus === 'PAYMENT_FAILED' && (
+                 <div className="text-xs text-red-300 bg-red-950/50 p-2 rounded mb-2 border border-red-800">
+                   ❗ 결제 실패: 카드를 변경해주세요.
+                 </div>
+              )}
+              
+              <div className="flex gap-2">
+                <button 
+                  onClick={handleChangeCard}
+                  className="flex-1 py-3 bg-white text-slate-900 font-bold rounded-xl hover:bg-slate-100 transition-colors text-xs"
+                >
+                  카드 변경
+                </button>
+                
+                {/* 해지 버튼: ACTIVE, TRIAL, FAILED 상태일 때만 노출 (이미 해지했거나 FREE면 숨김) */}
+                {['ACTIVE', 'TRIAL', 'PAYMENT_FAILED'].includes(userData?.subscriptionStatus || '') && (
+                  <button 
+                    onClick={handleCancelSubscription}
+                    className="flex-1 py-3 bg-slate-800 text-slate-300 font-bold rounded-xl hover:bg-slate-700 transition-colors text-xs"
+                  >
+                    구독 해지
+                  </button>
+                )}
               </div>
             </div>
-            <button className="mt-6 w-full py-3 bg-white text-slate-900 font-bold rounded-xl hover:bg-slate-100 transition-colors">
-              플랜 업그레이드 / 변경
-            </button>
           </div>
 
           <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
@@ -401,24 +485,6 @@ export default function BillingPage() {
                  <span>해지 예약 상태입니다. ({userData.nextPaymentDate?.toDate().toLocaleDateString()} 종료)</span>
                </div>
             )}
-
-            <div className="mt-6 flex gap-2">
-              <button 
-                onClick={handleChangeCard}
-                className="flex-1 py-3 bg-white text-slate-900 font-bold rounded-xl hover:bg-slate-100 transition-colors text-sm"
-              >
-                카드 변경
-              </button>
-              
-              {userData?.subscriptionStatus === 'ACTIVE' && (
-                <button 
-                  onClick={handleCancelSubscription}
-                  className="flex-1 py-3 bg-slate-800 text-slate-400 font-bold rounded-xl hover:bg-slate-700 transition-colors text-sm"
-                >
-                  구독 해지
-                </button>
-              )}
-          </div>
           </div>
           
           <div className="mt-4 p-4 bg-yellow-50 border border-yellow-100 rounded-xl text-xs text-yellow-800 leading-relaxed">
