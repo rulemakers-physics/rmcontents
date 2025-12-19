@@ -1,7 +1,10 @@
 // app/page.tsx
 
 "use client";
-
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { useAuth } from "@/context/AuthContext";
+import StartTrialModal from "@/components/StartTrialModal"; // 모달 임포트
 import React, { useRef, isValidElement } from "react";
 import Link from "next/link";
 import Image from "next/image";
@@ -50,10 +53,27 @@ const staggerContainer: Variants = {
 };
 
 export default function HomePage() {
+  const { user, userData } = useAuth();
+  const router = useRouter();
+  const [isTrialModalOpen, setIsTrialModalOpen] = useState(false);
   const howItWorksRef = useRef<HTMLElement>(null);
 
   const handleScrollToWorks = () => {
     howItWorksRef.current?.scrollIntoView({ behavior: "smooth" });
+  };
+
+  // [핵심] "무료 체험" 버튼 핸들러
+  const handleCtaClick = () => {
+    if (!user) {
+      // 1. 비로그인 -> 로그인 페이지로
+      router.push("/login");
+    } else if (!userData?.trialStartDate) {
+      // 2. 로그인 O, 체험 시작 안함 -> 모달 오픈
+      setIsTrialModalOpen(true);
+    } else {
+      // 3. 이미 체험 중 -> 서비스로 이동
+      router.push("/service/maker");
+    }
   };
 
   return (
@@ -1028,7 +1048,11 @@ export default function HomePage() {
           </div>
         </section>
       </div>
-
+      {/* 모달 연결 */}
+      <StartTrialModal 
+        isOpen={isTrialModalOpen} 
+        onClose={() => setIsTrialModalOpen(false)} 
+      />
     </main>
   );
 }

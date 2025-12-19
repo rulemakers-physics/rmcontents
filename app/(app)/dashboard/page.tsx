@@ -30,6 +30,10 @@ import DashboardAnalytics from "@/components/DashboardAnalytics";
 // 아이콘 (사용하지 않는 아이콘은 제거했습니다)
 import { RequestData } from "@/types/request";
 
+// [추가] 모달 컴포넌트 임포트 (경로는 실제 파일 위치에 맞게 조정)
+import StartTrialModal from "@/components/StartTrialModal";
+import { SparklesIcon } from "@heroicons/react/24/solid"; // 아이콘 예시
+
 export default function DashboardPage() {
   const { user, userData, loading, isFirstLogin } = useAuth();
   const router = useRouter();
@@ -46,6 +50,16 @@ export default function DashboardPage() {
     return requests.filter(r => r.status === 'requested' || r.status === 'in_progress').length;
   }, [requests]);
 
+  // [추가] 체험 시작 모달 상태
+  const [isTrialModalOpen, setIsTrialModalOpen] = useState(false);
+  // [수정] 체험 유도 배너 표시 조건 강화
+  // 1. 유저 데이터가 로드되었고
+  // 2. 체험 시작일(trialStartDate)이 없으며
+  // 3. ★현재 플랜이 'FREE'인 경우★에만 배너를 띄움 (유료 회원은 안 뜸)
+  const showTrialBanner = 
+    userData && 
+    !userData.trialStartDate && 
+    userData.plan === 'FREE';
   useEffect(() => {
     if (loading) return; // AuthContext 로딩 중이면 대기
     
@@ -150,13 +164,57 @@ export default function DashboardPage() {
   }
   
   if (!user) return null; 
-
+  
   return (
     <div className="flex min-h-full flex-col bg-slate-50">
       <FeatureTour />
+
+      {/* 모달 컴포넌트 배치 (조건부 렌더링으로 띄움) */}
+      <StartTrialModal 
+        isOpen={isTrialModalOpen} 
+        onClose={() => setIsTrialModalOpen(false)} 
+      />
+
       <main className="flex-grow py-12">
         <div className="container mx-auto max-w-6xl px-6">
-          
+
+          {/* ▼▼▼ 조건부 렌더링 배너 ▼▼▼ */}
+          {showTrialBanner && (
+            <div className="mb-10 relative overflow-hidden rounded-3xl bg-gradient-to-r from-slate-900 via-indigo-900 to-slate-900 p-8 shadow-xl animate-in fade-in slide-in-from-top-4 duration-700">
+              {/* (배경 장식 효과 유지) */}
+              <div className="absolute top-0 right-0 -mt-10 -mr-10 w-64 h-64 bg-indigo-500/30 rounded-full blur-3xl"></div>
+              <div className="absolute bottom-0 left-0 -mb-10 -ml-10 w-40 h-40 bg-blue-500/20 rounded-full blur-3xl"></div>
+              
+              <div className="relative z-10 flex flex-col md:flex-row items-center justify-between gap-6">
+                <div className="text-white">
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className="text-yellow-300 text-base font-bold">
+                      Welcome Gift 🎁
+                    </span>
+                  </div>
+                  <h2 className="text-2xl md:text-3xl font-bold mb-3 leading-tight">
+                    {userData?.name} 선생님, <br/>
+                    <span className="text-transparent bg-clip-text bg-gradient-to-r from-yellow-200 to-amber-400">
+                      RuleMakers PASS 문제은행과 컨텐츠 서비스를 
+                    <br/></span>무료로 체험해보세요!
+                  </h2>
+                  <p className="text-slate-300 text-sm md:text-base max-w-xl leading-relaxed">
+                    지금 체험을 시작하시면 <strong>카드 등록 없이 14일간</strong><br/>
+                    문제은행과 맞춤 제작 서비스를 무료로 이용하실 수 있습니다.
+                  </p>
+                </div>
+                
+                <button 
+                  onClick={() => setIsTrialModalOpen(true)}
+                  className="flex-shrink-0 px-8 py-4 bg-white text-indigo-900 font-bold rounded-xl shadow-lg hover:bg-indigo-50 transition-all hover:scale-105 active:scale-95 flex items-center gap-2 group"
+                >
+                  무료 체험 시작하기
+                </button>
+              </div>
+            </div>
+          )}
+          {/* ▲▲▲ 조건부 렌더링 끝 ▲▲▲ */}
+
           {/* 1. 헤더 및 인사말 */}
           <div className="mb-8">
             <h1 className="text-2xl font-bold text-slate-900">

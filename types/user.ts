@@ -48,10 +48,16 @@ export interface UserData {
   grade?: number;       // 학년
   targetUnit?: string;  // 집중 학습 단원
   parentPhone?: string; // 부모님 연락처
+  // [수정] 플랜 및 결제 관련 필드
   plan: UserPlan;
   coins: number;
   
-  businessInfo?: BusinessInfo; // [수정된 타입 적용]
+  // [신규] 무료 체험 및 구독 상태 관리를 위한 필드
+  trialStartDate?: Timestamp | null;
+  billingKey?: string;        // 카드 등록 여부 확인용 (존재하면 카드 등록됨)
+  subscriptionStatus?: 'NONE' | 'TRIAL' | 'ACTIVE' | 'PAUSED' | 'CANCELED';
+  nextPaymentDate?: Timestamp; // 다음 결제 예정일
 
+  businessInfo?: BusinessInfo; 
   createdAt?: Timestamp | Date | any; 
 }
