@@ -3,6 +3,7 @@
 "use client";
 
 import React, { useState } from "react";
+import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import { db } from "@/lib/firebase";
 import { doc, updateDoc } from "firebase/firestore";
@@ -127,6 +128,7 @@ const FAQS = [
 
 export default function PricingPage() {
   const { user, userData } = useAuth();
+  const router = useRouter();
   const [target, setTarget] = useState<'instructor' | 'student'>('instructor');
   const [openFaqIndex, setOpenFaqIndex] = useState<number | null>(null);
 
@@ -135,29 +137,26 @@ export default function PricingPage() {
   };
 
   const handleUpgrade = async (planId: string) => {
-    if (!user) return toast.error("로그인이 필요한 서비스입니다.");
-    
-    // 단순 테스트용 로직 (실제 결제 연동 전)
-    let confirmMsg = "";
-    if (planId === 'MAKERS') confirmMsg = "Maker's Plan 도입 상담을 신청하시겠습니까?";
-    else if (planId === 'STD_PREMIUM') confirmMsg = "통합과학 연간 Plan(월 19,900원)을 구독하시겠습니까?";
-    else confirmMsg = `${planId} 플랜을 선택하시겠습니까?`;
+  if (!user) return toast.error("로그인이 필요한 서비스입니다.");
+  
+  let price = 0;
+  let planName = "";
 
-    if (confirm(confirmMsg)) {
-      try {
-        await updateDoc(doc(db, "users", user.uid), {
-          plan: planId,
-          updatedAt: new Date(),
-          coins: planId === 'MAKERS' ? 3 : 0 
-        });
-        toast.success(`${planId} 플랜이 성공적으로 적용되었습니다!`);
-        window.location.reload();
-      } catch (e) {
-        console.error(e);
-        toast.error("처리 중 오류가 발생했습니다.");
-      }
-    }
-  };
+  if (planId === "BASIC") {
+    price = 129000;
+    planName = "Basic Plan";
+  } else if (planId === "MAKERS") {
+    // 메이커스 플랜은 상담 문의로 유지하거나, 금액이 있다면 설정
+    window.location.href = "/contact"; 
+    return;
+  } else if (planId === "STD_PREMIUM") {
+    price = 19900;
+    planName = "Student Premium Plan";
+  }
+
+  // Checkout 페이지로 이동
+  router.push(`/payment/subscribe?plan=${encodeURIComponent(planName)}`);
+};
 
   // 현재 선택된 타겟에 따른 플랜 데이터
   const currentPlans = target === 'instructor' ? INSTRUCTOR_PLANS : STUDENT_PLANS;

@@ -16,7 +16,8 @@
   },
   "main": "lib/index.js",
   "dependencies": {
-    "axios": "^1.7.2",
+    "axios": "^1.13.2",
+    "btoa": "^1.2.1",
     "firebase-admin": "^13.6.0",
     "firebase-functions": "^6.6.0",
     "rmcontents1": "file:.."

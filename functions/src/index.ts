@@ -516,3 +516,137 @@ export const notifyUserOnVerificationChange = functions
       });
     }
   });
+
+  /**
+ * [신규] 정기결제 등록 및 첫 결제 처리
+ * 1. authKey로 billingKey 발급
+ * 2. billingKey로 즉시 결제 요청
+ * 3. 성공 시 DB에 billingKey 저장 및 유저 플랜 업데이트
+ */
+export const registerSubscription = functions
+  .region("asia-east1")
+  .https.onRequest(async (req, res) => {
+    // 1. CORS 헤더 설정
+    res.set("Access-Control-Allow-Origin", "*");
+    res.set("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+    res.set("Access-Control-Allow-Headers", "Content-Type, Authorization");
+
+    if (req.method === "OPTIONS") {
+      res.status(204).send("");
+      return;
+    }
+
+    try {
+      const { authKey, customerKey, planName, userId } = req.body;
+
+      // 플랜별 가격
+      const PLAN_PRICES: Record<string, number> = {
+        "Basic Plan": 129000,
+        "Student Premium Plan": 19900,
+      };
+      const amount = PLAN_PRICES[planName] || 0;
+
+      // 시크릿 키 가져오기
+      const TOSS_SECRET_KEY = process.env.TOSS_SECRET_KEY;
+      if (!TOSS_SECRET_KEY) {
+        throw new Error("TOSS_SECRET_KEY가 설정되지 않았습니다.");
+      }
+      const encryptedSecretKey = Buffer.from(TOSS_SECRET_KEY + ":").toString("base64");
+
+      // ---------------------------------------------------------
+      // [단계 1] 빌링키 발급 (authKey -> billingKey)
+      // ---------------------------------------------------------
+      console.log(`[Billing] 1. 빌링키 발급 시도 (authKey: ${authKey})`);
+      
+      let issueResponse;
+      try {
+        issueResponse = await axios.post(
+          "https://api.tosspayments.com/v1/billing/authorizations/issue",
+          { authKey, customerKey },
+          {
+            headers: {
+              Authorization: `Basic ${encryptedSecretKey}`,
+              "Content-Type": "application/json",
+            },
+          }
+        );
+      } catch (e: any) {
+        console.error("[Billing] 빌링키 발급 실패:", e.response?.data);
+        throw new Error(`빌링키 발급 실패: ${e.response?.data?.message || e.message}`);
+      }
+
+      const billingKey = issueResponse.data.billingKey;
+      console.log(`[Billing] 2. 빌링키 발급 성공: ${billingKey}`);
+
+      if (!billingKey) {
+        throw new Error("응답에서 빌링키를 찾을 수 없습니다.");
+      }
+
+      // ---------------------------------------------------------
+      // [단계 2] 첫 결제 요청 (billingKey 사용)
+      // ---------------------------------------------------------
+      const orderId = `sub_${userId}_${Date.now()}`;
+      
+      // ★ 중요: billingKey에 특수문자가 있을 수 있으므로 encodeURIComponent 사용
+      const paymentUrl = `https://api.tosspayments.com/v1/billing/${encodeURIComponent(billingKey)}`;
+      
+      console.log(`[Billing] 3. 결제 요청 시작 (URL: ${paymentUrl})`);
+
+      let paymentResponse;
+      try {
+        paymentResponse = await axios.post(
+          paymentUrl,
+          {
+            customerKey,
+            amount,
+            orderId,
+            orderName: `${planName} (정기구독)`,
+            customerEmail: "",
+          },
+          {
+            headers: {
+              Authorization: `Basic ${encryptedSecretKey}`,
+              "Content-Type": "application/json",
+            },
+          }
+        );
+      } catch (e: any) {
+        console.error("[Billing] 결제 승인 실패:", e.response?.data);
+        // 여기서 "빌링키가 존재하지 않습니다"가 뜨는지 확인해야 함
+        throw new Error(`결제 승인 실패: ${e.response?.data?.message || e.message}`);
+      }
+
+      // ---------------------------------------------------------
+      // [단계 3] DB 업데이트
+      // ---------------------------------------------------------
+      if (paymentResponse.status === 200) {
+        console.log(`[Billing] 4. 결제 성공! DB 업데이트 진행`);
+        
+        await admin.firestore().collection("users").doc(userId).update({
+          plan: planName.includes("Student") ? "STD_PREMIUM" : "BASIC",
+          billingKey: billingKey,
+          subscriptionStatus: "ACTIVE",
+          nextPaymentDate: admin.firestore.Timestamp.fromDate(new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)),
+          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
+
+        await admin.firestore().collection("payments").add({
+          userId,
+          orderId,
+          amount,
+          status: "DONE",
+          method: "BILLING",
+          approvedAt: paymentResponse.data.approvedAt,
+          rawResponse: paymentResponse.data,
+        });
+
+        res.status(200).json({ status: "SUCCESS", data: paymentResponse.data });
+      }
+    } catch (error: any) {
+      console.error("[Billing] 최종 에러:", error.message);
+      res.status(400).json({
+        status: "FAIL",
+        message: error.message || "Subscription processing failed",
+      });
+    }
+  });
