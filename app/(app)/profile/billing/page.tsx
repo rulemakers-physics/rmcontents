@@ -5,7 +5,7 @@
 import { useState, useEffect, FormEvent, ChangeEvent } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { db, storage } from "@/lib/firebase";
-import { doc, updateDoc } from "firebase/firestore";
+import { doc, updateDoc, collection, query, where, orderBy, getDocs } from "firebase/firestore"; // [수정] collection, query 등 추가
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { toast } from "react-hot-toast";
 import { v4 as uuidv4 } from "uuid";
@@ -22,7 +22,20 @@ import {
 import { loadTossPayments } from "@tosspayments/payment-sdk"; // 추가 필요
 import { httpsCallable } from "firebase/functions"; // 추가 필요
 import { functions } from "@/lib/firebase"; // functions 인스턴스 import 가정
+
+// [신규] 결제 내역 타입 정의
+interface PaymentData {
+  id: string;
+  orderId: string;
+  amount: number;
+  status: string;
+  method: string;
+  approvedAt: string; // ISO string
+  orderName?: string;
+}
+
 const CLIENT_KEY = process.env.NEXT_PUBLIC_TOSS_CLIENT_KEY!;
+
 export default function BillingPage() {
   const { user, userData, loading } = useAuth();
   
@@ -50,6 +63,52 @@ export default function BillingPage() {
   const [cashReceiptNumber, setCashReceiptNumber] = useState("");
 
   const [isSaving, setIsSaving] = useState(false);
+
+  // [신규] 결제 내역 상태
+  const [paymentHistory, setPaymentHistory] = useState<PaymentData[]>([]);
+  const [isLoadingHistory, setIsLoadingHistory] = useState(true);
+
+  // 초기 데이터 로드 (유저 정보 + 결제 내역)
+  useEffect(() => {
+    if (userData?.businessInfo) {
+      const info = userData.businessInfo;
+      setTaxType(info.taxType || 'business');
+      setRepresentative(info.representative || "");
+      setAddress(info.address || "");
+      setTaxEmail(info.taxEmail || "");
+      
+      setCompanyName(info.companyName || "");
+      setRegistrationNumber(info.registrationNumber || "");
+      setBusinessType(info.businessType || "");
+      setBusinessItem(info.businessItem || "");
+      setExistingFileUrl(info.licenseFileUrl || "");
+      setExistingFileName(info.licenseFileName || "");
+
+      setCashReceiptNumber(info.cashReceiptNumber || "");
+    }
+  }, [userData]);
+
+  // [신규] 결제 내역 불러오기
+  useEffect(() => {
+    const fetchPayments = async () => {
+      if (!user) return;
+      try {
+        const q = query(
+          collection(db, "payments"),
+          where("userId", "==", user.uid),
+          orderBy("approvedAt", "desc") // 최신순 정렬
+        );
+        const snapshot = await getDocs(q);
+        const list = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as PaymentData));
+        setPaymentHistory(list);
+      } catch (e) {
+        console.error("결제 내역 로딩 실패", e);
+      } finally {
+        setIsLoadingHistory(false);
+      }
+    };
+    fetchPayments();
+  }, [user]);
 
   // 초기 데이터 로드
   useEffect(() => {
@@ -315,12 +374,38 @@ export default function BillingPage() {
             </div>
           </div>
 
-          <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+          {/* [수정] 결제 내역 표시 영역 */}
+          <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm max-h-[400px] overflow-y-auto custom-scrollbar">
             <h3 className="font-bold text-slate-900 mb-4 flex items-center gap-2">
               <DocumentTextIcon className="w-5 h-5 text-slate-500" /> 결제 내역
             </h3>
-            <div className="space-y-4">
-              <div className="text-sm text-slate-400 text-center py-4">결제 내역이 없습니다.</div>
+            <div className="space-y-3">
+              {isLoadingHistory ? (
+                <div className="text-center py-4 text-sm text-slate-400">불러오는 중...</div>
+              ) : paymentHistory.length === 0 ? (
+                <div className="text-sm text-slate-400 text-center py-4">결제 내역이 없습니다.</div>
+              ) : (
+                paymentHistory.map((payment) => (
+                  <div key={payment.id} className="flex justify-between items-center p-3 bg-slate-50 rounded-lg border border-slate-100">
+                    <div>
+                      <div className="text-xs text-slate-400 mb-0.5">
+                        {new Date(payment.approvedAt).toLocaleDateString()}
+                      </div>
+                      <div className="text-sm font-bold text-slate-800">
+                        {payment.status === 'DONE' ? '결제 완료' : '결제 실패'}
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <div className="text-sm font-bold text-blue-600">
+                        {payment.amount.toLocaleString()}원
+                      </div>
+                      <div className="text-[10px] text-slate-400">
+                        {payment.method === 'BILLING' ? '첫 결제' : '정기 결제'}
+                      </div>
+                    </div>
+                  </div>
+                ))
+              )}
             </div>
           </div>
         </div>

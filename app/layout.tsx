@@ -6,8 +6,8 @@ import { Toaster } from "react-hot-toast"; // [추가]
 import RouteGuard from "@/components/RouteGuard"; // 방금 만든 컴포넌트 import
 
 export const metadata: Metadata = {
-  title: "RuleMakers",
-  description: "강사를 위한 맞춤형 컨텐츠 제작 서비스",
+  title: "PASS by RuleMakers",
+  description: "프리미엄 통합과학 문제은행과 맞춤형 컨텐츠 제작 서비스",
 };
 
 export default function RootLayout({
