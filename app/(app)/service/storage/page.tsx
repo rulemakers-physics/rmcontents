@@ -1,6 +1,8 @@
+// app/(app)/service/storage/page.tsx
+
 "use client";
 
-import { useEffect, useState, useCallback, useMemo } from "react";
+import React, { useEffect, useState, useCallback, useMemo } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
@@ -8,60 +10,38 @@ import { db } from "@/lib/firebase";
 import { 
   collection, query, where, orderBy, getDocs, 
   deleteDoc, doc, Timestamp, addDoc, updateDoc, 
-  serverTimestamp 
+  serverTimestamp, writeBatch 
 } from "firebase/firestore";
 import { toast } from "react-hot-toast";
 
-// --- Heroicons ---
+// --- Icons ---
 import { 
-  FolderIcon, 
-  TrashIcon, 
-  DocumentTextIcon, 
-  CalendarDaysIcon,
-  PencilSquareIcon, // [기존] 새 시험지 버튼용
-  PencilIcon,       // [신규] 폴더 수정용 (추가됨)
-  ChartBarIcon,
-  FolderPlusIcon,
-  ArrowUturnLeftIcon,
-  ChevronRightIcon,
-  FolderOpenIcon,
-  EllipsisHorizontalIcon,
-  ArrowUpTrayIcon,
-  PrinterIcon ,
-  SparklesIcon, // 클리닉 아이콘용
-  ChevronDownIcon,
-  ChevronUpIcon
+  FolderIcon, TrashIcon, DocumentTextIcon, CalendarDaysIcon,
+  PencilSquareIcon, PencilIcon, FolderPlusIcon, ArrowUturnLeftIcon,
+  ChevronRightIcon, FolderOpenIcon, PrinterIcon, SparklesIcon,
+  ChevronDownIcon, ChevronUpIcon, ListBulletIcon, Squares2X2Icon,
+  MagnifyingGlassIcon, FunnelIcon, CheckCircleIcon, EllipsisHorizontalIcon,
+  ArrowRightOnRectangleIcon, ChartBarIcon
 } from "@heroicons/react/24/outline";
 
-// --- DnD Kit ---
+// --- DnD Kit (Grid View용 유지) ---
 import { 
-  DndContext, 
-  DragEndEvent, 
-  useDraggable, 
-  useDroppable,
-  useSensor,
-  useSensors,
-  PointerSensor,
-  TouchSensor
+  DndContext, DragEndEvent, useDraggable, useDroppable,
+  useSensor, useSensors, PointerSensor, TouchSensor
 } from "@dnd-kit/core";
 
-// 인쇄 모달 임포트
 import ExamPrintModal from "@/components/ExamPrintModal";
-
-// [수정] 중앙 타입 임포트 (로컬 인터페이스 삭제 후 교체)
 import { SavedExam } from "@/types/exam";
-import { LayoutMode } from "@/types/examTemplates"; // LayoutMode도 필요 시 임포트
+import { LayoutMode } from "@/types/examTemplates";
 
-// [신규] 날짜 포맷팅 헬퍼 함수 (Timestamp | Date 처리)
+// --- Helper Functions ---
 const formatDate = (dateValue: any) => {
   if (!dateValue) return "-";
-  // Firestore Timestamp인 경우 toDate() 호출
   if (dateValue.toDate) return dateValue.toDate().toLocaleDateString();
-  // JS Date 객체이거나 문자열인 경우 바로 처리
   return new Date(dateValue).toLocaleDateString();
 };
 
-// --- 타입 정의 ---
+// --- Types ---
 interface Folder {
   id: string;
   name: string;
@@ -69,7 +49,7 @@ interface Folder {
   createdAt: Timestamp;
 }
 
-// --- [DnD 컴포넌트] ---
+// --- DnD Components (Grid View) ---
 function DroppableFolder({ folder, children, onClick }: { folder: Folder, children: React.ReactNode, onClick: () => void }) {
   const { setNodeRef, isOver } = useDroppable({
     id: `folder-${folder.id}`,
@@ -113,7 +93,7 @@ function DroppableBackZone({ targetName, children, onClick }: { targetName: stri
     >
       {isOver ? (
         <div className="flex items-center gap-2 font-bold animate-pulse">
-          <ArrowUpTrayIcon className="w-5 h-5" />
+          <ArrowRightOnRectangleIcon className="w-5 h-5" />
           {targetName}로 이동
         </div>
       ) : (
@@ -150,38 +130,46 @@ function DraggableExam({ exam, children }: { exam: SavedExam, children: React.Re
   );
 }
 
-// --- 메인 페이지 컴포넌트 ---
+// --- Main Page Component ---
 export default function StoragePage() {
   const { user, loading } = useAuth();
   const router = useRouter();
   
-  // 데이터 상태
+  // Data State
   const [savedExams, setSavedExams] = useState<SavedExam[]>([]);
   const [folders, setFolders] = useState<Folder[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  // 폴더 네비게이션 상태
+  // View State
+  const [viewMode, setViewMode] = useState<'list' | 'grid'>('list');
   const [currentFolderId, setCurrentFolderId] = useState<string | null>(null);
   const [folderPath, setFolderPath] = useState<Folder[]>([]);
 
-  // 모달 상태
+  // Filter & Sort State
+  const [searchTerm, setSearchTerm] = useState("");
+  const [sortOption, setSortOption] = useState<'date-desc' | 'date-asc' | 'name-asc'>('date-desc');
+
+  // Selection & Expansion State
+  const [selectedExamIds, setSelectedExamIds] = useState<Set<string>>(new Set());
+  const [expandedExamIds, setExpandedExamIds] = useState<Set<string>>(new Set());
+
+  // Modal State
   const [isCreateFolderOpen, setIsCreateFolderOpen] = useState(false);
   const [newFolderName, setNewFolderName] = useState("");
-  const [isMoveMode, setIsMoveMode] = useState<string | null>(null); 
+  const [isMoveMode, setIsMoveMode] = useState<boolean>(false); // 일괄 이동 모드
+  const [isLegacyMoveMode, setIsLegacyMoveMode] = useState<string | null>(null); // 단일 이동 (Grid용)
   const [printTargetExam, setPrintTargetExam] = useState<SavedExam | null>(null);
-
-  // [신규] 폴더 이름 변경 상태
   const [isRenameModalOpen, setIsRenameModalOpen] = useState(false);
   const [renameTarget, setRenameTarget] = useState<{ id: string, name: string } | null>(null);
   const [renameInput, setRenameInput] = useState("");
 
-  // DnD 센서 설정
+  // DnD Sensors
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
     useSensor(TouchSensor, { activationConstraint: { delay: 250, tolerance: 5 } })
   );
 
-  // 1. 데이터 불러오기
+  // 1. Data Fetching
   const fetchData = useCallback(async () => {
     if (!user) return;
     setIsLoading(true);
@@ -205,7 +193,7 @@ export default function StoragePage() {
     if (!loading && user) fetchData();
   }, [loading, user, fetchData]);
 
-  // 2. Breadcrumbs 계산
+  // 2. Breadcrumbs
   useEffect(() => {
     if (!currentFolderId) {
       setFolderPath([]);
@@ -213,61 +201,162 @@ export default function StoragePage() {
     }
     const path: Folder[] = [];
     let currentId: string | null = currentFolderId;
-    while (currentId) {
+    // 무한 루프 방지용 limit
+    let limit = 0;
+    while (currentId && limit < 10) {
       const folder = folders.find(f => f.id === currentId);
       if (folder) {
         path.unshift(folder);
         currentId = folder.parentId;
       } else break;
+      limit++;
     }
     setFolderPath(path);
   }, [currentFolderId, folders]);
 
-  // --- 뷰 필터링 ---
-  const currentFolders = folders.filter(f => f.parentId === currentFolderId);
-  const currentExams = savedExams.filter(e => (e.folderId || null) === currentFolderId);
-  const currentFolderObj = folders.find(f => f.id === currentFolderId);
-  const parentFolderId = currentFolderObj?.parentId || null;
-  const parentFolderName = parentFolderId ? folders.find(f => f.id === parentFolderId)?.name : "Root(최상위)";
+  // 3. Process Data (Filter, Sort, Group)
+  // [수정] processedExams와 clinicMap을 포함한 객체를 processedExams 변수로 받도록 rest syntax(...) 사용
+  const { currentFolders, ...processedExams } = useMemo(() => {
+    // A. Folders
+    const currentFoldersFiltered = folders.filter(f => f.parentId === currentFolderId); // [참고] 내부 변수명 충돌 방지 위해 살짝 변경 권장되나 로직상 흐름은 유지
 
-  // [수정 2] 클리닉 토글 상태 관리 (어떤 시험지의 클리닉 목록을 펼쳤는지 저장)
-  const [expandedExamId, setExpandedExamId] = useState<string | null>(null);
+    // B. Exams Filtering
+    let filtered = savedExams.filter(e => (e.folderId || null) === currentFolderId);
 
-  // [수정 3] 데이터 필터링 및 그룹핑 로직 (기존 currentExams 변수 대체)
-  const { displayExams, examClinicsMap } = useMemo(() => {
-    // 1. 현재 폴더에 있는 파일만 필터링
-    const currentFiles = savedExams.filter(e => (e.folderId || null) === currentFolderId);
-    
-    const mainExams: SavedExam[] = [];
-    const clinicsMap: Record<string, SavedExam[]> = {};
+    if (searchTerm) {
+      const lower = searchTerm.toLowerCase();
+      filtered = filtered.filter(e => e.title.toLowerCase().includes(lower));
+    }
 
-    currentFiles.forEach(exam => {
-      if (exam.isClinic) {
-        // 클리닉인 경우: parentExamId를 키로 하여 맵에 저장
-        const pid = exam.parentExamId;
-        if (pid) {
-          if (!clinicsMap[pid]) clinicsMap[pid] = [];
-          clinicsMap[pid].push(exam);
-        } else {
-          // 연결 정보가 없는 클리닉(예전 데이터)은 그냥 메인 목록에 표시
-          mainExams.push(exam);
-        }
-      } else {
-        // 일반 시험지인 경우: 메인 목록에 추가
-        mainExams.push(exam);
+    // C. Sorting
+    filtered.sort((a, b) => {
+      if (sortOption === 'name-asc') return a.title.localeCompare(b.title);
+      const dateA = a.createdAt?.valueOf() || 0;
+      const dateB = b.createdAt?.valueOf() || 0;
+      return sortOption === 'date-asc' ? dateA - dateB : dateB - dateA;
+    });
+
+    // D. Grouping (Tree Structure)
+    // 현재 리스트에 있는 시험지들 중에서 '부모-자식' 관계 형성
+    const parents: SavedExam[] = [];
+    const clinicMap: Record<string, SavedExam[]> = {};
+
+    // 1. 맵핑
+    filtered.forEach(exam => {
+      if (exam.isClinic && exam.parentExamId) {
+        if (!clinicMap[exam.parentExamId]) clinicMap[exam.parentExamId] = [];
+        clinicMap[exam.parentExamId].push(exam);
       }
     });
 
-    return { displayExams: mainExams, examClinicsMap: clinicsMap };
-  }, [savedExams, currentFolderId]);
+    // 2. 구조화 (부모가 현재 리스트에 없으면 클리닉도 최상위로 표시)
+    filtered.forEach(exam => {
+      // 클리닉인데 부모가 현재 리스트에 있으면 -> 건너뜀 (부모 밑에 넣을 거니까)
+      // 단, 부모가 현재 리스트에 없으면 -> 그냥 보여줌
+      const parentInList = exam.parentExamId ? filtered.find(e => e.id === exam.parentExamId) : false;
+      
+      if (exam.isClinic && parentInList) {
+        // Skip (will be rendered under parent)
+      } else {
+        parents.push(exam);
+      }
+    });
 
-  // [수정 4] 클리닉 토글 핸들러
-  const toggleClinics = (e: React.MouseEvent, examId: string) => {
-    e.stopPropagation(); // 카드 클릭 이벤트 전파 방지
-    setExpandedExamId(prev => prev === examId ? null : examId);
+    return { processedExams: parents, clinicMap, currentFolders: currentFoldersFiltered };
+  }, [savedExams, folders, currentFolderId, searchTerm, sortOption]);
+
+  const currentFolderObj = folders.find(f => f.id === currentFolderId);
+  const parentFolderId = currentFolderObj?.parentId || null;
+  const parentFolderName = parentFolderId ? folders.find(f => f.id === parentFolderId)?.name : "Root";
+
+  // --- Handlers ---
+
+  // Selection
+  const toggleSelection = (id: string) => {
+    const newSet = new Set(selectedExamIds);
+    if (newSet.has(id)) newSet.delete(id);
+    else newSet.add(id);
+    setSelectedExamIds(newSet);
   };
 
-  // --- 핸들러: 폴더 생성 ---
+  const handleSelectAll = (isChecked: boolean) => {
+    if (isChecked) {
+      const allIds = new Set<string>();
+      // 현재 보이는 모든 시험지 (클리닉 포함) ID 수집
+      const addIdsRecursive = (exams: SavedExam[]) => {
+        exams.forEach(e => {
+          allIds.add(e.id);
+          const children = (processedExams as any).clinicMap?.[e.id]; // useMemo 밖에서 접근 불가하므로 아래에서 처리
+        });
+      };
+      // 단순하게 현재 필터된 원본 savedExams 중 현재 폴더에 있는 것들만
+      const currentFolderExamIds = savedExams
+        .filter(e => (e.folderId || null) === currentFolderId)
+        .map(e => e.id);
+      setSelectedExamIds(new Set(currentFolderExamIds));
+    } else {
+      setSelectedExamIds(new Set());
+    }
+  };
+
+  const toggleExpansion = (id: string) => {
+    const newSet = new Set(expandedExamIds);
+    if (newSet.has(id)) newSet.delete(id);
+    else newSet.add(id);
+    setExpandedExamIds(newSet);
+  };
+
+  // Bulk Actions
+  const handleBulkDelete = async () => {
+    if (selectedExamIds.size === 0) return;
+    if (!confirm(`선택한 ${selectedExamIds.size}개의 시험지를 삭제하시겠습니까?`)) return;
+
+    try {
+      const batch = writeBatch(db);
+      selectedExamIds.forEach(id => {
+        const ref = doc(db, "saved_exams", id);
+        batch.delete(ref);
+      });
+      await batch.commit();
+      
+      setSavedExams(prev => prev.filter(e => !selectedExamIds.has(e.id)));
+      setSelectedExamIds(new Set());
+      toast.success("삭제되었습니다.");
+    } catch (e) {
+      console.error(e);
+      toast.error("일괄 삭제 실패");
+    }
+  };
+
+  const handleBulkMove = async (targetFolderId: string | null) => {
+    try {
+      const batch = writeBatch(db);
+      selectedExamIds.forEach(id => {
+        const ref = doc(db, "saved_exams", id);
+        batch.update(ref, { folderId: targetFolderId });
+      });
+      await batch.commit();
+
+      setSavedExams(prev => prev.map(e => selectedExamIds.has(e.id) ? { ...e, folderId: targetFolderId || undefined } : e));
+      setSelectedExamIds(new Set());
+      setIsMoveMode(false);
+      toast.success("이동되었습니다.");
+    } catch (e) {
+      console.error(e);
+      toast.error("이동 실패");
+    }
+  };
+
+  // Single Item Actions
+  const handleDeleteExam = async (id: string) => {
+    if (!confirm("삭제하시겠습니까?")) return;
+    try {
+      await deleteDoc(doc(db, "saved_exams", id));
+      setSavedExams(prev => prev.filter(e => e.id !== id));
+      toast.success("삭제됨");
+    } catch (e) { toast.error("오류 발생"); }
+  };
+
   const handleCreateFolder = async () => {
     if (!newFolderName.trim()) return toast.error("폴더명을 입력해주세요.");
     if (!user) return;
@@ -287,76 +376,6 @@ export default function StoragePage() {
     }
   };
 
-  // --- [신규] 핸들러: 폴더 이름 변경 ---
-  const handleOpenRenameModal = (folder: Folder) => {
-    setRenameTarget({ id: folder.id, name: folder.name });
-    setRenameInput(folder.name);
-    setIsRenameModalOpen(true);
-  };
-
-  const handleRenameFolder = async () => {
-    if (!renameInput.trim()) return toast.error("폴더명을 입력해주세요.");
-    if (!renameTarget) return;
-
-    try {
-      await updateDoc(doc(db, "folders", renameTarget.id), {
-        name: renameInput
-      });
-      
-      // 로컬 상태 즉시 반영
-      setFolders(prev => prev.map(f => f.id === renameTarget.id ? { ...f, name: renameInput } : f));
-      
-      toast.success("폴더명이 변경되었습니다.");
-      setIsRenameModalOpen(false);
-      setRenameTarget(null);
-      setRenameInput("");
-    } catch (e) {
-      console.error(e);
-      toast.error("변경 실패");
-    }
-  };
-
-  // --- 핸들러: Drag & Drop ---
-  const handleDragEnd = async (event: DragEndEvent) => {
-    const { active, over } = event;
-    if (!over) return;
-
-    const activeType = active.data.current?.type;
-    const overType = over.data.current?.type;
-    const examId = active.data.current?.id;
-    
-    if (activeType === "exam" && overType === "folder") {
-      const targetFolderId = over.data.current?.id;
-      if (examId && targetFolderId) updateExamLocation(examId, targetFolderId, "이동되었습니다.");
-    }
-
-    if (activeType === "exam" && overType === "back-zone") {
-      if (!currentFolderId) return; 
-      updateExamLocation(examId, parentFolderId, `${parentFolderName}로 이동했습니다.`);
-    }
-  };
-
-  const updateExamLocation = async (examId: string, targetFolderId: string | null, successMsg: string) => {
-    setSavedExams(prev => prev.map(e => e.id === examId ? { ...e, folderId: targetFolderId || undefined } : e));
-    toast.success(successMsg);
-    
-    try {
-      await updateDoc(doc(db, "saved_exams", examId), { folderId: targetFolderId });
-    } catch (e) {
-      toast.error("저장 실패 (새로고침 필요)");
-      fetchData();
-    }
-  };
-
-  const handleDeleteExam = async (id: string) => {
-    if (!confirm("삭제하시겠습니까?")) return;
-    try {
-      await deleteDoc(doc(db, "saved_exams", id));
-      setSavedExams(prev => prev.filter(e => e.id !== id));
-      toast.success("삭제됨");
-    } catch (e) { toast.error("오류 발생"); }
-  };
-
   const handleDeleteFolder = async (folderId: string) => {
     const hasChildren = folders.some(f => f.parentId === folderId) || savedExams.some(e => e.folderId === folderId);
     if (hasChildren) return toast.error("폴더가 비어있지 않습니다.");
@@ -368,6 +387,18 @@ export default function StoragePage() {
     } catch (e) { toast.error("오류 발생"); }
   };
 
+  const handleRenameFolder = async () => {
+    if (!renameInput.trim()) return toast.error("폴더명을 입력해주세요.");
+    if (!renameTarget) return;
+    try {
+      await updateDoc(doc(db, "folders", renameTarget.id), { name: renameInput });
+      setFolders(prev => prev.map(f => f.id === renameTarget.id ? { ...f, name: renameInput } : f));
+      toast.success("변경되었습니다.");
+      setIsRenameModalOpen(false);
+    } catch (e) { toast.error("변경 실패"); }
+  };
+
+  // Navigation & Utils
   const handleCreateNew = () => {
     localStorage.removeItem("exam_draft");
     router.push("/service/maker");
@@ -377,107 +408,176 @@ export default function StoragePage() {
     router.push(`/manage/reports?action=input&examId=${examId}`);
   };
 
-  // [수정] 인쇄 모달 열기 핸들러
+  // DnD Handlers (Grid View & Folder Move)
+  const handleDragEnd = async (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over) return;
+
+    const examId = active.data.current?.id;
+    const activeType = active.data.current?.type;
+    const overType = over.data.current?.type;
+
+    if (activeType === "exam" && overType === "folder") {
+      const targetFolderId = over.data.current?.id;
+      // Optimistic update
+      setSavedExams(prev => prev.map(e => e.id === examId ? { ...e, folderId: targetFolderId } : e));
+      try {
+        await updateDoc(doc(db, "saved_exams", examId), { folderId: targetFolderId });
+        toast.success("이동되었습니다.");
+      } catch (e) { toast.error("이동 실패"); fetchData(); }
+    } else if (activeType === "exam" && overType === "back-zone") {
+      if (!currentFolderId) return;
+      setSavedExams(prev => prev.map(e => e.id === examId ? { ...e, folderId: parentFolderId || undefined } : e));
+      try {
+        await updateDoc(doc(db, "saved_exams", examId), { folderId: parentFolderId });
+        toast.success(`${parentFolderName}로 이동했습니다.`);
+      } catch (e) { toast.error("이동 실패"); fetchData(); }
+    }
+  };
+
+  // --- Rendering Helpers ---
+  const renderBadge = (exam: SavedExam) => {
+    if (exam.isClinic) return <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-purple-100 text-purple-700 border border-purple-200">클리닉</span>;
+    // mode 필드가 없으면 기본적으로 실전/연습 구분 불가하나, 가상으로 구분
+    return <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-100 text-slate-600 border border-slate-200">시험지</span>;
+  };
+
   const handleOpenPrint = (exam: SavedExam) => {
-    // ExamPrintModal용 데이터 매핑
     const printData: SavedExam = {
-      id: exam.id,
-      userId: user!.uid,
-      title: exam.title,
-      // [New] 추가된 메타데이터 매핑
-      subTitle: exam.subTitle,
-      academyName: exam.academyName,
-      instructorName: exam.instructorName,
-      academyLogo: exam.academyLogo,
-      
-      createdAt: exam.createdAt,
-      problemCount: exam.problemCount,
-      folderId: exam.folderId,
-      
-      problems: exam.problems?.map((p: any) => ({
-        ...p,
-        id: p.problemId || p.id,
-        imageUrl: p.imgUrl || p.imageUrl,
-        solutionUrl: p.solutionUrl,
-      })),
-      layoutMode: (exam.layoutMode as LayoutMode) || 'dense', 
+      ...exam,
+      // 필요한 경우 누락된 필드 보정
+      problems: exam.problems || [],
+      layoutMode: (exam.layoutMode as LayoutMode) || 'dense',
       questionPadding: exam.questionPadding || 40,
       templateId: exam.templateId || 'math-pro'
     };
-    
-    // 타입 단언 수정 (SavedExam interface가 이제 academyLogo를 포함하므로 호환됨)
-    // 하지만 ExamPrintModal이 받는 SavedExam 타입과 여기서의 SavedExam 타입이 일치하는지 확인 필요
-    // 여기서는 printTargetExam state를 사용하므로, setPrintTargetExam을 직접 호출하거나 printData를 사용
-    
-    // 만약 ExamPrintModal을 직접 사용한다면:
-    setPrintTargetExam(printData as any); 
+    setPrintTargetExam(printData);
   };
 
-  const handleOpenPrintModal = (exam: SavedExam) => {
-    setPrintTargetExam(exam);
-  };
-
-  if (loading) return <div className="p-10 text-center">로딩 중...</div>;
+  if (loading) return <div className="flex h-screen items-center justify-center"><div className="animate-spin rounded-full h-10 w-10 border-4 border-slate-200 border-t-blue-600"></div></div>;
 
   return (
     <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
-      <div className="p-8 max-w-7xl mx-auto min-h-full bg-slate-50">
+      <div className="p-6 md:p-8 max-w-7xl mx-auto min-h-full bg-slate-50 font-sans">
         
-        {/* 상단 헤더 영역 */}
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
+        {/* --- Header --- */}
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
           <div className="flex flex-col gap-2">
             <h1 className="text-2xl font-bold text-slate-900 flex items-center gap-2">
               <FolderIcon className="w-8 h-8 text-blue-600" />
               내 시험지 보관함
             </h1>
             
-            <nav className="flex items-center gap-2 text-sm text-slate-500 min-h-[40px]">
+            {/* Breadcrumbs / Folder Nav */}
+            <nav className="flex items-center gap-2 text-sm text-slate-500 min-h-[32px]">
               {currentFolderId ? (
-                <DroppableBackZone 
-                  targetName={parentFolderName || "Root"} 
-                  onClick={() => setCurrentFolderId(parentFolderId)}
-                >
-                  <div className="flex items-center gap-2">
-                    <button className="hover:text-blue-600 flex items-center gap-1 font-bold text-slate-800">
-                      <ArrowUturnLeftIcon className="w-4 h-4" /> 
-                      {parentFolderName}
+                <DroppableBackZone targetName={parentFolderName || "Root"} onClick={() => setCurrentFolderId(parentFolderId)}>
+                  <div className="flex items-center gap-2 group cursor-pointer">
+                    <button className="flex items-center gap-1 font-bold text-slate-600 group-hover:text-blue-600 transition-colors">
+                      <ArrowUturnLeftIcon className="w-4 h-4" /> {parentFolderName}
                     </button>
                     <ChevronRightIcon className="w-4 h-4 text-slate-300" />
-                    <span className="font-bold text-blue-600">{currentFolderObj?.name}</span>
+                    <span className="font-bold text-blue-600 flex items-center gap-1">
+                      <FolderOpenIcon className="w-4 h-4" /> {currentFolderObj?.name}
+                    </span>
                   </div>
                 </DroppableBackZone>
               ) : (
-                <div className="flex items-center gap-1 px-2 py-1">
+                <div className="flex items-center gap-1 px-2 py-1 font-medium text-slate-600">
                    <FolderOpenIcon className="w-4 h-4" /> Root (최상위)
                 </div>
               )}
             </nav>
           </div>
           
-          <div className="flex gap-2">
-            <button 
-              onClick={() => setIsCreateFolderOpen(true)}
-              className="px-4 py-2.5 bg-white border border-slate-200 text-slate-600 font-bold rounded-xl hover:bg-slate-50 transition-colors shadow-sm flex items-center gap-2"
-            >
+          <div className="flex flex-wrap items-center gap-2">
+            <button onClick={() => setIsCreateFolderOpen(true)} className="px-4 py-2.5 bg-white border border-slate-200 text-slate-600 font-bold rounded-xl hover:bg-slate-50 transition-colors shadow-sm flex items-center gap-2 text-sm">
               <FolderPlusIcon className="w-4 h-4" /> 폴더 생성
             </button>
-            <button 
-              onClick={handleCreateNew}
-              className="px-5 py-2.5 bg-slate-900 text-white font-bold rounded-xl hover:bg-slate-800 transition-colors shadow-lg flex items-center gap-2"
-            >
+            <button onClick={handleCreateNew} className="px-5 py-2.5 bg-slate-900 text-white font-bold rounded-xl hover:bg-slate-800 transition-colors shadow-lg flex items-center gap-2 text-sm">
               <PencilSquareIcon className="w-4 h-4" /> 새 시험지
+            </button>
+          </div>
+        </div>
+
+        {/* --- Toolbar (Search, Filter, View Toggle, Bulk Actions) --- */}
+        <div className="bg-white p-3 rounded-2xl border border-slate-200 shadow-sm mb-6 flex flex-col md:flex-row justify-between items-center gap-4">
+          
+          {/* Left: Bulk Actions OR Search/Sort */}
+          <div className="flex items-center gap-3 w-full md:w-auto overflow-x-auto no-scrollbar">
+            {selectedExamIds.size > 0 ? (
+              <div className="flex items-center gap-2 animate-in fade-in slide-in-from-left-2 duration-200">
+                <span className="text-sm font-bold text-blue-600 bg-blue-50 px-3 py-1.5 rounded-lg whitespace-nowrap">
+                  {selectedExamIds.size}개 선택됨
+                </span>
+                <button onClick={() => setIsMoveMode(true)} className="flex items-center gap-1 px-3 py-1.5 text-sm font-bold text-slate-600 hover:bg-slate-100 rounded-lg transition-colors border border-slate-200">
+                  <ArrowRightOnRectangleIcon className="w-4 h-4" /> 이동
+                </button>
+                <button onClick={handleBulkDelete} className="flex items-center gap-1 px-3 py-1.5 text-sm font-bold text-red-600 hover:bg-red-50 rounded-lg transition-colors border border-red-100">
+                  <TrashIcon className="w-4 h-4" /> 삭제
+                </button>
+                <button onClick={() => setSelectedExamIds(new Set())} className="text-xs text-slate-400 hover:text-slate-600 underline ml-2">
+                  선택 해제
+                </button>
+              </div>
+            ) : (
+              <>
+                {/* Search */}
+                <div className="relative group">
+                  <MagnifyingGlassIcon className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 group-focus-within:text-blue-500 transition-colors" />
+                  <input 
+                    type="text" 
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    placeholder="시험지 제목 검색" 
+                    className="pl-9 pr-4 py-2 w-48 md:w-64 bg-slate-50 border border-transparent hover:border-slate-200 focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-100 rounded-xl text-sm transition-all outline-none"
+                  />
+                </div>
+                
+                {/* Sort */}
+                <div className="relative">
+                  <select 
+                    value={sortOption}
+                    onChange={(e) => setSortOption(e.target.value as any)}
+                    className="appearance-none pl-9 pr-8 py-2 bg-slate-50 border border-transparent hover:border-slate-200 rounded-xl text-sm font-bold text-slate-600 cursor-pointer focus:ring-2 focus:ring-blue-100 focus:border-blue-500 outline-none"
+                  >
+                    <option value="date-desc">최신순</option>
+                    <option value="date-asc">오래된순</option>
+                    <option value="name-asc">이름순</option>
+                  </select>
+                  <FunnelIcon className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                </div>
+              </>
+            )}
+          </div>
+
+          {/* Right: View Toggle */}
+          <div className="flex bg-slate-100 p-1 rounded-xl shrink-0">
+            <button 
+              onClick={() => setViewMode('list')}
+              className={`p-2 rounded-lg transition-all ${viewMode === 'list' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
+              title="리스트 뷰"
+            >
+              <ListBulletIcon className="w-5 h-5" />
+            </button>
+            <button 
+              onClick={() => setViewMode('grid')}
+              className={`p-2 rounded-lg transition-all ${viewMode === 'grid' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
+              title="그리드 뷰"
+            >
+              <Squares2X2Icon className="w-5 h-5" />
             </button>
           </div>
         </div>
 
         {isLoading ? (
           <div className="space-y-4">
-            {[1, 2, 3].map(i => <div key={i} className="h-16 bg-gray-100 rounded-xl animate-pulse" />)}
+            {[1, 2, 3].map(i => <div key={i} className="h-20 bg-gray-100 rounded-xl animate-pulse" />)}
           </div>
         ) : (
           <div className="space-y-8">
             
-            {/* 폴더 리스트 */}
+            {/* 1. Folder List (Grid Only for Folders, or common) */}
             {currentFolders.length > 0 && (
               <div>
                 <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3 px-1">Folders</h3>
@@ -496,18 +596,15 @@ export default function StoragePage() {
                       </div>
                       
                       <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                        {/* [신규] 폴더 이름 변경 버튼 */}
                         <button 
-                          onClick={(e) => { e.stopPropagation(); handleOpenRenameModal(folder); }}
+                          onClick={(e) => { e.stopPropagation(); setRenameTarget(folder); setRenameInput(folder.name); setIsRenameModalOpen(true); }}
                           className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg"
-                          title="이름 변경"
                         >
                           <PencilIcon className="w-4 h-4" />
                         </button>
                         <button 
                           onClick={(e) => { e.stopPropagation(); handleDeleteFolder(folder.id); }}
                           className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg"
-                          title="삭제"
                         >
                           <TrashIcon className="w-4 h-4" />
                         </button>
@@ -518,151 +615,220 @@ export default function StoragePage() {
               </div>
             )}
 
-            {/* 시험지 리스트 영역 */}
-        <div>
-          <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3 px-1">
-            Files ({displayExams.length})
-          </h3>
-          
-          {displayExams.length === 0 ? (
-            <div className="text-center py-20 bg-white rounded-2xl border border-dashed border-slate-200">
-              <DocumentTextIcon className="w-12 h-12 text-slate-300 mx-auto mb-3" />
-              <p className="text-slate-500 font-medium">이 폴더에는 시험지가 없습니다.</p>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {/* [변경] currentExams -> displayExams */}
-              {displayExams.map((exam) => {
-                // 해당 시험지에 연결된 클리닉 목록 가져오기
-                const linkedClinics = examClinicsMap[exam.id] || [];
-                const hasClinics = linkedClinics.length > 0;
-                const isExpanded = expandedExamId === exam.id;
+            {/* 2. Exam List */}
+            <div>
+              <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3 px-1">
+                Files ({processedExams.processedExams.length})
+              </h3>
+              
+              {processedExams.processedExams.length === 0 ? (
+                <div className="text-center py-20 bg-white rounded-2xl border border-dashed border-slate-200">
+                  <DocumentTextIcon className="w-12 h-12 text-slate-300 mx-auto mb-3" />
+                  <p className="text-slate-500 font-medium">이 폴더에는 시험지가 없습니다.</p>
+                </div>
+              ) : viewMode === 'list' ? (
+                // === [LIST VIEW] ===
+                <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
+                  {/* [해결 1] table-fixed 적용 
+                    - 열 너비를 고정하여 내부 콘텐츠 변화에도 레이아웃이 흔들리지 않게 함 
+                  */}
+                  <table className="w-full text-left border-collapse table-fixed">
+                    <colgroup>
+                      <col className="w-14" />
+                      <col className="" />
+                      <col className="w-24" />
+                      <col className="w-32" />
+                      <col className="w-40" />
+                    </colgroup>
+                    <thead>
+                      <tr className="bg-slate-50 text-slate-500 text-xs font-bold uppercase border-b border-slate-200">
+                        <th className="p-4 text-center">
+                          <input 
+                            type="checkbox" 
+                            className="rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                            onChange={(e) => handleSelectAll(e.target.checked)}
+                            checked={savedExams.length > 0 && selectedExamIds.size === savedExams.filter(e => (e.folderId || null) === currentFolderId).length}
+                          />
+                        </th>
+                        <th className="p-4">시험지명</th>
+                        <th className="p-4 text-center">문항수</th>
+                        <th className="p-4 text-center">생성일</th>
+                        <th className="p-4 text-center">관리</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                      {processedExams.processedExams.map((exam) => {
+                        const clinicList = processedExams.clinicMap[exam.id] || [];
+                        const hasClinics = clinicList.length > 0;
+                        const isExpanded = expandedExamIds.has(exam.id);
 
-                return (
-                  <DraggableExam key={exam.id} exam={exam}>
-                    <div className={`group bg-white p-5 rounded-2xl border transition-all relative flex flex-col justify-between h-full ${
-                      isExpanded ? 'border-blue-300 shadow-md ring-1 ring-blue-100' : 'border-slate-200 shadow-sm hover:shadow-lg'
-                    }`}>
-                      
-                      {/* 카드 상단: 아이콘 및 기본 버튼 */}
-                      <div className="flex justify-between items-start mb-3">
-                        <div className={`p-2.5 rounded-xl transition-colors ${
-                          exam.isClinic ? 'bg-purple-50 text-purple-600' : 'bg-slate-100 text-slate-500 group-hover:bg-slate-800 group-hover:text-white'
-                        }`}>
-                          {exam.isClinic ? <SparklesIcon className="w-6 h-6"/> : <DocumentTextIcon className="w-6 h-6" />}
-                        </div>
-                        
-                        <div className="flex gap-1" onPointerDown={(e) => e.stopPropagation()}>
-                           <button onClick={() => handleOpenPrintModal(exam)} className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors" title="인쇄 및 PDF 저장">
-                             <PrinterIcon className="w-5 h-5" />
-                           </button>
-                           <button onClick={() => handleDeleteExam(exam.id)} className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors" title="삭제">
-                             <TrashIcon className="w-5 h-5" />
-                           </button>
-                        </div>
-                      </div>
-                      
-                      {/* 카드 정보 */}
-                      <div className="mb-4">
-                        <h3 className="text-lg font-bold text-slate-900 mb-1 line-clamp-1 group-hover:text-blue-600 transition-colors">
-                          {exam.title}
-                        </h3>
-                        <div className="flex items-center gap-3 text-xs text-slate-500">
-                          <span className="flex items-center gap-1">
-                            <CalendarDaysIcon className="w-3.5 h-3.5" />
-                            {formatDate(exam.createdAt)}
-                          </span>
-                          <span className="w-1 h-1 bg-slate-300 rounded-full" />
-                          <span>{exam.problemCount}문항</span>
-                        </div>
-                      </div>
+                        return (
+                          <React.Fragment key={exam.id}>
+                            {/* Parent Row */}
+                            <tr className={`transition-colors group ${isExpanded ? 'bg-slate-50/50' : 'hover:bg-slate-50'}`}>
+                              <td className="p-4 text-center">
+                                <input 
+                                  type="checkbox" 
+                                  checked={selectedExamIds.has(exam.id)}
+                                  onChange={() => toggleSelection(exam.id)}
+                                  className="rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                                />
+                              </td>
+                              <td className="p-4">
+                                <div className="flex items-center">
+                                  
+                                  {/* [해결 2] 아이콘 공간 고정 (w-8) */}
+                                  <div className="w-8 flex-shrink-0 flex justify-center mr-1">
+                                    {hasClinics ? (
+                                      <button 
+                                        onClick={() => toggleExpansion(exam.id)}
+                                        className="p-1 rounded-md hover:bg-slate-200 text-slate-400 transition-colors"
+                                      >
+                                        {isExpanded ? <ChevronUpIcon className="w-4 h-4"/> : <ChevronDownIcon className="w-4 h-4"/>}
+                                      </button>
+                                    ) : (
+                                      // 아이콘이 없을 때도 공간을 차지하는 투명 박스
+                                      <div className="w-6 h-6" /> 
+                                    )}
+                                  </div>
 
-                      {/* ▼▼▼ [추가된 부분] 클리닉 아코디언 섹션 ▼▼▼ */}
-                      {hasClinics && (
-                        <div className="mb-4" onPointerDown={(e) => e.stopPropagation()}>
-                          <button
-                            onClick={(e) => toggleClinics(e, exam.id)}
-                            className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-bold transition-colors ${
-                              isExpanded ? 'bg-purple-50 text-purple-700' : 'bg-slate-50 text-slate-600 hover:bg-slate-100'
-                            }`}
-                          >
-                            <div className="flex items-center gap-1.5">
-                              <SparklesIcon className="w-4 h-4" />
-                              <span>오답 클리닉 ({linkedClinics.length})</span>
-                            </div>
-                            {isExpanded ? <ChevronUpIcon className="w-3 h-3" /> : <ChevronDownIcon className="w-3 h-3" />}
-                          </button>
-
-                          {/* 펼쳐진 클리닉 리스트 */}
-                          {isExpanded && (
-                            <div className="mt-2 space-y-1 pl-2 border-l-2 border-purple-100 max-h-40 overflow-y-auto custom-scrollbar">
-                              {linkedClinics.map(clinic => (
-                                <div key={clinic.id} className="flex items-center justify-between p-2 rounded hover:bg-slate-50 group/item">
-                                  <div className="flex items-center gap-2 overflow-hidden">
-                                    <span className="w-1.5 h-1.5 rounded-full bg-purple-400 shrink-0" />
-                                    <div className="flex flex-col min-w-0">
-                                      <span className="text-xs font-bold text-slate-700 truncate max-w-[120px]">
-                                        {clinic.studentName || "학생"} {/* 학생 이름 표시 */}
-                                      </span>
-                                      <span className="text-[10px] text-slate-400">
-                                        {formatDate(clinic.createdAt)}
+                                  <div className="flex flex-col min-w-0 pr-4"> {/* min-w-0: truncate 작동 필수 조건 */}
+                                    <div className="flex items-center gap-2">
+                                      {renderBadge(exam)}
+                                      <span className="font-bold text-slate-800 truncate" title={exam.title}>
+                                        {exam.title}
                                       </span>
                                     </div>
-                                  </div>
-                                  
-                                  <div className="flex gap-1 opacity-0 group-hover/item:opacity-100 transition-opacity">
-                                    <button 
-                                      onClick={() => handleOpenPrintModal(clinic)}
-                                      className="p-1 text-slate-400 hover:text-indigo-600"
-                                      title="인쇄"
-                                    >
-                                      <PrinterIcon className="w-3.5 h-3.5" />
-                                    </button>
-                                    <button 
-                                      onClick={() => handleDeleteExam(clinic.id)}
-                                      className="p-1 text-slate-400 hover:text-red-600"
-                                      title="삭제"
-                                    >
-                                      <TrashIcon className="w-3.5 h-3.5" />
-                                    </button>
+                                    <span className="text-xs text-slate-400 mt-0.5 truncate">
+                                      ID: {exam.id}
+                                    </span>
                                   </div>
                                 </div>
-                              ))}
+                              </td>
+                              <td className="p-4 text-center text-sm font-medium text-slate-600">
+                                {exam.problemCount}
+                              </td>
+                              <td className="p-4 text-center text-xs text-slate-500">
+                                {formatDate(exam.createdAt)}
+                              </td>
+                              <td className="p-4 text-center">
+                                <div className="flex items-center justify-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                  <button onClick={() => handleGoToGrade(exam.id)} title="성적 입력" className="p-1.5 text-slate-400 hover:text-green-600 hover:bg-green-50 rounded-lg">
+                                    <ChartBarIcon className="w-4 h-4" />
+                                  </button>
+                                  <Link href={`/service/maker?id=${exam.id}`} title="수정" className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg">
+                                    <PencilIcon className="w-4 h-4" />
+                                  </Link>
+                                  <button onClick={() => handleOpenPrint(exam)} title="인쇄" className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg">
+                                    <PrinterIcon className="w-4 h-4" />
+                                  </button>
+                                  <button onClick={() => handleDeleteExam(exam.id)} title="삭제" className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg">
+                                    <TrashIcon className="w-4 h-4" />
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+
+                            {/* Nested Clinic Rows */}
+                            {isExpanded && clinicList.map(clinic => (
+                              <tr key={clinic.id} className="bg-slate-50/50 hover:bg-purple-50/10 transition-colors">
+                                <td className="p-4 text-center relative">
+                                  {/* 계층 연결선 디자인 (선택 사항) */}
+                                  <div className="absolute right-0 top-0 bottom-1/2 w-px bg-slate-200" />
+                                  <input 
+                                    type="checkbox" 
+                                    checked={selectedExamIds.has(clinic.id)}
+                                    onChange={() => toggleSelection(clinic.id)}
+                                    className="rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer relative z-10"
+                                  />
+                                </td>
+                                <td className="p-4">
+                                  <div className="flex items-center pl-9"> {/* 부모 텍스트 시작점(w-8 + mr-1)과 맞추기 위해 패딩 조정 */}
+                                    <ArrowUturnLeftIcon className="w-3 h-3 text-slate-300 rotate-180 mr-2 flex-shrink-0" />
+                                    <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-purple-100 text-purple-700 border border-purple-200 mr-2 flex-shrink-0">클리닉</span>
+                                    <div className="flex flex-col min-w-0">
+                                      <span className="text-sm font-medium text-slate-700 truncate">{clinic.title}</span>
+                                      <span className="text-xs text-slate-400">학생: {clinic.studentName || "-"}</span>
+                                    </div>
+                                  </div>
+                                </td>
+                                <td className="p-4 text-center text-sm text-slate-600">
+                                  {clinic.problemCount}
+                                </td>
+                                <td className="p-4 text-center text-xs text-slate-500">
+                                  {formatDate(clinic.createdAt)}
+                                </td>
+                                <td className="p-4 text-center">
+                                  <div className="flex items-center justify-center gap-2">
+                                    <Link href={`/service/maker?id=${clinic.id}`} title="수정" className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg">
+                                      <PencilIcon className="w-4 h-4" />
+                                    </Link>
+                                    <button onClick={() => handleOpenPrint(clinic)} title="인쇄" className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg">
+                                      <PrinterIcon className="w-4 h-4" />
+                                    </button>
+                                    <button onClick={() => handleDeleteExam(clinic.id)} title="삭제" className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg">
+                                      <TrashIcon className="w-4 h-4" />
+                                    </button>
+                                  </div>
+                                </td>
+                              </tr>
+                            ))}
+                          </React.Fragment>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                // === [GRID VIEW] (Existing Logic with Enhancements) ===
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {processedExams.processedExams.map((exam) => (
+                    <DraggableExam key={exam.id} exam={exam}>
+                      <div className="group bg-white p-5 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md hover:border-blue-300 transition-all relative flex flex-col justify-between h-full">
+                        {/* Grid Card Content (Same as before but cleaner) */}
+                        <div>
+                          <div className="flex justify-between items-start mb-4">
+                            <div className={`p-2.5 rounded-xl transition-colors ${exam.isClinic ? 'bg-purple-50 text-purple-600' : 'bg-slate-100 text-slate-500'}`}>
+                              {exam.isClinic ? <SparklesIcon className="w-6 h-6"/> : <DocumentTextIcon className="w-6 h-6" />}
                             </div>
-                          )}
+                            <div className="flex gap-1" onPointerDown={(e) => e.stopPropagation()}>
+                               {/* Single item move for grid */}
+                               <button onClick={() => setIsLegacyMoveMode(exam.id)} className="p-2 text-slate-400 hover:bg-slate-100 rounded-lg"><ArrowRightOnRectangleIcon className="w-5 h-5"/></button>
+                               <button onClick={() => handleOpenPrint(exam)} className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg"><PrinterIcon className="w-5 h-5"/></button>
+                               <button onClick={() => handleDeleteExam(exam.id)} className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg"><TrashIcon className="w-5 h-5"/></button>
+                            </div>
+                          </div>
+                          
+                          <div className="mb-4">
+                            <h3 className="text-lg font-bold text-slate-900 mb-1 line-clamp-1 group-hover:text-blue-600 transition-colors">{exam.title}</h3>
+                            <div className="flex items-center gap-3 text-xs text-slate-500">
+                              <span className="flex items-center gap-1"><CalendarDaysIcon className="w-3.5 h-3.5" /> {formatDate(exam.createdAt)}</span>
+                              <span className="w-1 h-1 bg-slate-300 rounded-full" />
+                              <span>{exam.problemCount}문항</span>
+                            </div>
+                          </div>
                         </div>
-                      )}
-                      {/* ▲▲▲ [추가된 부분 끝] ▲▲▲ */}
-
-                        {/* 하단 액션 버튼들 */}
-                      <div 
-                        className="flex items-center gap-2 pt-4 border-t border-slate-100 mt-auto"
-                        onPointerDown={(e) => e.stopPropagation()} 
-                      >
-                        <button 
-                          onClick={() => handleGoToGrade(exam.id)}
-                          className="flex-1 py-2 text-xs font-bold text-green-700 bg-green-50 rounded-lg hover:bg-green-100 transition-colors flex items-center justify-center gap-1"
-                        >
-                          <ChartBarIcon className="w-3.5 h-3.5" /> 성적 입력
-                        </button>
-                        <Link 
-                          href={`/service/maker?id=${exam.id}`}
-                          className="flex-1 py-2 text-xs font-bold text-blue-700 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors flex items-center justify-center gap-1"
-                        >
-                          <PencilSquareIcon className="w-3.5 h-3.5" /> 수정/복사
-                        </Link>
+                        
+                        <div className="flex items-center gap-2 pt-4 border-t border-slate-100 mt-auto" onPointerDown={(e) => e.stopPropagation()}>
+                          <button onClick={() => handleGoToGrade(exam.id)} className="flex-1 py-2 text-xs font-bold text-green-700 bg-green-50 rounded-lg hover:bg-green-100 transition-colors flex items-center justify-center gap-1">
+                            <ChartBarIcon className="w-3.5 h-3.5" /> 성적
+                          </button>
+                          <Link href={`/service/maker?id=${exam.id}`} className="flex-1 py-2 text-xs font-bold text-blue-700 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors flex items-center justify-center gap-1">
+                            <PencilSquareIcon className="w-3.5 h-3.5" /> 수정
+                          </Link>
+                        </div>
                       </div>
-                    </div>
-                  </DraggableExam>
-                );
-              })}
+                    </DraggableExam>
+                  ))}
+                </div>
+              )}
             </div>
-          )}
-        </div>
-        </div>
-    )}
+          </div>
+        )}
 
-        {/* 모달 1: 폴더 생성 */}
+        {/* --- Modals --- */}
+        
+        {/* 1. 폴더 생성 모달 */}
         {isCreateFolderOpen && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
             <div className="bg-white rounded-2xl shadow-xl p-6 w-full max-w-md">
@@ -684,7 +850,7 @@ export default function StoragePage() {
           </div>
         )}
 
-        {/* [신규] 모달 2: 폴더 이름 변경 */}
+        {/* 2. 폴더 이름 변경 모달 */}
         {isRenameModalOpen && renameTarget && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
             <div className="bg-white rounded-2xl shadow-xl p-6 w-full max-w-sm">
@@ -698,31 +864,29 @@ export default function StoragePage() {
                 onKeyDown={(e) => e.key === 'Enter' && handleRenameFolder()}
               />
               <div className="flex gap-2 justify-end">
-                <button 
-                  onClick={() => setIsRenameModalOpen(false)} 
-                  className="px-4 py-2 text-slate-500 hover:bg-slate-100 rounded-lg text-sm font-bold"
-                >
-                  취소
-                </button>
-                <button 
-                  onClick={handleRenameFolder} 
-                  className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-bold hover:bg-blue-700"
-                >
-                  변경
-                </button>
+                <button onClick={() => setIsRenameModalOpen(false)} className="px-4 py-2 text-slate-500 hover:bg-slate-100 rounded-lg text-sm font-bold">취소</button>
+                <button onClick={handleRenameFolder} className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-bold hover:bg-blue-700">변경</button>
               </div>
             </div>
           </div>
         )}
 
-        {/* 모달 3: 이동 (모바일/레거시 지원) */}
-        {isMoveMode && (
+        {/* 3. 폴더 이동 모달 (Bulk & Single) */}
+        {(isMoveMode || isLegacyMoveMode) && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
             <div className="bg-white rounded-2xl shadow-xl p-6 w-full max-w-sm">
-              <h3 className="text-lg font-bold text-slate-900 mb-4">이동할 폴더 선택</h3>
+              <h3 className="text-lg font-bold text-slate-900 mb-4">
+                {isMoveMode ? `${selectedExamIds.size}개 항목 이동` : "이동할 폴더 선택"}
+              </h3>
               <div className="space-y-2 max-h-60 overflow-y-auto pr-2 custom-scrollbar">
                 <button 
-                  onClick={() => updateExamLocation(isMoveMode!, null, "Root로 이동됨") || setIsMoveMode(null)}
+                  onClick={() => {
+                    if (isMoveMode) handleBulkMove(null);
+                    else {
+                      if (isLegacyMoveMode) updateExamLocation(isLegacyMoveMode, null, "Root로 이동됨");
+                      setIsLegacyMoveMode(null);
+                    }
+                  }}
                   className="w-full text-left p-3 rounded-lg hover:bg-slate-100 text-sm font-medium text-slate-600 flex items-center gap-2"
                 >
                   <FolderOpenIcon className="w-5 h-5 text-slate-400" /> Root (최상위)
@@ -730,7 +894,13 @@ export default function StoragePage() {
                 {folders.map(f => (
                   <button 
                     key={f.id}
-                    onClick={() => updateExamLocation(isMoveMode!, f.id, "이동 완료") || setIsMoveMode(null)}
+                    onClick={() => {
+                      if (isMoveMode) handleBulkMove(f.id);
+                      else {
+                        if (isLegacyMoveMode) updateExamLocation(isLegacyMoveMode, f.id, "이동 완료");
+                        setIsLegacyMoveMode(null);
+                      }
+                    }}
                     className="w-full text-left p-3 rounded-lg hover:bg-slate-100 text-sm font-medium text-slate-700 flex items-center gap-2"
                   >
                     <FolderIcon className="w-5 h-5 text-blue-500" /> {f.name}
@@ -738,13 +908,13 @@ export default function StoragePage() {
                 ))}
               </div>
               <div className="flex gap-2 justify-end mt-4 pt-4 border-t border-slate-100">
-                <button onClick={() => setIsMoveMode(null)} className="px-4 py-2 text-slate-500 hover:bg-slate-100 rounded-lg text-sm font-bold">취소</button>
+                <button onClick={() => { setIsMoveMode(false); setIsLegacyMoveMode(null); }} className="px-4 py-2 text-slate-500 hover:bg-slate-100 rounded-lg text-sm font-bold">취소</button>
               </div>
             </div>
           </div>
         )}
 
-        {/* [신규] 인쇄 모달 */}
+        {/* 4. 인쇄 모달 */}
         {printTargetExam && (
           <ExamPrintModal 
             exam={printTargetExam} 
@@ -755,4 +925,16 @@ export default function StoragePage() {
       </div>
     </DndContext>
   );
+
+  // Helper for single drag logic
+  async function updateExamLocation(examId: string, targetFolderId: string | null, successMsg: string) {
+    setSavedExams(prev => prev.map(e => e.id === examId ? { ...e, folderId: targetFolderId || undefined } : e));
+    toast.success(successMsg);
+    try {
+      await updateDoc(doc(db, "saved_exams", examId), { folderId: targetFolderId });
+    } catch (e) {
+      toast.error("저장 실패 (새로고침 필요)");
+      fetchData();
+    }
+  }
 }

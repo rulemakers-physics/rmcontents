@@ -65,9 +65,9 @@ export default function Footer() {
            <div>
              <h4 className="font-bold text-slate-900 mb-4 text-sm uppercase tracking-wider">Stay Connected</h4>
              <div className="flex gap-3 mb-6">
-               <SocialButton href={LINKS.blog} label="Blog" />
-               <SocialButton href={LINKS.instagram} label="Insta" />
-               <SocialButton href={LINKS.kakao} label="Kakao" />
+               <SocialButton href={LINKS.blog} label="Blog" src="/images/blog.png" />
+               <SocialButton href={LINKS.instagram} label="Insta" src="/images/instagram.png" />
+               <SocialButton href={LINKS.kakao} label="Kakao" src="/images/kakao.png" />
              </div>
              <p className="text-xs text-slate-400">
                평일 10:00 - 18:00 (주말/공휴일 제외)
@@ -97,16 +97,24 @@ export default function Footer() {
   );
 }
 
-function SocialButton({ href, label }: { href: string, label: string }) {
-  // 실제로는 아이콘 SVG나 이미지를 넣으면 더 좋습니다.
+// [수정] SocialButton 컴포넌트: 이미지를 받도록 변경
+function SocialButton({ href, label, src }: { href: string, label: string, src: string }) {
   return (
     <a 
       href={href} 
       target="_blank" 
       rel="noopener noreferrer"
-      className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center text-xs font-bold text-slate-600 hover:bg-blue-600 hover:text-white transition-all"
+      // hover:bg-blue-600 등의 색상 효과 대신 투명도나 그림자 효과로 변경
+      className="relative w-10 h-10 rounded-full bg-slate-50 flex items-center justify-center overflow-hidden border border-slate-200 hover:border-blue-200 hover:shadow-md transition-all group"
     >
-      {label[0]}
+      {/* Next.js Image 컴포넌트 사용 */}
+      <Image 
+        src={src} 
+        alt={label} 
+        fill 
+        className="object-cover p-2 group-hover:scale-110 transition-transform duration-300" 
+        sizes="40px"
+      />
     </a>
   );
 }
