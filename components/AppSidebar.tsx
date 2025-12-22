@@ -8,7 +8,7 @@ import {
   ShieldCheckIcon, ChevronLeftIcon, ChevronRightIcon, FolderIcon, CreditCardIcon,
   UsersIcon, MegaphoneIcon, UserGroupIcon, ChartBarIcon, IdentificationIcon,
   BuildingOffice2Icon, BanknotesIcon, ArchiveBoxIcon, ExclamationTriangleIcon,
-  AcademicCapIcon, ArrowTopRightOnSquareIcon
+  AcademicCapIcon, ArrowTopRightOnSquareIcon, PresentationChartLineIcon
 } from "@heroicons/react/24/outline";
 import { useAuth } from "@/context/AuthContext";
 import { signOut } from "firebase/auth";
@@ -47,7 +47,7 @@ const MENU_GROUPS = [
       iconColor: "text-violet-500",
     },
     items: [
-      { name: "문제은행", href: "/service/maker", icon: BeakerIcon },
+      { name: "PASS 문제은행", href: "/service/maker", icon: BeakerIcon },
       { name: "내 보관함", href: "/service/storage", icon: FolderIcon },
       { name: "컨텐츠 제작 요청", href: "/request", icon: DocumentPlusIcon },
     ]
@@ -193,6 +193,7 @@ export default function AppSidebar({ isCollapsed, toggleSidebar }: AppSidebarPro
                 { name: "학원 현황", href: "/admin/academies", icon: BuildingOffice2Icon, color: "slate" },
                 { name: "결제/세금", href: "/admin/billing", icon: BanknotesIcon, color: "emerald" },
                 { name: "공지 관리", href: "/admin/notices", icon: MegaphoneIcon, color: "sky" },
+                { name: "RM 모의고사", href: "/admin/marketing-exams", icon: PresentationChartLineIcon, color: "teal" },
               ].map((item) => {
                  // 정확한 경로 매칭을 위해 로직 분리 (관리자 홈 vs 하위 메뉴)
                  const isExactAdmin = item.href === "/admin";
@@ -209,6 +210,7 @@ export default function AppSidebar({ isCollapsed, toggleSidebar }: AppSidebarPro
                    slate: "bg-slate-600 shadow-slate-900/20",
                    emerald: "bg-emerald-600 shadow-emerald-900/20",
                    sky: "bg-sky-600 shadow-sky-900/20",
+                   teal: "bg-teal-600 shadow-teal-900/20",
                  };
                  const textColors: Record<string, string> = {
                    rose: "text-rose-400 group-hover:text-rose-300",
@@ -218,6 +220,7 @@ export default function AppSidebar({ isCollapsed, toggleSidebar }: AppSidebarPro
                    slate: "text-slate-400 group-hover:text-slate-300",
                    emerald: "text-emerald-400 group-hover:text-emerald-300",
                    sky: "text-sky-400 group-hover:text-sky-300",
+                   teal: "text-teal-400 group-hover:text-teal-300",
                  };
 
                  return (

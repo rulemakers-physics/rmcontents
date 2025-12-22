@@ -33,7 +33,7 @@ export default function UserStatsWidget({ userData, activeRequestsCount }: { use
            <ClockIcon className="w-6 h-6" />
         </div>
         <div>
-          <p className="text-xs text-slate-500 uppercase font-bold">In Progress</p>
+          <p className="text-xs text-slate-500 uppercase font-bold">Custom Contents In Progress</p>
           <p className="text-lg font-bold text-slate-900">{activeRequestsCount}건 진행 중</p>
         </div>
       </div>

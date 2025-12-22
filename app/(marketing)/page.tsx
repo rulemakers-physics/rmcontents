@@ -877,7 +877,7 @@ export default function HomePage() {
                 step="02"
                 title="분석 및 제작"
                 subtitle="전문가 검수"
-                description="서울대 연구진이 요청사항에 맞춰 문항을 선별/제작하고 정밀한 교차 검수를 진행합니다."
+                description="요청사항에 맞춰 문항을 선별/제작하고 정밀한 교차 검수를 진행합니다."
                 icon={CpuChipIcon}
                 delay={0.2}
               />
