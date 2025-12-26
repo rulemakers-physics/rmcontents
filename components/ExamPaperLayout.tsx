@@ -17,12 +17,11 @@ const PADDING_X_MM = 20; // 좌우 여백
 // 이미지 스케일 팩터
 const IMG_SCALE_FACTOR = 0.245; 
 
-// [신규] 문항 번호 포맷팅 (1 -> 01, 10 -> 10)
+// 문항 번호 포맷팅 (1 -> 01, 10 -> 10)
 const formatNumber = (num: number) => {
   return num.toString().padStart(2, '0');
 };
 
-// [수정] Props 인터페이스 확장
 interface ExamPaperLayoutProps {
   problems: ExamPaperProblem[]; 
   title: string;
@@ -31,7 +30,6 @@ interface ExamPaperLayoutProps {
   printOptions: PrintOptions;
   isTeacherVersion?: boolean;
   academyLogo?: string | null;
-  // [New] 추가된 Props
   subTitle?: string;
   academyName?: string;
   id?: string;
@@ -88,11 +86,9 @@ function distributeItems(
       ? (item.height ? item.height * IMG_SCALE_FACTOR : 10)
       : (item.solutionHeight ? item.solutionHeight * IMG_SCALE_FACTOR : 10);
     
-    // [수정] 문항 번호 헤더 높이 계산 (기존 40px/25px)
+    // 문항 번호 헤더 높이 계산
     let headerOffset = type === 'question' ? 40 : 25; 
     
-    // [추가] 클리닉 라벨(오답/유사)이 있는 경우 높이 보정 (+20px)
-    // 라벨 폰트 크기, 패딩, 마진(mb-1)을 고려한 값입니다.
     if (type === 'question' && item.customLabel) {
       headerOffset += 20;
     }
@@ -178,11 +174,15 @@ const ExamPaperLayout = forwardRef<HTMLDivElement, ExamPaperLayoutProps>(
       });
     }, [problems, printOptions.questions, printOptions.questionPadding, printOptions.layoutMode, headerH]);
 
-    // 해설지 페이지네이션
+    // [수정] 해설지 페이지네이션 로직 개선
     const solutionPages = useMemo(() => {
       if (!printOptions.solutions) return [];
       
-      const solutionItems = (problems || []).filter(p => p.solutionUrl || p.content);
+      // 기존: solutionUrl이나 content가 있는 문항만 필터링
+      // 수정: 난이도가 '기본'인 문항도 포함하여 번호 연속성 보장
+      const solutionItems = (problems || []).filter(p => 
+        p.solutionUrl || p.content || p.difficulty === '기본'
+      );
       
       return distributeItems(solutionItems, 'solution', {
         pageHeight: A4_HEIGHT_PX,
@@ -196,14 +196,13 @@ const ExamPaperLayout = forwardRef<HTMLDivElement, ExamPaperLayoutProps>(
       });
     }, [problems, printOptions.solutions, headerH]);
 
-    // OMR 링크 생성 (배포된 도메인으로 변경 필요)
+    // OMR 링크 생성
     const omrLink = id ? `https://rmcontents1.web.app/student/omr/${id}` : "";
 
     // --- 헤더 렌더링 함수 ---
     const renderHeader = (pageNum: number, isSolution = false) => {
       const displayTitle = isSolution ? `${title} [정답 및 해설]` : title;
 
-      // 1. 해설지 헤더
       if (isSolution) {
          return (
            <div 
@@ -216,7 +215,7 @@ const ExamPaperLayout = forwardRef<HTMLDivElement, ExamPaperLayoutProps>(
                 </span>
                 <div className="flex flex-col items-end gap-2">
                   {academyLogo && (
-                    <img src={getProxyImageSrc(academyLogo)} alt="Academy Logo" className="h-12 object-contain" />
+                    <img src={getProxyImageSrc(academyLogo)} alt="Academy Logo" className="h-20 object-contain" />
                   )}
                   </div>
                 </div>
@@ -224,7 +223,6 @@ const ExamPaperLayout = forwardRef<HTMLDivElement, ExamPaperLayoutProps>(
          );
       }
 
-      // 2. 문제지 헤더 (1페이지)
       if (pageNum === 0) {
         return (
           <div 
@@ -232,8 +230,7 @@ const ExamPaperLayout = forwardRef<HTMLDivElement, ExamPaperLayoutProps>(
             style={{ height: template.headerHeight }}
           >
              <div className="flex justify-between items-end">
-                {/* 좌측: 타이틀 및 부제목 */}
-                <div className="flex-1 mr-4"> {/* flex-1 추가하여 공간 확보 */}
+                <div className="flex-1 mr-4"> 
                    <span className="text-xs text-slate-500 font-bold tracking-widest mb-1 block">
                      {subTitle || "2025학년도 1학기 대비"}
                    </span>
@@ -246,22 +243,16 @@ const ExamPaperLayout = forwardRef<HTMLDivElement, ExamPaperLayoutProps>(
                    </div>
                 </div>
                 
-                {/* 우측 통합: 로고 (상단) + [QR 코드 - 점수 박스] (하단) */}
                 <div className="flex flex-col items-end gap-2 shrink-0">
-
-                  {/* 1. 학원 로고 (가장 상단에 배치) */}
                   {academyLogo && (
                     <img 
                       src={getProxyImageSrc(academyLogo)} 
                       alt="Academy Logo" 
-                      className={`h-12 object-contain ${omrLink ? "translate-y-[50px]" : ""}`}
+                      className={`h-20 object-contain ${omrLink ? "translate-y-[50px]" : ""}`}
                     />
                   )}
 
-                  {/* 2. 하단 그룹 (QR 코드 + 점수 박스를 가로로 배치) */}
                   <div className="flex items-end gap-2">
-                    
-                    {/* QR 코드 (점수 박스 왼쪽) */}
                     {omrLink && (
                       <div className="bg-white p-0.5 border border-slate-200 rounded flex flex-col items-center justify-center">
                         <QRCode value={omrLink} size={58} />
@@ -269,7 +260,6 @@ const ExamPaperLayout = forwardRef<HTMLDivElement, ExamPaperLayoutProps>(
                       </div>
                     )}
 
-                    {/* 점수 박스 (우측 끝) */}
                     {template.showScoreBox && (
                       <div className="flex border border-slate-800 text-xs bg-white">
                         <div className="bg-slate-50 px-2 py-1 border-r border-slate-800 font-bold flex items-center text-slate-900">성명</div>
@@ -278,7 +268,6 @@ const ExamPaperLayout = forwardRef<HTMLDivElement, ExamPaperLayoutProps>(
                         <div className="w-12"></div>
                       </div>
                     )}
-                    
                   </div>
                 </div>
              </div>
@@ -286,7 +275,6 @@ const ExamPaperLayout = forwardRef<HTMLDivElement, ExamPaperLayoutProps>(
         );
       }
 
-      // 3. 문제지 2페이지 이후 헤더
       return (
         <div 
           className="w-full flex flex-col justify-end shrink-0 border-b border-gray-300 pb-2 mb-4"
@@ -298,7 +286,7 @@ const ExamPaperLayout = forwardRef<HTMLDivElement, ExamPaperLayoutProps>(
               </span>
               <div className="flex flex-col items-end">
                 {academyLogo ? (
-                  <img src={getProxyImageSrc(academyLogo)} alt="Logo" className="h-8 object-contain" />
+                  <img src={getProxyImageSrc(academyLogo)} alt="Logo" className="h-20 object-contain" />
                 ) : (
                   <div className="flex items-center gap-2 text-xs text-slate-400">
                     <span className="pl-2 border-l border-slate-300 font-bold text-slate-500">
@@ -312,21 +300,17 @@ const ExamPaperLayout = forwardRef<HTMLDivElement, ExamPaperLayoutProps>(
       );
     };
 
-    // --- [수정] 푸터 렌더링 (RuleMakers 로고 오른쪽 배치) ---
     const renderFooter = (pageIdx: number) => (
       <div className="h-[40px] relative flex items-center justify-center border-t border-gray-200 text-xs text-gray-400 shrink-0 mt-auto w-full">
-        {/* 가운데 정렬: 페이지 번호 */}
         <span className="absolute left-1/2 -translate-x-1/2 font-medium">
           - {pageIdx + 1} -
         </span>
-        {/* 오른쪽 정렬: PASS by RuleMakers */}
         <span className="absolute right-0 font-bold text-slate-500">
           PASS by RuleMakers
         </span>
       </div>
     );
 
-    // [보안 1] 우클릭 방지 핸들러 추가
     const handleContextMenu = (e: React.MouseEvent) => {
       e.preventDefault();
     };
@@ -335,7 +319,6 @@ const ExamPaperLayout = forwardRef<HTMLDivElement, ExamPaperLayoutProps>(
       <>
         <div 
           ref={ref} 
-          // ▼▼▼ [수정] wrapperClassName이 있으면 우선 적용, 없으면 기본값 사용 ▼▼▼
           className={wrapperClassName || "w-full bg-gray-100 flex flex-col items-center gap-10 py-10 print:p-0 print:bg-white print:gap-0 no-select"}
           onContextMenu={handleContextMenu}
         >
@@ -377,9 +360,7 @@ const ExamPaperLayout = forwardRef<HTMLDivElement, ExamPaperLayoutProps>(
                           <ExclamationCircleIcon className="w-4 h-4" />
                         </button>
 
-                        {/* [수정] 문항 레이아웃: 번호 상단 배치 + 룰메이커스 로고 */}
                         <div className="flex flex-col h-full gap-2">
-                           {/* [신규] 출처 라벨 (있을 경우만 표시) */}
                            {prob.customLabel && (
                              <div className="mb-1">
                                <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold border ${
@@ -391,37 +372,24 @@ const ExamPaperLayout = forwardRef<HTMLDivElement, ExamPaperLayoutProps>(
                                </span>
                              </div>
                            )}
-                           {/* 문항 번호 Header */}
                            <div className="flex items-center gap-1">
-                              {/* 룰메이커스 로고 (문항 번호 크기에 맞춤) */}
                               <img 
                                 src="/images/logo.png" 
                                 alt="RM" 
                                 className="h-5 w-5 object-contain" 
                               />
-                              {/* 문항 번호 (00 형식) */}
                               <span 
                                 className="font-semibold text-xl leading-none" 
                                 style={{ color: template.borderColor }}
                               >
                                 {formatNumber(prob.number)}
                               </span>
-                              {/* ▼▼▼ [수정] 3. 소단원(Minor Topic): 번호 아래 선에 맞춤 ▼▼▼ */}
                               {prob.minorTopic && (
                               <span className="ml-1 text-[8.5px] font-bold text-slate-500 tracking-tight translate-x-[-2px] translate-y-[5px]">
                                   {prob.minorTopic}
                               </span>
                               )}
 
-                              {/* 4. 난이도 표시 (주석 유지) */}
-                              {/* {prob.difficulty && (
-                              <span className="ml-2 text-[10px] font-medium text-slate-400">
-                                  난이도: {prob.difficulty}
-                              </span>
-                              )}
-                              */}
-
-                              {/* ▼▼▼ [수정] 5. 소재 수준 태그: 오른쪽 끝 정렬 (ml-auto) ▼▼▼ */}
                               {prob.materialLevel && prob.materialLevel !== "학교 교과서" && (
                               <span className="ml-auto px-1.5 py-0.5 rounded border border-slate-400 text-[10px] font-bold text-slate-500 bg-white whitespace-nowrap mb-[1px] translate-y-[3px]">
                                   심화 교과
@@ -429,15 +397,10 @@ const ExamPaperLayout = forwardRef<HTMLDivElement, ExamPaperLayoutProps>(
                               )}
                            </div>
                            
-                           {/* 문항 본문 */}
                            <div className="flex-1">
                               {prob.imageUrl ? (
-                                /* ▼▼▼ [3. 수정할 코드] 기존 img 태그를 div로 감싸고 오버레이 추가 ▼▼▼ */
                                 <div className="relative w-full h-auto">
-                                   {/* 투명 보호막: 이미지를 덮어서 우클릭/저장을 막음 */}
                                    <div className="protect-overlay" />
-                                   
-                                   {/* [수정] src에 getProxyImageSrc 적용 */}
                                     <img 
                                       src={getSecureImageSrc(prob.imageUrl)}
                                       alt={`Problem ${prob.number}`} 
@@ -445,7 +408,6 @@ const ExamPaperLayout = forwardRef<HTMLDivElement, ExamPaperLayoutProps>(
                                       onContextMenu={(e) => e.preventDefault()}
                                     />
                                   </div>
-                                /* ▲▲▲ 여기까지 수정▲▲▲ */
                               ) : (
                                 <p className={`whitespace-pre-wrap leading-relaxed ${template.problemFontSize} text-slate-800`}>
                                   {prob.content}
@@ -508,7 +470,6 @@ const ExamPaperLayout = forwardRef<HTMLDivElement, ExamPaperLayoutProps>(
                                   key={prob.id} 
                                   className="flex items-center justify-start gap-2 border-b border-slate-200 pb-1 mb-1 h-9"
                                 >
-                                  {/* [수정] 정답표에서도 00 형식 적용 */}
                                   <span className="font-bold text-slate-500 w-8 text-base shrink-0 text-right">
                                     {formatNumber(prob.number)}
                                   </span>
@@ -556,7 +517,6 @@ const ExamPaperLayout = forwardRef<HTMLDivElement, ExamPaperLayoutProps>(
                         style={{ marginBottom: 10 }}
                       >
                         <div className="flex items-center mb-1 gap-2">
-                           {/* [수정] 해설지 문항 번호도 00 형식 */}
                            <span className="text-xs font-bold bg-gray-100 px-2 py-0.5 rounded text-slate-700">
                              {formatNumber(prob.number)}번
                            </span>
@@ -565,11 +525,13 @@ const ExamPaperLayout = forwardRef<HTMLDivElement, ExamPaperLayoutProps>(
                            </span>
                         </div>
                         <div className="text-sm text-gray-700 mt-1 leading-relaxed">
+                           {/* [수정] 기본 문항 안내 메시지 처리 */}
                            {prob.solutionUrl ? (
-                             /* eslint-disable-next-line @next/next/no-img-element */
                              <img src={getProxyImageSrc(prob.solutionUrl)} alt="해설" className="w-full h-auto object-contain" />
                            ) : (
-                             <p className="whitespace-pre-wrap">{prob.content || "해설 없음"}</p>
+                             <p className="whitespace-pre-wrap text-slate-400">
+                               {prob.content || (prob.difficulty === '기본' ? "기본 문항은 상세 해설이 제공되지 않습니다." : "해설 없음")}
+                             </p>
                            )}
                         </div>
                       </div>

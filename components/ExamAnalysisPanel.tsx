@@ -1,3 +1,5 @@
+// components/ExamAnalysisPanel.tsx
+
 "use client";
 
 import React, { useMemo } from 'react';
@@ -27,11 +29,12 @@ export default function ExamAnalysisPanel({ problems }: Props) {
     return Object.entries(counts).map(([name, value]) => ({ name, value }));
   }, [problems]);
 
-  // 2. 단원별 비중 데이터 (Top 5)
+  // 2. [수정] 소단원별 비중 데이터 (Top 5)
   const topicData = useMemo(() => {
     const counts: Record<string, number> = {};
     problems.forEach(p => {
-      const topic = p.majorTopic || "기타";
+      // ▼▼▼ [변경] majorTopic -> minorTopic 으로 변경 ▼▼▼
+      const topic = p.minorTopic || "기타";
       counts[topic] = (counts[topic] || 0) + 1;
     });
     return Object.entries(counts)
@@ -49,7 +52,6 @@ export default function ExamAnalysisPanel({ problems }: Props) {
     let convergence = 0;
 
     problems.forEach(p => {
-      // as any를 사용하여 DB에서 넘어온 dataTypes에 접근
       const tags = (p as any).dataTypes; 
       if (tags) {
         if (tags.graph) graph++;
@@ -113,10 +115,11 @@ export default function ExamAnalysisPanel({ problems }: Props) {
         </div>
       </div>
 
-      {/* 2. 단원별 비중 (Pie Chart) - [수정] 잘림 방지 */}
+      {/* 2. [수정] 소단원별 비중 (Pie Chart) */}
       <div className="bg-white rounded-xl border border-slate-100 p-4 shadow-sm">
         <h3 className="text-sm font-bold text-slate-800 mb-2 flex items-center gap-2">
-          <span className="w-1.5 h-4 bg-indigo-500 rounded-full"></span> 단원별 출제 비중
+          {/* 제목 변경: 단원별 -> 소단원별 */}
+          <span className="w-1.5 h-4 bg-indigo-500 rounded-full"></span> 소단원별 출제 비중
         </h3>
         <div className="h-64 w-full relative">
           <ResponsiveContainer width="100%" height="100%">
@@ -125,7 +128,7 @@ export default function ExamAnalysisPanel({ problems }: Props) {
                 data={topicData}
                 cx="50%" cy="50%"
                 innerRadius={45}
-                outerRadius={65} // 반지름을 줄여서 잘림 방지
+                outerRadius={65}
                 paddingAngle={5}
                 dataKey="value"
               >

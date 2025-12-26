@@ -220,7 +220,7 @@ function ExamBuilderContent() {
     setExamProblems([]); 
   };
 
-  // 문제 자동 배분 로직
+  // [수정] 문제 자동 배분 로직
   useEffect(() => {
     if (!isLoaded || isFetching) return;
     if (isClinicMode) return;
@@ -228,26 +228,84 @@ function ExamBuilderContent() {
     if (isDraftLoadedRef.current) { isDraftLoadedRef.current = false; return; }
 
     if (fetchedProblems.length > 0) {
-      // 1. 난이도별 풀 분류
+      // 1. 난이도별로 전체 풀(Pool) 분류
       const poolByDiff: Record<string, DBProblem[]> = { '기본': [], '하': [], '중': [], '상': [], '킬러': [] };
       fetchedProblems.forEach(p => {
         if (poolByDiff[p.difficulty]) poolByDiff[p.difficulty].push(p);
       });
 
-      let selectedProblems: DBProblem[] = [];
+      let finalSelectedProblems: DBProblem[] = [];
 
-      // 2. 설정된 개수만큼 랜덤 추출
-      Object.entries(difficultyCounts).forEach(([diff, count]) => {
-        const pool = poolByDiff[diff];
-        if (pool && pool.length > 0) {
+      // 2. 각 난이도 설정에 따라 문항 추출 (균등 배분 로직)
+      Object.entries(difficultyCounts).forEach(([diff, targetCount]) => {
+        if (targetCount <= 0) return;
+
+        const pool = poolByDiff[diff] || [];
+        
+        // 현재 난이도의 풀을 '소단원' 별로 그룹화
+        const poolByMinor: Record<string, DBProblem[]> = {};
+        
+        // (A) 선택된 소단원 키 미리 생성
+        selectedMinorTopics.forEach(topic => {
+          poolByMinor[topic] = [];
+        });
+
+        // (B) 실제 문항 채우기
+        pool.forEach(p => {
+          if (selectedMinorTopics.includes(p.minorTopic)) {
+            if (!poolByMinor[p.minorTopic]) poolByMinor[p.minorTopic] = [];
+            poolByMinor[p.minorTopic].push(p);
+          }
+        });
+
+        const activeTopics = Object.keys(poolByMinor);
+        const numTopics = activeTopics.length;
+
+        // 예외: 선택된 소단원이 없거나 풀이 아예 없는 경우
+        if (numTopics === 0) {
           const shuffled = [...pool].sort(() => Math.random() - 0.5);
-          selectedProblems.push(...shuffled.slice(0, count));
+          finalSelectedProblems.push(...shuffled.slice(0, targetCount));
+          return;
         }
+
+        // (C) 균등 배분 계산
+        const baseQuota = Math.floor(targetCount / numTopics);
+        let remainder = targetCount % numTopics;
+        
+        let currentSelectedForDiff: DBProblem[] = [];
+        let deficit = 0;
+
+        // [Pass 1] 기본 할당량 채우기
+        activeTopics.forEach(topic => {
+          const available = poolByMinor[topic];
+          const shuffled = [...available].sort(() => Math.random() - 0.5);
+          
+          const take = Math.min(shuffled.length, baseQuota);
+          const picked = shuffled.slice(0, take);
+          
+          currentSelectedForDiff.push(...picked);
+          poolByMinor[topic] = shuffled.slice(take); // 남은 문항 업데이트
+          deficit += (baseQuota - take);
+        });
+
+        // [Pass 2] 나머지 + 부족분 채우기
+        let slotsToFill = remainder + deficit;
+        
+        if (slotsToFill > 0) {
+          const remainingPool = Object.values(poolByMinor).flat();
+          const shuffledRemaining = remainingPool.sort(() => Math.random() - 0.5);
+          
+          const extras = shuffledRemaining.slice(0, slotsToFill);
+          currentSelectedForDiff.push(...extras);
+        }
+        
+        finalSelectedProblems.push(...currentSelectedForDiff);
       });
 
       // 3. 정렬 (소단원 순서 -> 난이도 순서)
       const allMinorTopicsOrdered = SCIENCE_UNITS.flatMap(s => s.majorTopics.flatMap(m => m.minorTopics));
-      selectedProblems.sort((a, b) => {
+      
+      finalSelectedProblems.sort((a, b) => {
          const idxA = allMinorTopicsOrdered.indexOf(a.minorTopic);
          const idxB = allMinorTopicsOrdered.indexOf(b.minorTopic);
          if (idxA !== idxB) return idxA - idxB;
@@ -257,8 +315,8 @@ function ExamBuilderContent() {
          return diffA - diffB;
       });
 
-      // 4. 데이터 매핑 (분석용 태그 포함)
-      const formatted: ExamPaperProblem[] = selectedProblems.map((p, idx) => ({
+      // 4. 데이터 매핑
+      const formatted: ExamPaperProblem[] = finalSelectedProblems.map((p, idx) => ({
         id: p.id,
         number: idx + 1,
         imageUrl: p.imgUrl,
@@ -271,16 +329,17 @@ function ExamBuilderContent() {
         height: (p as any).imgHeight,         
         solutionHeight: (p as any).solutionHeight,
         materialLevel: p.materialLevel,
-        // [중요] 분석용 데이터 매핑
         dataTypes: (p as any).dataTypes,
         isConvergence: (p as any).isConvergence,
       }));
         
       setExamProblems(formatted);
-    } else if (fetchedProblems.length === 0 && selectedMajorTopics.length > 0) {
+    } 
+    else if (fetchedProblems.length === 0 && selectedMajorTopics.length > 0) {
       setExamProblems([]);
     }
-  }, [fetchedProblems, difficultyCounts, isLoaded, isFetching, isClinicMode, selectedMajorTopics.length]);
+  // ▼▼▼ [수정됨] 배열을 spread(...) 하지 않고 변수명만 넣어야 합니다. ▼▼▼
+  }, [fetchedProblems, difficultyCounts, isLoaded, isFetching, isClinicMode, selectedMajorTopics.length, selectedMinorTopics]);
 
   // 문제 교체 핸들러
   const handleReplaceProblem = useCallback(async (problemId: string, currentMajor: string, currentDifficulty: string) => {
