@@ -8,6 +8,14 @@ export interface SimilarProblemInfo {
   targetFilename: string;
   score: number;
 }
+// [신규] 자료 유형 상세 정보 (Boolean Flags)
+export interface ProblemDataTypes {
+  graph: boolean;       // 그래프
+  image: boolean;       // 그림/도식
+  text: boolean;        // 박스 지문/발문
+  table: boolean;       // 표
+  calculation?: boolean; // 계산 (선택)
+}
 
 export interface DBProblem {
   id: string;
@@ -30,19 +38,24 @@ export interface DBProblem {
   // [NEW] 소재 수준 필드 추가
   materialLevel?: string; // "학교 교과서" | "그 외" | "심화 교과"
   createdAt: any;
+
+  // --- [신규 추가 필드 (태그)] ---
+  // 이 필드들만 update_tags.js로 업데이트됩니다.
+  
+  // 1. 자료 유형 (그래프, 표, 그림 등)
+  dataTypes?: ProblemDataTypes; 
+  
+  // 2. 융합형 문항 여부
+  isConvergence?: boolean;      
+  
+  // 3. 질문 세부 형식 (예: "기본 선지형", "보기 선택형")
+  questionTypeDetail?: string;  
+  
 }
 
-// 화면용 데이터
-export interface ExamProblem {
-  id: string;
+// 화면용 데이터 (기존 유지)
+export interface ExamProblem extends DBProblem {
   number: number;
   imageUrl: string | null;
-  content: string;
-  difficulty: string;
-  majorTopic?: string;
-  minorTopic?: string;
-  answer?: string | null;
-  solutionUrl?: string | null;
-  height?: number; // [추가] 높이 정보 전달용
-  solutionHeight?: number;
+  customLabel?: string;
 }

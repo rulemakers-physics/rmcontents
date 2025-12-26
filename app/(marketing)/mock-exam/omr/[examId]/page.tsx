@@ -46,7 +46,8 @@ export default function MarketingOMRPage() {
              router.push("/mock-exam");
              return;
            }
-           setExamData({ id: snap.id, ...data });
+           // [수정] 객체 병합 순서 변경 (data 먼저, 그 뒤에 id 덮어쓰기)
+           setExamData({ ...data, id: snap.id });
         } else {
            toast.error("존재하지 않는 시험입니다.");
            router.push("/mock-exam");

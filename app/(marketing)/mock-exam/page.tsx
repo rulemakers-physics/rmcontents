@@ -53,7 +53,7 @@ export default function MockExamLandingPage() {
           <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="flex justify-center mb-8">
             <span className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-indigo-500/30 bg-indigo-500/10 text-indigo-300 text-xs font-bold tracking-widest uppercase backdrop-blur-md">
               <span className="w-2 h-2 rounded-full bg-indigo-500 animate-pulse" />
-              2025 Season RuleMakers Exam
+              2025 Season RuleMakers 모의고사
             </span>
           </motion.div>
           

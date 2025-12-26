@@ -228,11 +228,24 @@ export default function StoragePage() {
       filtered = filtered.filter(e => e.title.toLowerCase().includes(lower));
     }
 
-    // C. Sorting
+    // C. Sorting [수정된 부분]
     filtered.sort((a, b) => {
       if (sortOption === 'name-asc') return a.title.localeCompare(b.title);
-      const dateA = a.createdAt?.valueOf() || 0;
-      const dateB = b.createdAt?.valueOf() || 0;
+      
+      // 안전한 날짜 변환 헬퍼 함수
+      const getTime = (date: any) => {
+        if (!date) return 0;
+        // Firestore Timestamp
+        if (typeof date.toDate === 'function') return date.toDate().getTime();
+        // JS Date 객체
+        if (date instanceof Date) return date.getTime();
+        // 그 외 (number 등)
+        return Number(date) || 0;
+      };
+
+      const dateA = getTime(a.createdAt);
+      const dateB = getTime(b.createdAt);
+      
       return sortOption === 'date-asc' ? dateA - dateB : dateB - dateA;
     });
 
