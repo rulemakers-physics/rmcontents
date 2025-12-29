@@ -5,6 +5,13 @@ import { useRouter, usePathname } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import { toast } from "react-hot-toast";
 
+// [추가] 강사 접근 금지 경로 목록
+const DIRECTOR_ONLY_PATHS = [
+  "/profile/billing",
+  "/payment", // payment 하위 모든 경로 포함
+  "/manage/instructors"
+];
+
 // [설정] 누구나 접근 가능한 경로 (로그인 불필요)
 const PUBLIC_PATHS = [
   "/", 
@@ -78,6 +85,17 @@ export default function RouteGuard({ children }: { children: React.ReactNode }) 
     }
 
     if (!userData) return; 
+
+    // [신규] 강사(Instructor)가 원장 전용 페이지 접근 시 차단
+    if (userData.role === 'instructor') {
+      const isRestrictedPath = DIRECTOR_ONLY_PATHS.some(path => pathname.startsWith(path));
+      
+      if (isRestrictedPath) {
+        toast.error("접근 권한이 없습니다");
+        router.replace("/dashboard");
+        return;
+      }
+    }
 
     // [강사 전용 페이지 목록 정의]
     const isServicePage = 

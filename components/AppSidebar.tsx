@@ -31,7 +31,7 @@ const MENU_GROUPS = [
     items: [
       { name: "대시보드", href: "/dashboard", icon: HomeIcon },
       { name: "공지사항", href: "/board/notices", icon: MegaphoneIcon },
-      { name: "결제 관리", href: "/profile/billing", icon: CreditCardIcon },
+      { name: "결제 관리", href: "/profile/billing", icon: CreditCardIcon, role: "director"},
       { name: "프로필 설정", href: "/profile/settings", icon: UserCircleIcon },
     ]
   },
@@ -136,7 +136,10 @@ export default function AppSidebar({ isCollapsed, toggleSidebar }: AppSidebarPro
             
             <div className="px-3 space-y-1">
               {group.items.map((item) => {
-                if (item.role === "director" && userData?.role !== "director") return null;
+                // [수정] role 필드가 있고, 현재 유저의 role과 일치하지 않으면 렌더링 안 함
+                // 단, 'director' 권한은 'admin'도 볼 수 있게 하거나, 로직을 유연하게 조정
+                // 여기서는 간단히 'director' 전용 메뉴는 강사(instructor)에게 숨기는 로직으로 처리
+                if (item.role === "director" && userData?.role === "instructor") return null;
 
                 const isActive = pathname.startsWith(item.href);
                 // 테마 적용 로직

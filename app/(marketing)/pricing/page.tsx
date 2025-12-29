@@ -130,6 +130,7 @@ const FAQS = [
 export default function PricingPage() {
   const { user, userData } = useAuth();
   const router = useRouter();
+  const isInstructor = userData?.role === 'instructor';
   const [target, setTarget] = useState<'instructor' | 'student'>('instructor');
   const [openFaqIndex, setOpenFaqIndex] = useState<number | null>(null);
 
@@ -138,26 +139,35 @@ export default function PricingPage() {
   };
 
   const handleUpgrade = async (planId: string) => {
-  if (!user) return toast.error("로그인이 필요한 서비스입니다.");
+    if (!user) return toast.error("로그인이 필요한 서비스입니다.");
+
+    // [추가] 강사 여부 확인
+    const isInstructor = userData?.role === 'instructor';
+    
+    // [추가] 강사는 결제 불가 안내
+    if (isInstructor) {
+      toast("결제 권한이 없습니다. 원장님께 문의해주세요.", { icon: "🔒" });
+      return;
+    }
   
-  let price = 0;
-  let planName = "";
+    let price = 0;
+    let planName = "";
 
-  if (planId === "BASIC") {
-    price = 129000;
-    planName = "Basic Plan";
-  } else if (planId === "MAKERS") {
-    // 메이커스 플랜은 상담 문의로 유지하거나, 금액이 있다면 설정
-    window.location.href = "/contact"; 
-    return;
-  } else if (planId === "STD_PREMIUM") {
-    price = 19900;
-    planName = "Student Premium Plan";
-  }
+    if (planId === "BASIC") {
+      price = 198000;
+      planName = "Basic Plan";
+    } else if (planId === "MAKERS") {
+      // 메이커스 플랜은 상담 문의로 이동
+      window.location.href = "/contact"; 
+      return;
+    } else if (planId === "STD_PREMIUM") {
+      price = 19900;
+      planName = "Student Premium Plan";
+    }
 
-  // Checkout 페이지로 이동
-  router.push(`/payment/subscribe?plan=${encodeURIComponent(planName)}`);
-};
+    // Checkout 페이지로 이동
+    router.push(`/payment/subscribe?plan=${encodeURIComponent(planName)}`);
+  };
 
   // 현재 선택된 타겟에 따른 플랜 데이터
   const currentPlans = target === 'instructor' ? INSTRUCTOR_PLANS : STUDENT_PLANS;
@@ -293,9 +303,17 @@ export default function PricingPage() {
                 {/* Button */}
                 <button
                   onClick={() => handleUpgrade(plan.id)}
-                  className={`w-full py-4 rounded-xl font-bold text-base transition-all mb-10 border cursor-pointer active:scale-95 ${plan.buttonStyle}`}
+                  disabled={isInstructor} // 강사는 비활성화
+                  className={`w-full py-4 rounded-xl font-bold text-base transition-all mb-10 border 
+                    ${isInstructor 
+                      ? "bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed" // 강사용 스타일
+                      : "cursor-pointer active:scale-95 " + plan.buttonStyle // 기존 스타일
+                    }`}
                 >
-                  {userData?.plan === plan.id ? "현재 이용 중" : plan.buttonText}
+                  {isInstructor 
+                    ? "원장님 플랜을 따릅니다" // 강사용 텍스트
+                    : (userData?.plan === plan.id ? "현재 이용 중" : plan.buttonText)
+                  }
                 </button>
 
                 {/* Features List */}

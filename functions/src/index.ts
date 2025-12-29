@@ -828,3 +828,70 @@ export const cancelSubscription = functions
       throw new functions.https.HttpsError("internal", "해지 처리 실패");
     }
   });
+
+  /**
+ * [신규] 원장(Director) 정보 변경 시 소속 강사(Instructor) 데이터 동기화
+ * - 원장의 Plan, SubscriptionStatus, Academy 이름이 변경되면 강사들에게도 전파합니다.
+ */
+export const syncDirectorUpdatesToInstructors = functions
+  .runWith({ timeoutSeconds: 60 })
+  .region("asia-east1")
+  .firestore
+  .document("users/{directorId}")
+  .onUpdate(async (change, context) => {
+    const newData = change.after.data();
+    const oldData = change.before.data();
+    const directorId = context.params.directorId;
+
+    // 1. Director가 아니면 무시
+    if (newData.role !== "director") return null;
+
+    // 2. 변경 사항 체크 (플랜, 구독상태, 학원명, 만료일 등)
+    const planChanged = newData.plan !== oldData.plan;
+    const statusChanged = newData.subscriptionStatus !== oldData.subscriptionStatus;
+    const academyChanged = newData.academy !== oldData.academy;
+    
+    // Timestamp 비교 (Optional Chaining 및 isEqual 사용)
+    const dateChanged = 
+      (newData.nextPaymentDate && !oldData.nextPaymentDate) ||
+      (!newData.nextPaymentDate && oldData.nextPaymentDate) ||
+      (newData.nextPaymentDate && oldData.nextPaymentDate && !newData.nextPaymentDate.isEqual(oldData.nextPaymentDate));
+
+    // 변경사항이 없으면 종료
+    if (!planChanged && !statusChanged && !academyChanged && !dateChanged) {
+      return null;
+    }
+
+    functions.logger.info(`[Sync] 원장(${directorId}) 데이터 변경 감지 -> 강사 동기화 시작`);
+
+    try {
+      // 3. 해당 원장을 ownerId로 가진 모든 강사 조회
+      const instructorsSnap = await admin.firestore().collection("users")
+        .where("ownerId", "==", directorId)
+        .where("role", "==", "instructor")
+        .get();
+
+      if (instructorsSnap.empty) return null;
+
+      // 4. 일괄 업데이트 (Batch)
+      const batch = admin.firestore().batch();
+      
+      instructorsSnap.docs.forEach((doc) => {
+        // 원장의 데이터를 그대로 강사에게 덮어씌움 (권한 종속)
+        batch.update(doc.ref, {
+          plan: newData.plan,
+          subscriptionStatus: newData.subscriptionStatus || "NONE",
+          academy: newData.academy,
+          nextPaymentDate: newData.nextPaymentDate || null,
+          updatedAt: admin.firestore.FieldValue.serverTimestamp()
+        });
+      });
+
+      await batch.commit();
+      functions.logger.info(`[Sync] 강사 ${instructorsSnap.size}명 업데이트 완료`);
+
+    } catch (error) {
+      functions.logger.error(`[Sync] 동기화 실패`, error);
+    }
+    return null;
+  });
