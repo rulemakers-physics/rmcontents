@@ -187,7 +187,7 @@ export default function PricingPage() {
           <p className="text-lg md:text-xl text-slate-500 max-w-2xl mx-auto leading-relaxed">
             {target === 'instructor' 
               ? "단순한 문제은행을 넘어, 선생님의 시간을 아껴드리고 수업의 질을 높이는 프리미엄 솔루션입니다."
-              : "대치동 1타 강사진의 노하우가 담긴 고퀄리티 컨텐츠로 내신 1등급을 완성하세요."}
+              : "고퀄리티의 컨텐츠와 간편한 서비스로 수업 준비 시간을 획기적으로 단축해드립니다."}
           </p>
         </motion.div>
       </section>
@@ -344,7 +344,7 @@ export default function PricingPage() {
               </div>
               <h3 className="font-bold text-lg text-slate-900 mb-2">최고의 가성비</h3>
               <p className="text-slate-600 text-sm leading-relaxed">
-                합리적인 가격으로 대치동 퀄리티의 컨텐츠와 관리 시스템을 누리세요.
+                합리적인 가격으로 높은 퀄리티의 컨텐츠와 관리 시스템을 누리세요.
               </p>
             </div>
             <div className="bg-slate-50 p-8 rounded-2xl border border-slate-100 hover:border-purple-200 transition-colors duration-300">
