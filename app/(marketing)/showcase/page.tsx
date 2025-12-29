@@ -111,7 +111,7 @@ export default function ShowcasePage() {
             </p>
           </motion.div>
 
-          {/* 통계 지표 (Social Proof) */}
+          {/* 통계 지표 (Social Proof) 주석 처리
           <motion.div 
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -122,7 +122,7 @@ export default function ShowcasePage() {
             <StatBox label="파트너 학원/강사" value="120+" icon={UserGroupIcon} />
             <StatBox label="평균 만족도" value="4.9/5.0" icon={FireIcon} />
             <StatBox label="월간 이용자 수" value="3,500+" icon={ChartBarIcon} />
-          </motion.div>
+          </motion.div>*/}
         </div>
       </section>
 

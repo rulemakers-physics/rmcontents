@@ -16,8 +16,8 @@ import { toast } from "react-hot-toast";
 import Image from "next/image";
 import { 
   UserIcon, BuildingOffice2Icon, 
-  ArrowRightIcon, UserGroupIcon, StarIcon, DevicePhoneMobileIcon
-} from "@heroicons/react/24/outline";
+  ArrowRightIcon, UserGroupIcon, StarIcon, DevicePhoneMobileIcon, CheckCircleIcon
+} from "@heroicons/react/24/outline"; 
 import { UserRole } from "@/types/user";
 import { SCIENCE_UNITS } from "@/types/scienceUnits";
 
@@ -27,9 +27,8 @@ declare global {
   }
 }
 
-// 로딩 스피너 컴포넌트
 const Spinner = () => (
-  <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+  <svg className="animate-spin h-5 w-5 text-current" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
   </svg>
@@ -57,28 +56,80 @@ export default function ProfileSetupPage() {
   const [isPhoneVerified, setIsPhoneVerified] = useState(false); 
   
   // 로딩 상태들
-  const [isSendingSms, setIsSendingSms] = useState(false); // SMS 발송 중
-  const [isVerifying, setIsVerifying] = useState(false);   // 인증번호 확인 중
-  const [isSubmitting, setIsSubmitting] = useState(false); // 회원가입 처리 중
+  const [isSendingSms, setIsSendingSms] = useState(false);
+  const [isVerifying, setIsVerifying] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const [timer, setTimer] = useState(0); 
   const recaptchaContainerRef = useRef<HTMLDivElement>(null);
 
-  // --- 2. useEffect 로직 ---
+  // --- 2. 데이터 보존 로직 (SessionStorage) ---
 
-  // [삭제됨] 세션 스토리지 복구 로직 제거 -> 항상 역할 선택부터 시작
+  // [수정됨] 컴포넌트 마운트 시 저장된 데이터 + 인증 상태까지 완벽 복구
+  useEffect(() => {
+    // 1. 역할 복구
+    const savedRole = sessionStorage.getItem("setup_selectedRole");
+    if (savedRole) setSelectedRole(savedRole as UserRole);
 
-  const handleSelectRole = (role: UserRole) => {
+    // 2. 입력폼 데이터 복구
+    const savedName = sessionStorage.getItem("setup_name");
+    if (savedName) setName(savedName);
+
+    const savedAcademy = sessionStorage.getItem("setup_academy");
+    if (savedAcademy) setAcademy(savedAcademy);
+
+    const savedSchool = sessionStorage.getItem("setup_school");
+    if (savedSchool) setSchool(savedSchool);
+
+    // 3. [핵심] 휴대폰 인증 상태 및 번호 복구
+    // 리렌더링이 되어도 이 값이 있으면 강제로 인증 완료 처리
+    const savedIsVerified = sessionStorage.getItem("setup_isVerified");
+    const savedPhone = sessionStorage.getItem("setup_phone");
+    
+    if (savedIsVerified === "true" && savedPhone) {
+      setIsPhoneVerified(true);
+      setPhone(savedPhone);
+    }
+  }, []);
+
+  // 입력 값 변경 핸들러들
+  const handleRoleSelect = (role: UserRole) => {
     setSelectedRole(role);
-    // [삭제됨] 세션 저장 로직 제거
+    sessionStorage.setItem("setup_selectedRole", role);
+  };
+
+  const handleNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setName(e.target.value);
+    sessionStorage.setItem("setup_name", e.target.value);
+  };
+
+  const handleAcademyChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setAcademy(e.target.value);
+    sessionStorage.setItem("setup_academy", e.target.value);
+  };
+
+  const handleSchoolChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setSchool(e.target.value);
+    sessionStorage.setItem("setup_school", e.target.value);
+  };
+
+  // 모든 세션 데이터 삭제 (가입 완료 시 호출)
+  const clearSessionData = () => {
+    sessionStorage.removeItem("setup_selectedRole");
+    sessionStorage.removeItem("setup_name");
+    sessionStorage.removeItem("setup_academy");
+    sessionStorage.removeItem("setup_school");
+    sessionStorage.removeItem("setup_phone");       // 추가됨
+    sessionStorage.removeItem("setup_isVerified");  // 추가됨
   };
 
   const handleResetRole = () => {
     setSelectedRole(null);
-    // [삭제됨] 세션 삭제 로직 제거
+    clearSessionData();
   };
 
-  // 타이머 카운트다운
+  // --- 3. useEffect (타이머, 리캡차) ---
+
   useEffect(() => {
     let interval: NodeJS.Timeout;
     if (timer > 0) {
@@ -95,31 +146,30 @@ export default function ProfileSetupPage() {
     return `${m}:${s < 10 ? '0' : ''}${s}`;
   };
 
-  // 초기화 및 리캡차 설정 (DOM이 변경될 때마다 재설정)
+  // 리캡차 & 이미 인증된 사용자(User 객체에 폰번호가 있는 경우) 처리
   useEffect(() => {
     if (!auth || !recaptchaContainerRef.current) return;
     
-    // 1. 이미 인증된 사용자 상태 복구
+    // 이미 Firebase User 객체에 폰번호가 있다면 인증 완료로 처리
     if (user?.phoneNumber) {
       setIsPhoneVerified(true);
-      if (!phone) setPhone(user.phoneNumber.replace("+82", "0"));
+      // 저장된 폰 번호가 없으면 User 객체에서 가져옴
+      if (!phone) {
+        const p = user.phoneNumber.replace("+82", "0");
+        setPhone(p);
+        sessionStorage.setItem("setup_phone", p);
+        sessionStorage.setItem("setup_isVerified", "true");
+      }
     }
 
-    // 2. 기존 리캡차 인스턴스가 있다면 삭제 (DOM 불일치 방지)
     const clearRecaptcha = () => {
       if (window.recaptchaVerifier) {
-        try {
-          window.recaptchaVerifier.clear();
-        } catch (e) {
-          console.warn("Recaptcha clear warning:", e); 
-        }
+        try { window.recaptchaVerifier.clear(); } catch (e) {}
         window.recaptchaVerifier = null;
       }
     };
+    clearRecaptcha();
 
-    clearRecaptcha(); // 마운트 시 일단 초기화
-
-    // 3. 현재 DOM에 새 리캡차 생성
     try {
       window.recaptchaVerifier = new RecaptchaVerifier(auth, recaptchaContainerRef.current, {
         'size': 'invisible', 
@@ -130,19 +180,17 @@ export default function ProfileSetupPage() {
       console.error("Recaptcha Init Error:", e); 
     }
 
-    // 4. 언마운트 시 정리
-    return () => {
-      clearRecaptcha();
-    };
+    return () => { clearRecaptcha(); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
 
-  // --- 3. 핸들러 함수들 ---
+  // --- 4. 핸들러 함수들 ---
 
   const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value.replace(/[^0-9]/g, ""); 
-    if (value.length <= 11) { 
+    if (value.length <= 11) {
       setPhone(value);
+      sessionStorage.setItem("setup_phone", value); // 폰 번호 입력 시 바로 저장
     }
   };
 
@@ -152,11 +200,9 @@ export default function ProfileSetupPage() {
     if (!user) return;
 
     setIsSendingSms(true); 
-
     const formattedPhone = phone.startsWith("0") ? "+82" + phone.slice(1) : phone; 
 
     try {
-      // 리캡차 안전장치
       if (!window.recaptchaVerifier && recaptchaContainerRef.current) {
          window.recaptchaVerifier = new RecaptchaVerifier(auth, recaptchaContainerRef.current, { 'size': 'invisible' });
       }
@@ -169,26 +215,21 @@ export default function ProfileSetupPage() {
       toast.success("인증번호가 발송되었습니다.");
 
     } catch (error: any) {
-      console.error("SMS Send Error:", error);
-      
+      console.error("SMS Error:", error);
       if (error.code === 'auth/provider-already-linked') {
+        // 이미 연동된 경우도 성공 처리
         setIsPhoneVerified(true);
-        toast.success("이미 인증이 완료된 계정입니다.");
+        sessionStorage.setItem("setup_isVerified", "true"); // 저장
+        toast.success("이미 인증된 계정입니다.");
         setVerificationId(null);
       } else if (error.code === 'auth/credential-already-in-use') {
         toast.error("이미 다른 계정에서 사용 중인 번호입니다.");
-      } else if (error.code === 'auth/invalid-app-credential') {
-        toast.error("보안 검증 실패. (도메인 등록 확인 필요)");
-      } else if (error.code === 'auth/too-many-requests') {
-        toast.error("요청 횟수 초과. 잠시 후 다시 시도해주세요.");
       } else {
-        toast.error(`전송 실패: ${error.message}`);
+        toast.error("전송 실패. 잠시 후 다시 시도해주세요.");
       }
       
       if (window.recaptchaVerifier) {
-        try {
-          window.recaptchaVerifier.clear();
-        } catch(e) {}
+        try { window.recaptchaVerifier.clear(); } catch(e) {}
         window.recaptchaVerifier = null; 
       }
     } finally {
@@ -199,29 +240,34 @@ export default function ProfileSetupPage() {
   const verifyCode = async () => {
     if (!verificationId) return;
     if (!otpCode) return toast.error("인증번호를 입력해주세요.");
-    if (timer === 0) return toast.error("입력 시간이 만료되었습니다. 재전송해주세요.");
+    if (timer === 0) return toast.error("시간 만료. 재전송해주세요.");
 
     setIsVerifying(true); 
 
     try {
+      // 1. Firebase 인증 확인
       await verificationId.confirm(otpCode);
-      setIsPhoneVerified(true);
-      toast.success("본인 인증이 완료되었습니다!");
-      setVerificationId(null); 
-    } catch (error: any) {
-      console.error("Verify Error:", error);
       
-      if (
-        error.code === 'auth/credential-already-in-use' || 
-        error.code === 'auth/account-exists-with-different-credential'
-      ) {
-        toast.error("이미 다른 계정에 등록된 휴대폰 번호입니다.");
+      // 2. [핵심] 상태 업데이트 및 스토리지 저장 (리렌더링 대비)
+      setIsPhoneVerified(true);
+      sessionStorage.setItem("setup_isVerified", "true"); 
+      sessionStorage.setItem("setup_phone", phone);
+      
+      setVerificationId(null);
+      setOtpCode("");
+
+      toast.success("본인 인증 완료!");
+      
+      // 3. User 객체 즉시 갱신 (AuthContext 동기화)
+      try { await user?.reload(); } catch(e) { console.log(e); }
+
+    } catch (error: any) {
+      if (error.code === 'auth/credential-already-in-use') {
+        toast.error("이미 다른 계정에 등록된 번호입니다.");
       } else if (error.code === 'auth/invalid-verification-code') {
-        toast.error("인증번호가 올바르지 않습니다. 다시 확인해주세요.");
-      } else if (error.code === 'auth/code-expired') {
-        toast.error("인증번호가 만료되었습니다. 재전송해주세요.");
+        toast.error("인증번호 불일치.");
       } else {
-        toast.error("인증에 실패했습니다. 잠시 후 다시 시도해주세요.");
+        toast.error("인증 실패.");
       }
     } finally {
       setIsVerifying(false);
@@ -232,11 +278,9 @@ export default function ProfileSetupPage() {
     e.preventDefault();
     if (!user || !selectedRole) return;
 
-    if (!isPhoneVerified) {
-      return toast.error("본인 확인을 위해 휴대폰 인증을 완료해주세요.");
-    }
+    if (!isPhoneVerified) return toast.error("휴대폰 인증을 완료해주세요.");
     if (!name.trim()) return toast.error("이름을 입력해주세요.");
-    if ((selectedRole === 'director' || selectedRole === 'instructor') && !academy.trim()) return toast.error("소속(학원/팀)명은 필수입니다.");
+    if ((selectedRole === 'director' || selectedRole === 'instructor') && !academy.trim()) return toast.error("소속명은 필수입니다.");
     if (selectedRole === 'student' && !school.trim()) return toast.error("학교명은 필수입니다.");
 
     setIsSubmitting(true); 
@@ -255,11 +299,10 @@ export default function ProfileSetupPage() {
       };
 
       let additionalData = {};
-
       if (selectedRole === 'student') {
         additionalData = {
           school: school,
-          grade: parseInt(grade),
+          grade: parseInt(grade) || 1,
           targetUnit: targetUnit,
           parentPhone: parentPhone,
           plan: 'FREE',
@@ -284,7 +327,9 @@ export default function ProfileSetupPage() {
 
       await setDoc(userDocRef, { ...baseData, ...additionalData }, { merge: true });
       
-      // [삭제됨] 세션 삭제 로직 제거
+      // 저장 성공 시 세션 전체 삭제
+      clearSessionData();
+      
       await new Promise(resolve => setTimeout(resolve, 2000)); 
       await user.getIdToken(true);
       await checkFirstLogin(user);
@@ -299,7 +344,7 @@ export default function ProfileSetupPage() {
 
     } catch (err) {
       console.error("Setup Error:", err);
-      toast.error("설정 저장 중 오류가 발생했습니다.");
+      toast.error("저장 실패. 다시 시도해주세요.");
       setIsSubmitting(false); 
     }
   };
@@ -308,10 +353,26 @@ export default function ProfileSetupPage() {
   const isStudent = selectedRole === 'student';
   const isDirector = selectedRole === 'director';
 
-  // --- 4. 렌더링 ---
+  // --- 5. 렌더링 ---
   if (!user) return null;
 
-  // Step 1: 역할 선택 (이제 항상 여기가 먼저 나옵니다)
+  // [추가된 부분] 제출 중(가입 처리 중)이라면, 무조건 전체 로딩 화면을 보여줍니다.
+  // 이렇게 하면 아래의 역할 선택 로직(!selectedRole)으로 넘어가지 않아 화면 깜빡임이 사라집니다.
+  if (isSubmitting) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-4">
+        <div className="bg-white p-8 rounded-2xl shadow-xl flex flex-col items-center max-w-sm w-full animate-in fade-in zoom-in duration-300">
+          <div className="w-16 h-16 border-4 border-blue-100 border-t-blue-600 rounded-full animate-spin mb-4"></div>
+          <h2 className="text-xl font-bold text-slate-900 mb-2">회원가입 마무리 중...</h2>
+          <p className="text-slate-500 text-center text-sm">
+            정보를 안전하게 저장하고<br/>대시보드로 이동합니다.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  // Step 1: 역할 선택
   if (!selectedRole) {
     return (
       <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-6">
@@ -319,9 +380,8 @@ export default function ProfileSetupPage() {
           <h1 className="text-3xl font-extrabold text-slate-900 mb-3">RuleMakers 이용 목적을 선택해주세요</h1>
           <p className="text-slate-500">선택하신 유형에 따라 제공되는 기능이 달라집니다.</p>
         </div>
-
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-6xl w-full">
-          <button onClick={() => handleSelectRole('director')} className="group relative bg-white p-8 rounded-3xl border-2 border-slate-200 hover:border-purple-500 hover:shadow-xl transition-all text-left flex flex-col h-80 justify-between overflow-hidden">
+          <button onClick={() => handleRoleSelect('director')} className="group relative bg-white p-8 rounded-3xl border-2 border-slate-200 hover:border-purple-500 hover:shadow-xl transition-all text-left flex flex-col h-80 justify-between overflow-hidden">
             <div className="z-10">
               <div className="w-14 h-14 bg-purple-50 rounded-2xl flex items-center justify-center mb-6 text-purple-600 group-hover:scale-110 transition-transform">
                 <StarIcon className="w-8 h-8" />
@@ -332,10 +392,8 @@ export default function ProfileSetupPage() {
               </div>
               <p className="text-slate-500 mt-3 text-sm break-keep leading-relaxed">"제가 직접 결제하고 운영합니다."<br/>학원 전체를 관리하거나, 조교/팀원을 등록하여 나만의 컨텐츠 팀을 운영하실 분</p>
             </div>
-            <div className="absolute bottom-0 right-0 w-32 h-32 bg-purple-50 rounded-tl-full opacity-0 group-hover:opacity-100 transition-opacity translate-y-10 group-hover:translate-y-0" />
           </button>
-
-          <button onClick={() => handleSelectRole('instructor')} className="group relative bg-white p-8 rounded-3xl border-2 border-slate-200 hover:border-blue-500 hover:shadow-xl transition-all text-left flex flex-col h-80 justify-between overflow-hidden">
+          <button onClick={() => handleRoleSelect('instructor')} className="group relative bg-white p-8 rounded-3xl border-2 border-slate-200 hover:border-blue-500 hover:shadow-xl transition-all text-left flex flex-col h-80 justify-between overflow-hidden">
             <div className="z-10">
               <div className="w-14 h-14 bg-blue-50 rounded-2xl flex items-center justify-center mb-6 text-blue-600 group-hover:scale-110 transition-transform">
                 <UserGroupIcon className="w-8 h-8" />
@@ -346,7 +404,6 @@ export default function ProfileSetupPage() {
               </div>
               <p className="text-slate-500 mt-3 text-sm break-keep leading-relaxed">"이미 서비스를 이용중인 곳에 합류합니다."<br/>원장님이나 대표 강사님께 초대받아 수업 자료를 이용하고 학생을 관리하실 분</p>
             </div>
-            <div className="absolute bottom-0 right-0 w-32 h-32 bg-blue-50 rounded-tl-full opacity-0 group-hover:opacity-100 transition-opacity translate-y-10 group-hover:translate-y-0" />
           </button>
         </div>
       </div>
@@ -373,53 +430,82 @@ export default function ProfileSetupPage() {
             <label className="block text-sm font-bold text-slate-700">이름 <span className="text-red-500">*</span></label>
             <div className="relative">
               <UserIcon className="w-5 h-5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-              <input type="text" value={name} onChange={(e) => setName(e.target.value)} required placeholder="실명을 입력해주세요"
-                className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:bg-white focus:ring-2 focus:ring-blue-200" />
+              <input 
+                type="text" 
+                value={name} 
+                onChange={handleNameChange}
+                required 
+                placeholder="실명을 입력해주세요"
+                className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:bg-white focus:ring-2 focus:ring-blue-200" 
+              />
             </div>
           </div>
 
+          {/* 휴대폰 인증 섹션 */}
           <div className="space-y-1">
             <label className="block text-sm font-bold text-slate-700">
               휴대폰 번호 (본인 인증) <span className="text-red-500">*</span>
             </label>
             <div className="flex gap-2">
               <div className="relative flex-1">
-                <DevicePhoneMobileIcon className="w-5 h-5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                <DevicePhoneMobileIcon 
+                  className={`w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 transition-colors ${
+                    isPhoneVerified ? "text-green-600" : "text-slate-400"
+                  }`} 
+                />
                 <input 
                   type="tel" 
                   value={phone} 
                   onChange={handlePhoneChange} 
                   disabled={isPhoneVerified || !!verificationId || isSendingSms}
-                  className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:bg-white focus:ring-2 focus:ring-blue-200 disabled:bg-slate-100"
+                  // disabled 스타일 강제 적용 (CSS 우선순위 확보)
+                  className={`w-full pl-10 pr-4 py-3 border rounded-xl outline-none transition-all duration-300 ${
+                    isPhoneVerified 
+                      ? "bg-green-50 border-green-500 text-green-700 font-bold shadow-sm disabled:bg-green-50 disabled:text-green-700 disabled:border-green-500 disabled:opacity-100" 
+                      : "bg-slate-50 border-slate-200 focus:bg-white focus:ring-2 focus:ring-blue-200"
+                  } disabled:cursor-not-allowed`}
                   placeholder="01012345678 (숫자만 입력)"
                 />
+                
+                {isPhoneVerified && (
+                  <CheckCircleIcon className="w-6 h-6 text-green-500 absolute right-3 top-1/2 -translate-y-1/2 animate-in fade-in zoom-in duration-300" />
+                )}
               </div>
+
               <button 
                 type="button"
                 onClick={sendVerificationCode}
                 disabled={isPhoneVerified || !!verificationId || isSendingSms}
-                className={`w-28 flex items-center justify-center font-bold rounded-xl text-white text-sm transition-colors ${
+                className={`w-28 flex items-center justify-center font-bold rounded-xl text-sm transition-all duration-300 ${
                   isPhoneVerified 
-                    ? "bg-green-500 cursor-default" 
-                    : "bg-slate-900 hover:bg-slate-800"
-                } disabled:bg-slate-300 disabled:cursor-not-allowed`}
+                    ? "bg-green-500 border border-green-500 text-white cursor-default ring-2 ring-green-200 ring-offset-1" 
+                    : "bg-slate-900 text-white hover:bg-slate-800 hover:shadow-md"
+                } disabled:opacity-70 disabled:shadow-none`}
               >
-                {isSendingSms ? <Spinner /> : (isPhoneVerified ? "인증됨" : "인증요청")}
+                {isSendingSms ? <Spinner /> : (
+                  isPhoneVerified ? (
+                    <span className="flex items-center gap-1">
+                      <CheckCircleIcon className="w-4 h-4" />
+                      완료됨
+                    </span>
+                  ) : "인증요청"
+                )}
               </button>
             </div>
             
             {verificationId && !isPhoneVerified && (
-              <div className="flex gap-2 mt-2 animate-in fade-in slide-in-from-top-1">
+              <div className="flex gap-2 mt-2 animate-in fade-in slide-in-from-top-2 duration-300">
                 <div className="relative flex-1">
                   <input 
                     type="text" 
                     value={otpCode}
                     onChange={(e) => setOtpCode(e.target.value)}
-                    className="w-full px-4 py-3 bg-white border border-blue-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-200 pr-12" 
+                    className="w-full px-4 py-3 bg-white border border-blue-300 rounded-xl outline-none focus:ring-4 focus:ring-blue-100 pr-12 text-lg tracking-widest text-center" 
                     placeholder="인증번호 6자리"
                     maxLength={6}
+                    autoFocus
                   />
-                  <span className="absolute right-4 top-1/2 -translate-y-1/2 text-sm text-red-500 font-medium font-mono">
+                  <span className="absolute right-4 top-1/2 -translate-y-1/2 text-sm text-red-500 font-bold font-mono">
                     {formatTime(timer)}
                   </span>
                 </div>
@@ -428,8 +514,10 @@ export default function ProfileSetupPage() {
                   type="button"
                   onClick={verifyCode}
                   disabled={timer === 0 || isVerifying}
-                  className={`w-24 flex items-center justify-center px-4 py-2 font-bold rounded-xl text-sm text-white ${
-                    timer > 0 && !isVerifying ? "bg-blue-600 hover:bg-blue-700" : "bg-slate-400 cursor-not-allowed"
+                  className={`w-24 flex items-center justify-center px-4 py-2 font-bold rounded-xl text-sm text-white transition-colors ${
+                    timer > 0 && !isVerifying 
+                      ? "bg-blue-600 hover:bg-blue-700 shadow-md hover:shadow-lg" 
+                      : "bg-slate-300 cursor-not-allowed"
                   }`}
                 >
                   {isVerifying ? <Spinner /> : "확인"}
@@ -453,6 +541,7 @@ export default function ProfileSetupPage() {
 
             <div ref={recaptchaContainerRef} id="recaptcha-container"></div>
           </div>
+          {/* 휴대폰 인증 섹션 끝 */}
 
           {!isStudent && (
             <div className="space-y-1">
@@ -464,7 +553,7 @@ export default function ProfileSetupPage() {
                 <input 
                   type="text" 
                   value={academy} 
-                  onChange={(e) => setAcademy(e.target.value)} 
+                  onChange={handleAcademyChange}
                   required 
                   placeholder={isDirector ? "예: 샤인학원, 김철수 화학팀" : "재직 중인 곳의 이름을 입력하세요"}
                   className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:bg-white focus:ring-2 focus:ring-blue-200" 
@@ -483,7 +572,11 @@ export default function ProfileSetupPage() {
                 <div className="relative">
                   <BuildingOffice2Icon className="w-5 h-5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
                   <input
-                    type="text" value={school} onChange={(e) => setSchool(e.target.value)} required placeholder="재학 중인 학교명"
+                    type="text" 
+                    value={school} 
+                    onChange={handleSchoolChange}
+                    required 
+                    placeholder="재학 중인 학교명"
                     className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:bg-white focus:ring-2 focus:ring-emerald-200" />
                 </div>
               </div>
@@ -505,29 +598,30 @@ export default function ProfileSetupPage() {
             </>
           )}
 
-          <div className="pt-2">
+          {/* 하단 버튼 섹션 */}
+          <div className="pt-4 mt-4 border-t border-slate-100">
             <button 
               type="submit" 
               disabled={isSubmitting || !isPhoneVerified} 
-              className={`w-full flex items-center justify-center gap-2 rounded-xl px-6 py-4 font-bold shadow-lg transition-all ${
+              className={`w-full flex items-center justify-center gap-2 rounded-xl px-6 py-4 font-bold text-lg transition-all duration-300 transform ${
                 isSubmitting || !isPhoneVerified 
-                  ? 'bg-slate-300 text-slate-500 cursor-not-allowed' 
-                  : 'bg-slate-900 text-white hover:bg-slate-800'
+                  ? 'bg-slate-200 text-slate-400 cursor-not-allowed' 
+                  : 'bg-slate-900 text-white hover:bg-slate-800 hover:scale-[1.02] shadow-lg hover:shadow-xl shadow-slate-200'
               }`}
             >
               {isSubmitting ? (
                 <>
                   <Spinner />
-                  <span>가입 처리 중입니다...</span>
+                  <span>가입 처리 중...</span>
                 </>
               ) : (
                 <>
-                  {isPhoneVerified ? "시작하기" : "휴대폰 인증 필요"} 
-                  <ArrowRightIcon className="w-4 h-4" />
+                  {isPhoneVerified ? "회원가입 완료하기" : "휴대폰 인증을 진행해주세요"} 
+                  {isPhoneVerified && <ArrowRightIcon className="w-5 h-5 animate-pulse" />} 
                 </>
               )}
             </button>
-            <button type="button" onClick={handleResetRole} disabled={isSubmitting} className="w-full mt-3 text-xs text-slate-400 hover:text-slate-600 underline">
+            <button type="button" onClick={handleResetRole} disabled={isSubmitting} className="w-full mt-4 text-xs text-slate-400 hover:text-slate-600 underline">
               유형 다시 선택하기
             </button>
           </div>
