@@ -57,6 +57,8 @@ export interface UserData {
   billingKey?: string;        // 카드 등록 여부 확인용 (존재하면 카드 등록됨)
   // [수정] 결제 실패 및 해지 예약 상태 추가
   subscriptionStatus?: 'NONE' | 'TRIAL' | 'ACTIVE' | 'PAUSED' | 'CANCELED' | 'PAYMENT_FAILED' | 'SCHEDULED_CANCEL';
+  // [🌟 추가됨] 결제 실패 사유 (빌드 에러 해결)
+  lastPaymentFailReason?: string;
   nextPaymentDate?: Timestamp; // 다음 결제 예정일
 
   businessInfo?: BusinessInfo; 

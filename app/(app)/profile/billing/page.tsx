@@ -5,7 +5,7 @@
 import { useState, useEffect, FormEvent, ChangeEvent } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { db, storage } from "@/lib/firebase";
-import { doc, updateDoc, collection, query, where, orderBy, getDocs } from "firebase/firestore"; // [수정] collection, query 등 추가
+import { doc, updateDoc, collection, query, where, orderBy, getDocs } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { toast } from "react-hot-toast";
 import { v4 as uuidv4 } from "uuid";
@@ -19,9 +19,9 @@ import {
   PaperClipIcon,
   ExclamationTriangleIcon
 } from "@heroicons/react/24/outline";
-import { loadTossPayments } from "@tosspayments/payment-sdk"; // 추가 필요
-import { httpsCallable } from "firebase/functions"; // 추가 필요
-import { functions } from "@/lib/firebase"; // functions 인스턴스 import 가정
+import { loadTossPayments } from "@tosspayments/payment-sdk";
+import { httpsCallable } from "firebase/functions";
+import { functions } from "@/lib/firebase";
 
 // [신규] 결제 내역 타입 정의
 interface PaymentData {
@@ -68,7 +68,7 @@ export default function BillingPage() {
   const [paymentHistory, setPaymentHistory] = useState<PaymentData[]>([]);
   const [isLoadingHistory, setIsLoadingHistory] = useState(true);
 
-  // 초기 데이터 로드 (유저 정보 + 결제 내역)
+  // 초기 데이터 로드 (유저 정보)
   useEffect(() => {
     if (userData?.businessInfo) {
       const info = userData.businessInfo;
@@ -109,28 +109,6 @@ export default function BillingPage() {
     };
     fetchPayments();
   }, [user]);
-
-  // 초기 데이터 로드
-  useEffect(() => {
-    if (userData?.businessInfo) {
-      const info = userData.businessInfo;
-      setTaxType(info.taxType || 'business');
-      setRepresentative(info.representative || "");
-      setAddress(info.address || "");
-      setTaxEmail(info.taxEmail || "");
-      
-      // 사업자 정보
-      setCompanyName(info.companyName || "");
-      setRegistrationNumber(info.registrationNumber || "");
-      setBusinessType(info.businessType || "");
-      setBusinessItem(info.businessItem || "");
-      setExistingFileUrl(info.licenseFileUrl || "");
-      setExistingFileName(info.licenseFileName || "");
-
-      // [수정] 개인 정보 로드
-      setCashReceiptNumber(info.cashReceiptNumber || "");
-    }
-  }, [userData]);
 
   // [신규] 날짜 및 D-Day 계산 로직
   const getPaymentInfo = () => {
@@ -197,7 +175,7 @@ export default function BillingPage() {
         representative,
         address,
         taxEmail,
-        // 타입에 따라 필요한 정보만 저장 (나머지는 빈값 처리)
+        // 타입에 따라 필요한 정보만 저장
         ...(taxType === 'business' ? {
           companyName,
           registrationNumber,
@@ -205,7 +183,7 @@ export default function BillingPage() {
           businessItem,
           licenseFileUrl: fileUrl,
           licenseFileName: fileName,
-          cashReceiptNumber: "" // 초기화
+          cashReceiptNumber: "" 
         } : {
           companyName: "",
           registrationNumber: "",
@@ -213,10 +191,10 @@ export default function BillingPage() {
           businessItem: "",
           licenseFileUrl: "",
           licenseFileName: "",
-          cashReceiptNumber // [수정] 저장
+          cashReceiptNumber
         }),
 
-        // 파일이 새로 업로드되었다면 상태를 'pending'으로 리셋 (개인은 자동 승인 또는 별도 검수)
+        // 파일이 새로 업로드되었다면 상태를 'pending'으로 리셋
         verificationStatus: licenseFile ? 'pending' : (userData?.businessInfo?.verificationStatus || 'none'),
       };
 
@@ -245,10 +223,9 @@ export default function BillingPage() {
   const handleChangeCard = async () => {
     try {
       const tossPayments = await loadTossPayments(CLIENT_KEY);
-      // '카드 변경' 모드로 빌링키 발급 요청 -> Success URL에서 처리
       await tossPayments.requestBillingAuth("카드", {
         customerKey: user!.uid,
-        successUrl: `${window.location.origin}/payment/callback?mode=update`, // mode=update 파라미터 추가
+        successUrl: `${window.location.origin}/payment/callback?mode=update`,
         failUrl: `${window.location.origin}/payment/fail`,
       });
     } catch (err) {
@@ -264,7 +241,7 @@ export default function BillingPage() {
       const cancelFn = httpsCallable(functions, 'cancelSubscription');
       await cancelFn();
       toast.success("해지 예약되었습니다. 다음 결제일에 결제되지 않습니다.");
-      window.location.reload(); // 상태 갱신
+      window.location.reload(); 
     } catch (e) {
       toast.error("해지 처리에 실패했습니다.");
     }
@@ -286,8 +263,8 @@ export default function BillingPage() {
         
         {/* [수정] 왼쪽: 구독 정보 카드 */}
         <div className="lg:col-span-1 space-y-6">
-          <div className={`p-6 rounded-2xl shadow-lg relative overflow-hidden text-white ${
-            userData?.subscriptionStatus === 'PAYMENT_FAILED' ? 'bg-red-900' : 
+          <div className={`p-6 rounded-2xl shadow-lg relative overflow-hidden text-white transition-colors duration-500 ${
+            userData?.subscriptionStatus === 'PAYMENT_FAILED' ? 'bg-red-700' : 
             userData?.subscriptionStatus === 'SCHEDULED_CANCEL' ? 'bg-slate-700' :
             'bg-slate-900'
           }`}>
@@ -295,7 +272,7 @@ export default function BillingPage() {
               <CreditCardIcon className="w-24 h-24" />
             </div>
             
-            {/* 상단 뱃지 (체험 중 / 활성 / 해지예약) */}
+            {/* 상단 뱃지 */}
             <div className="flex items-center gap-2 mb-2">
               <h3 className="text-sm font-bold text-slate-400 uppercase tracking-wider">Current Plan</h3>
               {isTrial && <span className="text-[10px] bg-indigo-500 px-2 py-0.5 rounded-full font-bold">무료 체험 중</span>}
@@ -343,25 +320,38 @@ export default function BillingPage() {
                 </div>
               )}
             </div>
-
-            {/* 하단 버튼 영역 (해지 상태 등 반영) */}
-            <div className="mt-6 flex flex-col gap-2">
-              {/* 상태 메시지 및 버튼 */}
-              {userData?.subscriptionStatus === 'PAYMENT_FAILED' && (
-                 <div className="text-xs text-red-300 bg-red-950/50 p-2 rounded mb-2 border border-red-800">
-                   ❗ 결제 실패: 카드를 변경해주세요.
+            
+            {/* [추가] 결제 실패 시 안내 UI 강화 */}
+            {userData?.subscriptionStatus === 'PAYMENT_FAILED' && (
+               <div className="mt-4 bg-white/10 p-3 rounded-lg border border-white/20 backdrop-blur-md animate-pulse">
+                 <div className="flex items-center gap-2 mb-1 text-red-200 font-bold">
+                   <ExclamationTriangleIcon className="w-5 h-5" /> 결제 실패
                  </div>
-              )}
-              
+                 <p className="text-xs text-white/90 leading-relaxed">
+                   마지막 결제가 승인되지 않아 서비스 이용이 제한되었습니다.<br/>
+                   <strong>[카드 변경]</strong>을 진행하시면 즉시 재결제됩니다.
+                 </p>
+                 {userData.lastPaymentFailReason && (
+                   <p className="text-[10px] text-red-200 mt-1">사유: {userData.lastPaymentFailReason}</p>
+                 )}
+               </div>
+            )}
+            
+            {/* 하단 버튼 (수정됨: 중복 제거 및 구조 통합) */}
+            <div className="mt-6 flex flex-col gap-2">
               <div className="flex gap-2">
                 <button 
                   onClick={handleChangeCard}
-                  className="flex-1 py-3 bg-white text-slate-900 font-bold rounded-xl hover:bg-slate-100 transition-colors text-xs"
+                  className={`flex-1 py-3 font-bold rounded-xl transition-colors text-xs shadow-md ${
+                    userData?.subscriptionStatus === 'PAYMENT_FAILED' 
+                      ? 'bg-white text-red-700 hover:bg-red-50' 
+                      : 'bg-white text-slate-900 hover:bg-slate-100'
+                  }`}
                 >
-                  카드 변경
+                  {userData?.subscriptionStatus === 'PAYMENT_FAILED' ? "카드 변경 및 재결제" : "카드 변경"}
                 </button>
                 
-                {/* 해지 버튼: ACTIVE, TRIAL, FAILED 상태일 때만 노출 (이미 해지했거나 FREE면 숨김) */}
+                {/* 해지 버튼: ACTIVE, TRIAL, FAILED 상태일 때만 노출 */}
                 {['ACTIVE', 'TRIAL', 'PAYMENT_FAILED'].includes(userData?.subscriptionStatus || '') && (
                   <button 
                     onClick={handleCancelSubscription}

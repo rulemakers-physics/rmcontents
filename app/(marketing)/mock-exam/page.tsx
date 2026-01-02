@@ -6,7 +6,7 @@ import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import Link from "next/link";
 import { db } from "@/lib/firebase";
-import { collection, query, orderBy, limit, getDocs } from "firebase/firestore";
+import { collection, query, orderBy, limit, getDocs, where } from "firebase/firestore";
 import { MarketingExam } from "@/types/marketing";
 
 // [수정] Heroicons와 Lucide 아이콘 import 분리
@@ -21,7 +21,8 @@ export default function MockExamLandingPage() {
     const fetchLatest = async () => {
       try {
         const q = query(
-          collection(db, "marketing_exams"), 
+          collection(db, "marketing_exams"),
+          where("isActive", "==", true),
           orderBy("createdAt", "desc"), 
           limit(1)
         );
@@ -53,7 +54,7 @@ export default function MockExamLandingPage() {
           <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="flex justify-center mb-8">
             <span className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-indigo-500/30 bg-indigo-500/10 text-indigo-300 text-xs font-bold tracking-widest uppercase backdrop-blur-md">
               <span className="w-2 h-2 rounded-full bg-indigo-500 animate-pulse" />
-              2025 Season RuleMakers 모의고사
+              2026 Season RuleMakers 모의고사
             </span>
           </motion.div>
           

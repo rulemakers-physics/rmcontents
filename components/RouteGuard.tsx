@@ -103,47 +103,44 @@ export default function RouteGuard({ children }: { children: React.ReactNode }) 
       pathname.startsWith("/manage") ||
       pathname.startsWith("/request");
 
-    // 7. 강사/원장 권한 체크
+    // 7. 강사/원장 권한 체크 (핵심 수정 부분)
     if (userData.role === 'instructor' || userData.role === 'director') {
       
-      // (1) 유료 회원이거나 체험 중이면 통과
-      if (userData.plan !== 'FREE') {
-        setIsAuthorized(true);
-        return;
-      }
-
-      // (2) FREE 회원이 서비스 페이지 접근 시 -> 무료 체험 여부 체크
-      if (isServicePage) {
-        // 체험 시작일이 없거나 상태가 NONE이면 차단
-        if (!userData.trialStartDate || userData.subscriptionStatus === 'NONE') {
-          toast("서비스 이용을 위해 대시보드에서 무료 체험을 시작해주세요.", { icon: "👋" });
-          router.replace("/dashboard");
-          return;
-        }
-
-        // 체험 기간 만료 체크 (기존 로직 유지)
-        const now = Date.now();
-        const startDate = userData.trialStartDate.toDate().getTime();
-        const daysSinceStart = (now - startDate) / (1000 * 60 * 60 * 24);
-
-        // 14일 ~ 30일: 카드 미등록 시 차단
-        if (daysSinceStart >= 14 && daysSinceStart < 30) {
-          if (!userData.billingKey) {
-            toast.error("무료 체험 연장을 위해 카드 등록이 필요합니다.");
-            router.replace("/payment/subscribe");
+      // 유료 회원이 아닌 경우 (FREE)
+      if (userData.plan === 'FREE') {
+        
+        // (A) 결제 실패 상태 체크 (최우선 차단)
+        if (userData.subscriptionStatus === 'PAYMENT_FAILED') {
+          if (pathname !== "/profile/billing") {
+            toast.error("결제에 실패하여 서비스가 일시 정지되었습니다.\n카드 정보를 업데이트해주세요.");
+            router.replace("/profile/billing");
             return;
           }
-        } 
-        // 30일 이후: 유료 전환 안 됐으면 차단
-        else if (daysSinceStart >= 30) {
-          if (userData.subscriptionStatus !== 'ACTIVE') {
-             toast.error("무료 체험 기간이 종료되었습니다.");
-             router.replace("/pricing");
+        }
+
+        if (isServicePage) {
+          // (B) 체험 미시작 체크
+          if (!userData.trialStartDate || userData.subscriptionStatus === 'NONE') {
+            toast("서비스 이용을 위해 대시보드에서 무료 체험을 시작해주세요.", { icon: "👋" });
+            router.replace("/dashboard");
+            return;
+          }
+
+          // (C) 14일+14일 로직 (지연 기간 포함)
+          const now = Date.now();
+          const startDate = userData.trialStartDate.toDate().getTime();
+          const daysSinceStart = (now - startDate) / (1000 * 60 * 60 * 24);
+
+          // 1차 체험(14일)이 지났는데 카드(billingKey)가 없는 경우 -> 무조건 차단
+          // 3일이 지났든 10일이 지났든, 카드를 등록할 때까지는 접근 불가
+          if (daysSinceStart >= 14 && !userData.billingKey) {
+             toast.error("무료 체험(1차)이 종료되었습니다.\n카드를 등록하면 14일 더 무료로 이용 가능합니다!");
+             router.replace("/payment/subscribe"); // 구독 페이지로 강제 이동
              return;
           }
         }
       }
-    } 
+    }
     // 8. [보안 수정] 학생 등 기타 역할이 강사 전용 페이지 접근 시 차단
     else {
       if (isServicePage || pathname.startsWith("/admin")) {

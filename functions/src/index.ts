@@ -767,9 +767,8 @@ export const processRecurringPayments = functions
     return null;
   });
 
-  /**
- * [신규] 카드 변경 (빌링키 업데이트)
- * - 결제를 발생시키지 않고, 빌링키만 새로 발급받아 교체합니다.
+ /**
+ * [수정됨] 카드 변경 (빌링키 업데이트) 및 미납 재결제 시도
  */
 export const updateCard = functions
   .region("asia-east1")
@@ -791,15 +790,61 @@ export const updateCard = functions
       );
 
       const newBillingKey = response.data.billingKey;
-
-      // 2. DB 업데이트
-      await admin.firestore().collection("users").doc(userId).update({
+      
+      // 사용자 정보 조회
+      const userDoc = await admin.firestore().collection("users").doc(userId).get();
+      const userData = userDoc.data();
+      
+      // 2. DB 업데이트 (빌링키)
+      await userDoc.ref.update({
         billingKey: newBillingKey,
         updatedAt: admin.firestore.FieldValue.serverTimestamp(),
       });
 
-      // 만약 결제 실패 상태였다면, 다시 활성 상태로 복구 시도 가능 (정책에 따라 결정)
-      // await admin.firestore().collection("users").doc(userId).update({ subscriptionStatus: 'ACTIVE' });
+      // 3. [보완 로직] 결제 실패 상태였다면 즉시 재결제 시도
+      if (userData && userData.subscriptionStatus === 'PAYMENT_FAILED') {
+         console.log(`[Retry] ${userId}님 카드 변경됨. 미납 요금 재결제 시도.`);
+         
+         const amount = userData.plan === 'BASIC' ? 198000 : 19900;
+         const orderId = `retry_${userId}_${Date.now()}`;
+         
+         try {
+            const payRes = await axios.post(
+              `https://api.tosspayments.com/v1/billing/${encodeURIComponent(newBillingKey)}`,
+              {
+                customerKey: userId,
+                amount: amount,
+                orderId: orderId,
+                orderName: `${userData.plan} 미납 재결제`,
+              },
+              { headers: { Authorization: `Basic ${encryptedSecretKey}`, "Content-Type": "application/json" } }
+            );
+            
+            if (payRes.status === 200) {
+               // 재결제 성공 시 ACTIVE로 복구 및 날짜 갱신
+               const nextDate = new Date();
+               nextDate.setDate(nextDate.getDate() + 30);
+               
+               await userDoc.ref.update({
+                 subscriptionStatus: "ACTIVE",
+                 nextPaymentDate: admin.firestore.Timestamp.fromDate(nextDate),
+                 lastPaymentFailReason: admin.firestore.FieldValue.delete() // 에러 메시지 삭제
+               });
+               
+               // 결제 이력 저장
+               await admin.firestore().collection("payments").add({
+                  userId, orderId, amount, status: "DONE", method: "RETRY",
+                  approvedAt: payRes.data.approvedAt, rawResponse: payRes.data
+               });
+               
+               return { status: "SUCCESS", message: "카드 변경 및 재결제 성공" };
+            }
+         } catch (payErr) {
+            console.error("재결제 실패:", payErr);
+            // 재결제 실패해도 카드 변경 자체는 성공했음을 반환 (단, 상태는 여전히 FAILED)
+            return { status: "PARTIAL_SUCCESS", message: "카드 변경 성공, 재결제 실패" };
+         }
+      }
 
       return { status: "SUCCESS" };
     } catch (error: any) {
