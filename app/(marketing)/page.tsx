@@ -1425,7 +1425,7 @@ const TrustBanner = () => {
         {/* 왼쪽 고정 라벨 (데스크탑 전용) */}
         <div className="hidden md:flex items-center pr-8 bg-slate-900 z-10 relative">
           <span className="text-slate-500 text-xs font-bold uppercase tracking-widest whitespace-nowrap">
-            Trusted by
+            With Us
           </span>
           <div className="h-4 w-[1px] bg-slate-700 ml-4"></div>
         </div>

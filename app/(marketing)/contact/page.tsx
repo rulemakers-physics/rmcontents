@@ -223,7 +223,7 @@ export default function ContactPage() {
                 </li>
                 <li className="flex items-start gap-4">
                   <span className="font-semibold text-slate-900 min-w-[80px]">Email</span>
-                  <span className="underline decoration-slate-300 underline-offset-4">system@rulemakers.co.kr</span> {/* ⚠️ 실제 이메일로 변경 */}
+                  <span className="underline decoration-slate-300 underline-offset-4">contact@rulemakers.co.kr</span> {/* ⚠️ 실제 이메일로 변경 */}
                 </li>
                 <li className="flex items-start gap-4">
                   <span className="font-semibold text-slate-900 min-w-[80px]">Business</span>

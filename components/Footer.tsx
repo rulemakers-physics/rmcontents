@@ -18,7 +18,7 @@ const COMPANY_INFO = {
   ceo: "이승용",
   address: "서울특별시 관악구 솔밭로 19-1",
   license: "665-86-02814",
-  email: "dev@rulemakers.co.kr",
+  email: "contact@rulemakers.co.kr",
 };
 
 export default function Footer() {
