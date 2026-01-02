@@ -412,7 +412,7 @@ export default function HomePage() {
             </motion.div>
           </div>
         </section>
-        {/*<TrustBanner />*/}
+        <TrustBanner />
          {/* --- 2. PASS Question Bank (Light Theme, Text Left - Image Right) --- */}
         <section className="py-32 bg-white relative overflow-hidden">
           <div className="container mx-auto px-6 max-w-6xl">
@@ -1407,13 +1407,12 @@ function MobileShowcaseCard({ category, title, imgSrc, href }: { category: strin
 const TrustBanner = () => {
   // 예시 데이터: 실제로는 제휴 학교명이나 학원 로고 이미지를 넣으면 더 좋습니다.
   const brands = [
-    "시대인재 손은정 선생님",
-    "시대인재 조윤호 선생님",
+    "메가스터디",
+    "이투스 조윤호 선생님",
     "샤인학원 고등 본관",
     "샤인수학과학학원",
     "EG학원 금천 캠퍼스",
-    "EG학원 난곡 캠퍼스",
-    "국선수학"
+    "EG학원 난곡 캠퍼스"
   ];
 
   // 끊김 없는 무한 스크롤을 위해 배열을 2배로 복사
