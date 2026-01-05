@@ -129,6 +129,8 @@ export default function ClassDetailModal({ classData, onClose }: Props) {
                   {/* 안내 문구 추가 */}
                   <span className="text-xs text-slate-400 bg-slate-50 px-2 py-1 rounded">
                     * 학생 추가/배정은 '원생 관리' 메뉴에서 가능합니다.
+                    <br/>
+                    * 학생을 클릭하시면 상담 기록 및 성적 분석 리포트 확인이 가능합니다.
                   </span>
                 </div>
 

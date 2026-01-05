@@ -137,13 +137,12 @@ export default function AppSidebar({ isCollapsed, toggleSidebar }: AppSidebarPro
             
             <div className="px-3 space-y-1">
               {group.items.map((item) => {
-                // [수정] role 필드가 있고, 현재 유저의 role과 일치하지 않으면 렌더링 안 함
-                // 단, 'director' 권한은 'admin'도 볼 수 있게 하거나, 로직을 유연하게 조정
-                // 여기서는 간단히 'director' 전용 메뉴는 강사(instructor)에게 숨기는 로직으로 처리
+                // 1. 원장(director) 전용 메뉴 숨김 처리
                 if (item.role === "director" && userData?.role === "instructor") return null;
-                // [신규] '원생 관리' 메뉴 권한 체크
+
+                // 2. [수정] '원생 관리' 메뉴 권한 체크
+                // 강사이면서 '전체 관리(manage_all)' 권한이 없는 경우(즉, assigned_only) 메뉴 숨김
                 if (item.name === "원생 관리" && userData?.role === 'instructor') {
-                  // 강사인데 '전체 학생 관리' 권한이 없으면 메뉴 숨김
                   if (userData.permissions?.studentManagement !== 'manage_all') {
                     return null;
                   }

@@ -155,7 +155,16 @@ export default function RouteGuard({ children }: { children: React.ReactNode }) 
       }
     }
 
-    // 9. 학생 페이지 접근 제어 (강사가 학생 페이지 접근 시 차단)
+    // 9. [신규] 'assigned_only' 강사의 '원생 관리' 페이지 접근 차단
+    if (pathname.startsWith("/manage/students")) {
+      if (userData.role === 'instructor' && userData.permissions?.studentManagement !== 'manage_all') {
+        toast.error("접근 권한이 없습니다. (원생 관리 권한 필요)");
+        router.replace("/manage/classes"); // 반 관리 페이지로 리다이렉트
+        return;
+      }
+    }
+
+    // 10. 학생 페이지 접근 제어 (강사가 학생 페이지 접근 시 차단)
     if (pathname.startsWith("/student") && !pathname.startsWith("/student/omr")) {
        if (userData.role === 'instructor' || userData.role === 'director') {
          router.replace("/dashboard");
