@@ -260,7 +260,7 @@ export default function HomePage() {
                 <div className="flex justify-between items-start mb-2">
                   <div>
                     <span className="text-xs font-bold text-slate-500 uppercase">Basic Plan</span>
-                    <h3 className="text-lg font-bold text-slate-900">월 129,000원</h3>
+                    <h3 className="text-lg font-bold text-slate-900">월 198,000원, 첫 달 무료!</h3>
                   </div>
                   <div className="p-1.5 bg-slate-100 rounded-full">
                     <ChevronRightIcon className="w-4 h-4 text-slate-400"/>
@@ -300,17 +300,6 @@ export default function HomePage() {
              문의 남기기
            </Link>
         </section>
-
-        {/* 8. Mobile Sticky CTA (고정 버튼) */}
-        <div className="fixed bottom-0 left-0 right-0 p-4 bg-white/90 backdrop-blur-lg border-t border-slate-200 z-50">
-          <Link 
-            href="/request"
-            className="flex items-center justify-center w-full py-4 rounded-xl bg-slate-900 text-white text-base font-bold shadow-xl shadow-slate-900/20 active:scale-[0.98] transition-transform"
-          >
-            <SparklesIcon className="w-5 h-5 mr-2 text-yellow-400" />
-            작업 요청하기
-          </Link>
-        </div>
       </div>
 
 

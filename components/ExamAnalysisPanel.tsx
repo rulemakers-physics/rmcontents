@@ -5,7 +5,8 @@
 import React, { useMemo } from 'react';
 import { 
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, 
-  PieChart, Pie, Cell, Legend 
+  PieChart, Pie, Cell 
+  // Legend는 커스텀 구현을 위해 제거
 } from 'recharts';
 import { ExamPaperProblem } from '@/types/exam';
 import { ChartPieIcon, Square3Stack3DIcon } from '@heroicons/react/24/outline';
@@ -14,7 +15,7 @@ interface Props {
   problems: ExamPaperProblem[];
 }
 
-const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'];
+const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#6366f1', '#ec4899', '#14b8a6'];
 
 export default function ExamAnalysisPanel({ problems }: Props) {
   
@@ -29,18 +30,16 @@ export default function ExamAnalysisPanel({ problems }: Props) {
     return Object.entries(counts).map(([name, value]) => ({ name, value }));
   }, [problems]);
 
-  // 2. [수정] 소단원별 비중 데이터 (Top 5)
+  // 2. 소단원별 비중 데이터 (전체 표시, 값 기준 내림차순 정렬)
   const topicData = useMemo(() => {
     const counts: Record<string, number> = {};
     problems.forEach(p => {
-      // ▼▼▼ [변경] majorTopic -> minorTopic 으로 변경 ▼▼▼
       const topic = p.minorTopic || "기타";
       counts[topic] = (counts[topic] || 0) + 1;
     });
     return Object.entries(counts)
       .map(([name, value]) => ({ name, value }))
-      .sort((a, b) => b.value - a.value)
-      .slice(0, 5);
+      .sort((a, b) => b.value - a.value);
   }, [problems]);
 
   // 3. 문항 속성 분석
@@ -115,34 +114,63 @@ export default function ExamAnalysisPanel({ problems }: Props) {
         </div>
       </div>
 
-      {/* 2. [수정] 소단원별 비중 (Pie Chart) */}
+      {/* 2. 소단원별 비중 (Pie Chart + Custom Legend) */}
       <div className="bg-white rounded-xl border border-slate-100 p-4 shadow-sm">
         <h3 className="text-sm font-bold text-slate-800 mb-2 flex items-center gap-2">
-          {/* 제목 변경: 단원별 -> 소단원별 */}
           <span className="w-1.5 h-4 bg-indigo-500 rounded-full"></span> 소단원별 출제 비중
         </h3>
-        <div className="h-64 w-full relative">
+        
+        {/* [수정] 차트 영역: 높이 고정 (글자에 밀리지 않음) */}
+        <div className="h-[220px] w-full relative mb-4">
           <ResponsiveContainer width="100%" height="100%">
-            <PieChart margin={{ top: 20, bottom: 20, left: 0, right: 0 }}>
+            <PieChart margin={{ top: 0, bottom: 0, left: 0, right: 0 }}>
               <Pie
                 data={topicData}
                 cx="50%" cy="50%"
-                innerRadius={45}
-                outerRadius={65}
-                paddingAngle={5}
+                innerRadius={50}
+                outerRadius={70}
+                paddingAngle={2}
                 dataKey="value"
               >
                 {topicData.map((entry, index) => (
-                  <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                  <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} strokeWidth={2} stroke="#fff" />
                 ))}
               </Pie>
-              <Legend verticalAlign="bottom" iconType="circle" wrapperStyle={{fontSize: '11px', paddingTop: '10px'}} />
               <Tooltip />
             </PieChart>
           </ResponsiveContainer>
-          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-center pointer-events-none pb-4">
-             <span className="text-xs text-slate-400 font-bold">TOP 5</span>
+          
+          {/* 중앙에 총 문항 수 표시 (도넛 차트 효과) */}
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-center pointer-events-none">
+            <span className="block text-2xl font-black text-slate-800">{problems.length}</span>
+            <span className="text-[10px] text-slate-400 font-bold uppercase">Total</span>
           </div>
+        </div>
+
+        {/* [수정] 커스텀 범례 영역: HTML 리스트로 구현 (데이터 많으면 아래로 늘어남) */}
+        <div className="space-y-2 border-t border-slate-50 pt-3">
+          {topicData.map((entry, index) => {
+            const percentage = ((entry.value / problems.length) * 100).toFixed(1);
+            return (
+              <div key={entry.name} className="flex items-center justify-between text-xs group hover:bg-slate-50 p-1.5 rounded-lg transition-colors">
+                 <div className="flex items-center gap-2 overflow-hidden">
+                    <div 
+                      className="w-2.5 h-2.5 rounded-full flex-shrink-0" 
+                      style={{ backgroundColor: COLORS[index % COLORS.length] }} 
+                    />
+                    <span className="text-slate-600 font-medium truncate max-w-[140px]" title={entry.name}>
+                      {entry.name}
+                    </span>
+                 </div>
+                 <div className="flex items-center gap-2 flex-shrink-0">
+                    <span className="text-slate-400 font-medium">{percentage}%</span>
+                    <span className="text-slate-900 font-bold bg-slate-100 px-1.5 py-0.5 rounded text-[10px] min-w-[24px] text-center">
+                      {entry.value}
+                    </span>
+                 </div>
+              </div>
+            );
+          })}
         </div>
       </div>
 

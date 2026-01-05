@@ -18,7 +18,7 @@ import {
   UserCircleIcon,
   ArrowRightOnRectangleIcon,
   Squares2X2Icon,
-  PencilSquareIcon,
+  // PencilSquareIcon, // 사용하지 않는 아이콘 제거
   Cog6ToothIcon,
   CreditCardIcon,
   BeakerIcon
@@ -37,9 +37,11 @@ const NAV_ITEMS = [
     children: [
       { name: "Basic Plan", href: "/basic-service" },
       { name: "Maker's Plan", href: "/premium-service" },
-      { name: "Pricing", href: "/pricing" },
+      // [수정] Pricing 메뉴 제거 (독립 메뉴로 이동)
     ]
   },
+  // [수정] '요금 및 결제'를 최상위 메뉴로 분리하여 접근성 강화
+  { name: "요금 및 결제", href: "/pricing" },
   {
     name: "Contents",
     href: "/showcase",
@@ -123,7 +125,6 @@ export default function Header() {
 
   return (
     <>
-      {/* sticky로 변경하여 컨텐츠 가림 현상 해결 */}
       <header 
         className={`sticky top-0 z-50 w-full transition-all duration-300 border-b ${
           isScrolled 
@@ -232,7 +233,6 @@ export default function Header() {
                     }`}
                   >
                     <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 border border-slate-200 overflow-hidden">
-                      {/* 로고 대신 유저 아이콘 사용 (깔끔함 유지) */}
                       <UserCircleIcon className="w-6 h-6" />
                     </div>
                     <span className="text-xs font-bold text-slate-700 hidden md:block max-w-[80px] truncate">
@@ -289,7 +289,6 @@ export default function Header() {
               </div>
             ) : (
               <div className="hidden md:flex items-center gap-2">
-                 {/* [수정] 시작하기 버튼 삭제, 로그인 버튼만 남김 */}
                  <Link href="/login" className="text-m font-bold text-slate-500 hover:text-slate-900 px-3 py-2 transition-colors">로그인</Link>
               </div>
             )}

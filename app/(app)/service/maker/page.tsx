@@ -13,7 +13,7 @@ import {
 } from "lucide-react";
 import { 
   Squares2X2Icon, ViewColumnsIcon, QueueListIcon, ListBulletIcon,
-  MapIcon, Cog6ToothIcon, ChartBarIcon, UserGroupIcon // [수정] 올바른 패키지에서 임포트
+  MapIcon, Cog6ToothIcon, ChartBarIcon, UserGroupIcon, QuestionMarkCircleIcon // [수정] 올바른 패키지에서 임포트
 } from "@heroicons/react/24/outline";
 import ExamPaperLayout from "@/components/ExamPaperLayout";
 import { ExamPaperProblem, PrintOptions } from "@/types/exam";
@@ -160,27 +160,65 @@ function ExamBuilderContent() {
     });
   };
 
-  // [기능] 난이도별 문항 수 조절 (핵심 복구)
+  // [기능] 난이도별 문항 수 조절 (수정된 버전)
   const updateDifficultyCount = (level: Difficulty, delta: number) => {
     isDraftLoadedRef.current = false;
     isDbLoadedRef.current = false;
     
+    // 1. 킬러 문항 권한 체크
     if (level === '킬러' && delta > 0 && userPlan !== 'MAKERS') {
       toast.error("킬러 문항은 Maker's Plan 전용입니다.");
       return;
     }
 
+    // 2. [변경] 유효성 검사를 setState 밖에서 먼저 수행
+    // 현재 상태(difficultyCounts)를 기준으로 총합 계산
+    const currentTotal = Object.values(difficultyCounts).reduce((a, b) => a + b, 0);
+
+    // 문항을 추가(delta > 0)하려는데 이미 50개 이상이라면? -> 중단
+    if (delta > 0 && currentTotal >= 50) {
+      toast.error("최대 50문항까지 구성 가능합니다.");
+      return; // 상태 업데이트(setDifficultyCounts)를 아예 실행하지 않고 종료
+    }
+
+    // 3. 검사를 통과했으므로 안전하게 값 변경
     setDifficultyCounts(prev => {
       const newValue = Math.max(0, prev[level] + delta);
-      const currentTotal = Object.values(prev).reduce((a, b) => a + b, 0);
-      
-      // 증가 시 50문제 제한 (감소는 허용)
-      if (delta > 0 && currentTotal >= 50) {
-        toast.error("최대 50문항까지 구성 가능합니다.");
-        return prev;
-      }
       return { ...prev, [level]: newValue };
     });
+  };
+
+  // [신규] 난이도 직접 입력 핸들러
+  const handleDifficultyInput = (level: Difficulty, valueStr: string) => {
+    isDraftLoadedRef.current = false;
+    isDbLoadedRef.current = false;
+
+    // 1. 숫자만 추출
+    let newValue = parseInt(valueStr.replace(/[^0-9]/g, ''), 10);
+    if (isNaN(newValue)) newValue = 0;
+    
+    const currentCount = difficultyCounts[level];
+    const delta = newValue - currentCount;
+
+    if (delta === 0) return; // 변경 없음
+
+    // 2. 킬러 문항 권한 체크 (증가 시에만)
+    if (level === '킬러' && delta > 0 && userPlan !== 'MAKERS') {
+      toast.error("킬러 문항은 Maker's Plan 전용입니다.");
+      return; // 변경 취소 (기존 값 유지)
+    }
+
+    // 3. 50문제 한도 체크 및 자동 조절 (Clamping)
+    const currentTotal = Object.values(difficultyCounts).reduce((a, b) => a + b, 0);
+    const otherTotal = currentTotal - currentCount; // 현재 레벨 제외한 나머지 합
+    const maxAllowed = 50 - otherTotal; // 이 레벨에 할당 가능한 최대치
+
+    if (newValue > maxAllowed) {
+      newValue = maxAllowed;
+      toast.error(`최대 50문항까지만 가능하여 ${newValue}개로 조절되었습니다.`);
+    }
+
+    setDifficultyCounts(prev => ({ ...prev, [level]: newValue }));
   };
 
   // 대단원 선택 핸들러
@@ -225,7 +263,7 @@ function ExamBuilderContent() {
     setExamProblems([]); 
   };
 
-  // [수정] 문제 자동 배분 로직
+  // [수정] 문제 자동 배분 로직 (라운드 로빈 방식 적용)
   useEffect(() => {
     if (!isLoaded || isFetching) return;
     if (isClinicMode) return;
@@ -233,81 +271,70 @@ function ExamBuilderContent() {
     if (isDraftLoadedRef.current) { isDraftLoadedRef.current = false; return; }
 
     if (fetchedProblems.length > 0) {
-      // 1. 난이도별로 전체 풀(Pool) 분류
-      const poolByDiff: Record<string, DBProblem[]> = { '기본': [], '하': [], '중': [], '상': [], '킬러': [] };
-      fetchedProblems.forEach(p => {
-        if (poolByDiff[p.difficulty]) poolByDiff[p.difficulty].push(p);
-      });
-
       let finalSelectedProblems: DBProblem[] = [];
 
-      // 2. 각 난이도 설정에 따라 문항 추출 (균등 배분 로직)
+      // 난이도별로 루프 실행
       Object.entries(difficultyCounts).forEach(([diff, targetCount]) => {
         if (targetCount <= 0) return;
 
-        const pool = poolByDiff[diff] || [];
-        
-        // 현재 난이도의 풀을 '소단원' 별로 그룹화
-        const poolByMinor: Record<string, DBProblem[]> = {};
-        
-        // (A) 선택된 소단원 키 미리 생성
-        selectedMinorTopics.forEach(topic => {
-          poolByMinor[topic] = [];
-        });
+        // 1. 해당 난이도이면서 & 선택된 소단원에 해당하는 문제들만 필터링
+        const pool = fetchedProblems.filter(p => 
+          p.difficulty === diff && selectedMinorTopics.includes(p.minorTopic)
+        );
 
-        // (B) 실제 문항 채우기
+        // 2. 소단원별로 문제 그룹화
+        const problemsByTopic: Record<string, DBProblem[]> = {};
+        selectedMinorTopics.forEach(t => problemsByTopic[t] = []);
         pool.forEach(p => {
-          if (selectedMinorTopics.includes(p.minorTopic)) {
-            if (!poolByMinor[p.minorTopic]) poolByMinor[p.minorTopic] = [];
-            poolByMinor[p.minorTopic].push(p);
+          if (problemsByTopic[p.minorTopic]) {
+            problemsByTopic[p.minorTopic].push(p);
           }
         });
 
-        const activeTopics = Object.keys(poolByMinor);
-        const numTopics = activeTopics.length;
+        // 3. 실제로 뽑을 수 있는 문제가 있는 소단원만 추리기
+        let validTopics = Object.keys(problemsByTopic).filter(t => problemsByTopic[t].length > 0);
+        
+        // [중요] 시작 소단원을 랜덤하게 섞어서, 매번 앞쪽 소단원만 먼저 뽑히는 편향 방지
+        validTopics.sort(() => Math.random() - 0.5);
 
-        // 예외: 선택된 소단원이 없거나 풀이 아예 없는 경우
-        if (numTopics === 0) {
-          const shuffled = [...pool].sort(() => Math.random() - 0.5);
-          finalSelectedProblems.push(...shuffled.slice(0, targetCount));
-          return;
+        const selectedForThisDiff: DBProblem[] = [];
+
+        // 4. 라운드 로빈(Round Robin) 방식으로 하나씩 순회하며 추출
+        // 목표 개수를 채우거나, 더 이상 뽑을 문제가 없을 때까지 반복
+        while (selectedForThisDiff.length < targetCount && validTopics.length > 0) {
+          const topicsToRemove: string[] = [];
+
+          for (const topic of validTopics) {
+            // 목표치 도달 시 즉시 종료
+            if (selectedForThisDiff.length >= targetCount) break;
+
+            const topicPool = problemsByTopic[topic];
+            
+            // 해당 소단원 풀에서 랜덤하게 1개 추출
+            const randIdx = Math.floor(Math.random() * topicPool.length);
+            const problem = topicPool[randIdx];
+
+            selectedForThisDiff.push(problem);
+
+            // 추출된 문제는 풀에서 제거 (중복 방지)
+            topicPool.splice(randIdx, 1);
+
+            // 해당 소단원의 문제가 바닥나면 제거 목록에 추가
+            if (topicPool.length === 0) {
+              topicsToRemove.push(topic);
+            }
+          }
+
+          // 문제가 바닥난 소단원은 다음 루프부터 제외
+          if (topicsToRemove.length > 0) {
+            validTopics = validTopics.filter(t => !topicsToRemove.includes(t));
+          }
         }
 
-        // (C) 균등 배분 계산
-        const baseQuota = Math.floor(targetCount / numTopics);
-        let remainder = targetCount % numTopics;
-        
-        let currentSelectedForDiff: DBProblem[] = [];
-        let deficit = 0;
-
-        // [Pass 1] 기본 할당량 채우기
-        activeTopics.forEach(topic => {
-          const available = poolByMinor[topic];
-          const shuffled = [...available].sort(() => Math.random() - 0.5);
-          
-          const take = Math.min(shuffled.length, baseQuota);
-          const picked = shuffled.slice(0, take);
-          
-          currentSelectedForDiff.push(...picked);
-          poolByMinor[topic] = shuffled.slice(take); // 남은 문항 업데이트
-          deficit += (baseQuota - take);
-        });
-
-        // [Pass 2] 나머지 + 부족분 채우기
-        let slotsToFill = remainder + deficit;
-        
-        if (slotsToFill > 0) {
-          const remainingPool = Object.values(poolByMinor).flat();
-          const shuffledRemaining = remainingPool.sort(() => Math.random() - 0.5);
-          
-          const extras = shuffledRemaining.slice(0, slotsToFill);
-          currentSelectedForDiff.push(...extras);
-        }
-        
-        finalSelectedProblems.push(...currentSelectedForDiff);
+        finalSelectedProblems.push(...selectedForThisDiff);
       });
 
-      // 3. 정렬 (소단원 순서 -> 난이도 순서)
+      // 5. 정렬 (기존 로직 유지: 소단원 순서 -> 난이도 순서)
       const allMinorTopicsOrdered = SCIENCE_UNITS.flatMap(s => s.majorTopics.flatMap(m => m.minorTopics));
       
       finalSelectedProblems.sort((a, b) => {
@@ -320,7 +347,7 @@ function ExamBuilderContent() {
          return diffA - diffB;
       });
 
-      // 4. 데이터 매핑
+      // 6. 데이터 매핑 (기존 로직 유지)
       const formatted: ExamPaperProblem[] = finalSelectedProblems.map((p, idx) => ({
         id: p.id,
         number: idx + 1,
@@ -343,7 +370,6 @@ function ExamBuilderContent() {
     else if (fetchedProblems.length === 0 && selectedMajorTopics.length > 0) {
       setExamProblems([]);
     }
-  // ▼▼▼ [수정됨] 배열을 spread(...) 하지 않고 변수명만 넣어야 합니다. ▼▼▼
   }, [fetchedProblems, difficultyCounts, isLoaded, isFetching, isClinicMode, selectedMajorTopics.length, selectedMinorTopics]);
 
   // 문제 교체 핸들러
@@ -661,6 +687,13 @@ function ExamBuilderContent() {
     toast.success("실행 취소되었습니다.");
   }, [history]);
 
+  // [신규] 투어 다시보기 핸들러
+  const handleRestartTour = () => {
+    if (confirm("이용 가이드를 다시 보시겠습니까?\n(페이지가 새로고침 됩니다)")) {
+      localStorage.removeItem("hasSeenExamBuilderTour_v5");
+      window.location.reload();
+    }
+  };
 
   if (!isLoaded || !isMounted) return <div className="flex h-screen items-center justify-center">로딩 중...</div>;
 
@@ -671,13 +704,25 @@ function ExamBuilderContent() {
       {/* 1. 통합 왼쪽 사이드바 */}
       <aside className="w-96 flex-shrink-0 bg-white border-r border-gray-200 overflow-hidden flex flex-col z-20 shadow-[4px_0_24px_rgba(0,0,0,0.02)]">
         <div className="flex border-b border-gray-100">
-          <button onClick={() => setLeftSidebarTab('units')} className={`flex-1 py-4 text-xs font-bold transition-all border-b-2 flex flex-col items-center gap-1 ${leftSidebarTab === 'units' ? 'border-blue-600 text-blue-600 bg-blue-50/50' : 'border-transparent text-slate-400 hover:text-slate-600'}`}>
+          <button 
+            id="tab-units"
+            onClick={() => setLeftSidebarTab('units')} 
+            className={`flex-1 py-4 text-xs font-bold transition-all border-b-2 flex flex-col items-center gap-1 ${leftSidebarTab === 'units' ? 'border-blue-600 text-blue-600 bg-blue-50/50' : 'border-transparent text-slate-400 hover:text-slate-600'}`}
+          >
             <MapIcon className="w-5 h-5" /> 단원 선택
           </button>
-          <button onClick={() => setLeftSidebarTab('settings')} className={`flex-1 py-4 text-xs font-bold transition-all border-b-2 flex flex-col items-center gap-1 ${leftSidebarTab === 'settings' ? 'border-blue-600 text-blue-600 bg-blue-50/50' : 'border-transparent text-slate-400 hover:text-slate-600'}`}>
+          <button 
+            id="tab-settings"
+            onClick={() => setLeftSidebarTab('settings')} 
+            className={`flex-1 py-4 text-xs font-bold transition-all border-b-2 flex flex-col items-center gap-1 ${leftSidebarTab === 'settings' ? 'border-blue-600 text-blue-600 bg-blue-50/50' : 'border-transparent text-slate-400 hover:text-slate-600'}`}
+          >
             <Cog6ToothIcon className="w-5 h-5" /> 구성 설정
           </button>
-          <button onClick={() => setLeftSidebarTab('order')} className={`flex-1 py-4 text-xs font-bold transition-all border-b-2 flex flex-col items-center gap-1 ${leftSidebarTab === 'order' ? 'border-blue-600 text-blue-600 bg-blue-50/50' : 'border-transparent text-slate-400 hover:text-slate-600'}`}>
+          <button 
+            id="tab-order"
+            onClick={() => setLeftSidebarTab('order')} 
+            className={`flex-1 py-4 text-xs font-bold transition-all border-b-2 flex flex-col items-center gap-1 ${leftSidebarTab === 'order' ? 'border-blue-600 text-blue-600 bg-blue-50/50' : 'border-transparent text-slate-400 hover:text-slate-600'}`}
+          >
             <ListBulletIcon className="w-5 h-5" /> 문항 순서
             {examProblems.length > 0 && <span className="bg-blue-600 text-white rounded-full w-4 h-4 flex items-center justify-center text-[9px] absolute top-2 ml-4">{examProblems.length}</span>}
           </button>
@@ -730,7 +775,7 @@ function ExamBuilderContent() {
 
           {/* TAB 2: 설정 */}
           {leftSidebarTab === 'settings' && (
-            <div id="maker-right-sidebar" className="p-5 animate-in fade-in slide-in-from-left-2 duration-200 space-y-6">
+            <div id="maker-settings-panel" className="p-5 animate-in fade-in slide-in-from-left-2 duration-200 space-y-6">
                {isClinicMode && (
                   <div className="text-center p-4 bg-yellow-50 border border-yellow-100 rounded-xl mb-4">
                     <p className="text-base font-bold text-yellow-700">⚠️ 클리닉 수정 모드</p>
@@ -738,7 +783,7 @@ function ExamBuilderContent() {
                   </div>
                 )}
 
-               {/* [수정됨] 난이도 배분 (버튼형 컨트롤) */}
+               {/* [수정됨] 난이도 배분 UI */}
                <div className={isClinicMode ? 'opacity-50 pointer-events-none' : ''}>
                   <h3 className="text-sm font-bold text-gray-900 mb-3 flex justify-between">
                     <span>난이도 배분</span>
@@ -746,15 +791,42 @@ function ExamBuilderContent() {
                   </h3>
                   <div className="space-y-2">
                     {(['기본', '하', '중', '상', '킬러'] as Difficulty[]).map((level) => (
-                      <div key={level} className="flex items-center justify-between p-2 bg-white border border-gray-200 rounded-lg">
+                      <div key={level} className="flex items-center justify-between p-2 bg-white border border-gray-200 rounded-lg shadow-sm">
                         <div className="flex items-center gap-2">
                           <span className={`text-xs font-bold w-8 text-center ${level === '킬러' ? 'text-red-500' : 'text-slate-600'}`}>{level}</span>
-                          {level === '킬러' && <Lock className="w-3 h-3 text-red-400" />}
+                          
+                          {/* [수정] 킬러 문항 자물쇠: MAKERS 플랜이 아닐 때만 표시 */}
+                          {level === '킬러' && userPlan !== 'MAKERS' && (
+                            <Lock className="w-3 h-3 text-red-400" />
+                          )}
                         </div>
-                        <div className="flex items-center gap-3">
-                          <button onClick={() => updateDifficultyCount(level, -1)} className="p-1 text-slate-600 hover:text-blue-600 bg-slate-50 hover:bg-slate-100 rounded border border-slate-200 transition-colors"><Minus className="w-3 h-3" /></button>
-                          <span className="text-sm font-bold w-4 text-center text-slate-900">{difficultyCounts[level]}</span>
-                          <button onClick={() => updateDifficultyCount(level, 1)} className="p-1 text-slate-600 hover:text-blue-600 bg-slate-50 hover:bg-slate-100 rounded border border-slate-200 transition-colors"><Plus className="w-3 h-3" /></button>
+                        
+                        <div className="flex items-center gap-1.5">
+                          {/* 마이너스 버튼 */}
+                          <button 
+                            onClick={() => updateDifficultyCount(level, -1)} 
+                            className="w-7 h-7 flex items-center justify-center text-slate-500 hover:text-blue-600 bg-slate-50 hover:bg-slate-100 rounded border border-slate-200 transition-colors"
+                          >
+                            <Minus className="w-3 h-3" />
+                          </button>
+                          
+                          {/* [수정] 숫자 직접 입력 인풋 */}
+                          <input
+                            type="text"
+                            inputMode="numeric"
+                            value={difficultyCounts[level]}
+                            onChange={(e) => handleDifficultyInput(level, e.target.value)}
+                            onFocus={(e) => e.target.select()} // 클릭 시 전체 선택되어 바로 수정 편하게
+                            className="w-10 h-7 text-center text-sm font-bold text-slate-900 bg-white border border-slate-200 rounded focus:border-blue-500 focus:ring-1 focus:ring-blue-200 outline-none transition-all"
+                          />
+                          
+                          {/* 플러스 버튼 */}
+                          <button 
+                            onClick={() => updateDifficultyCount(level, 1)} 
+                            className="w-7 h-7 flex items-center justify-center text-slate-500 hover:text-blue-600 bg-slate-50 hover:bg-slate-100 rounded border border-slate-200 transition-colors"
+                          >
+                            <Plus className="w-3 h-3" />
+                          </button>
                         </div>
                       </div>
                     ))}
@@ -821,7 +893,7 @@ function ExamBuilderContent() {
 
           {/* TAB 3: 순서 */}
           {leftSidebarTab === 'order' && (
-            <div className="p-0 animate-in fade-in slide-in-from-left-2 duration-200 h-full flex flex-col">
+            <div id="maker-order-panel" className="p-0 animate-in fade-in slide-in-from-left-2 duration-200 h-full flex flex-col">
                <div className="p-4 border-b border-gray-100 bg-white z-10">
                  <div className="flex items-center justify-between mb-3">
                    <span className="text-xs font-bold text-slate-500">총 {examProblems.length} 문항</span>
@@ -902,6 +974,15 @@ function ExamBuilderContent() {
             </label>
           </div>
           <div className="flex gap-3 ml-auto">
+             {/* [신규] 투어 다시보기 버튼 */}
+             <button 
+               onClick={handleRestartTour} 
+               className="p-2 rounded-lg bg-white border border-slate-200 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 transition-colors"
+               title="가이드 다시보기"
+             >
+               <QuestionMarkCircleIcon className="w-5 h-5" />
+             </button>
+             {/* [신규] 분석 패널 토글 버튼 */}
              <button onClick={() => setShowAnalysis(!showAnalysis)} className={`p-2 rounded-lg transition-colors border ${showAnalysis ? 'bg-indigo-50 border-indigo-200 text-indigo-600' : 'bg-white border-slate-200 text-slate-400 hover:bg-slate-50'}`} title="분석 패널 토글"><ChartBarIcon className="w-5 h-5" /></button>
              <button id="maker-save-button" onClick={handleSaveExam} disabled={isSaving} className="flex items-center gap-2 px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-bold text-sm shadow-md transition-all active:scale-95 disabled:opacity-50"><SaveIcon className="w-4 h-4" /> {isSaving ? "저장 중..." : "보관함 저장"}</button>
           </div>

@@ -4,7 +4,6 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { motion } from "framer-motion";
 
 // 상수 (실제 정보로 수정 필요)
 const LINKS = {
@@ -16,8 +15,12 @@ const LINKS = {
 const COMPANY_INFO = {
   name: "(주)룰메이커스",
   ceo: "이승용",
+  head: "이정한",
   address: "서울특별시 관악구 솔밭로 19-1",
   license: "665-86-02814",
+  // [보완] 통신판매업신고번호 및 전화번호 추가 (실제 번호로 수정해주세요)
+  telecommunication: "2025-서울관악-0481", 
+  phone: "010-5900-4869",
   email: "contact@rulemakers.co.kr",
 };
 
@@ -25,70 +28,93 @@ export default function Footer() {
   const currentYear = new Date().getFullYear();
 
   return (
-    <footer className="bg-white border-t border-slate-200 pt-16 pb-8">
+    <footer className="bg-white border-t border-slate-200 pt-16 pb-12 font-sans">
       <div className="container mx-auto px-6 max-w-6xl">
         
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-12 mb-16">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-12 mb-16">
           
-          {/* 1. Brand Column */}
-          <div className="col-span-1 md:col-span-1 space-y-4">
-             <div className="relative w-8 h-8">
-               <Image src="/images/logo.png" alt="Logo" fill className="object-contain" />
+          {/* 1. Brand Column (넓게 배치) */}
+          <div className="lg:col-span-2 space-y-6">
+             <div className="relative w-32 h-8">
+                {/* 로고 이미지가 가로형이라고 가정, 비율에 맞게 조정 */}
+               <Image 
+                 src="/images/logo.png" 
+                 alt="RuleMakers" 
+                 fill 
+                 className="object-contain object-left" 
+               />
              </div>
-             <p className="text-sm text-slate-500 leading-relaxed font-medium">
-               교육의 새로운 기준,<br/>RuleMakers
+             <p className="text-sm text-slate-500 leading-relaxed font-medium max-w-xs">
+               교육의 새로운 기준, RuleMakers<br/>
+               최적의 학습 경험을 설계합니다.
              </p>
-          </div>
-
-          {/* 2. Services Column */}
-          <div>
-            <h4 className="font-bold text-slate-900 mb-4 text-sm uppercase tracking-wider">Services</h4>
-            <ul className="space-y-3 text-sm text-slate-500">
-              <li><Link href="/service/maker" className="hover:text-blue-600 transition-colors">문제은행 (Maker)</Link></li>
-              <li><Link href="/basic-service" className="hover:text-blue-600 transition-colors">베이직 플랜</Link></li>
-              <li><Link href="/premium-service" className="hover:text-blue-600 transition-colors">메이커스 플랜</Link></li>
-              <li><Link href="/pricing" className="hover:text-blue-600 transition-colors">이용 요금</Link></li>
-            </ul>
-          </div>
-
-          {/* 3. Company Column */}
-          <div>
-            <h4 className="font-bold text-slate-900 mb-4 text-sm uppercase tracking-wider">Company</h4>
-            <ul className="space-y-3 text-sm text-slate-500">
-              <li><Link href="/company" className="hover:text-blue-600 transition-colors">회사 소개</Link></li>
-              <li><Link href="/showcase" className="hover:text-blue-600 transition-colors">제작 사례</Link></li>
-              <li><Link href="/contact" className="hover:text-blue-600 transition-colors">도입 문의</Link></li>
-            </ul>
-          </div>
-
-           {/* 4. Contact & SNS Column */}
-           <div>
-             <h4 className="font-bold text-slate-900 mb-4 text-sm uppercase tracking-wider">Stay Connected</h4>
-             <div className="flex gap-3 mb-6">
+             <div className="flex gap-3">
                <SocialButton href={LINKS.blog} label="Blog" src="/images/blog.png" />
                <SocialButton href={LINKS.instagram} label="Insta" src="/images/instagram.png" />
                <SocialButton href={LINKS.kakao} label="Kakao" src="/images/kakao.png" />
              </div>
-             <p className="text-xs text-slate-400">
-               평일 10:00 - 18:00 (주말/공휴일 제외)
-             </p>
+          </div>
+
+          {/* 2. Company Column */}
+          <div>
+            <h4 className="font-bold text-slate-900 mb-6 text-xs uppercase tracking-wider">Company</h4>
+            <ul className="space-y-3 text-sm text-slate-500">
+              <li><Link href="/company" className="hover:text-blue-600 transition-colors">회사 소개</Link></li>
+              <li><Link href="/contact" className="hover:text-blue-600 transition-colors">도입 문의</Link></li>
+              <li><Link href="/terms" className="hover:text-blue-600 transition-colors">이용약관</Link></li>
+              <li><Link href="/privacy" className="hover:text-blue-600 transition-colors">개인정보처리방침</Link></li>
+            </ul>
+          </div>
+
+          {/* 3. Service Column */}
+          <div>
+            <h4 className="font-bold text-slate-900 mb-6 text-xs uppercase tracking-wider">Service</h4>
+            <ul className="space-y-3 text-sm text-slate-500">
+              <li><Link href="/maker-guide" className="hover:text-blue-600 transition-colors">PASS 문제은행</Link></li>
+              <li><Link href="/mock-exam" className="hover:text-blue-600 transition-colors">전국 모의고사</Link></li>
+              <li><Link href="/pricing" className="hover:text-blue-600 transition-colors">이용 요금 및 결제</Link></li>
+            </ul>
+          </div>
+
+           {/* 4. Plans & Contents Column */}
+           <div>
+             <h4 className="font-bold text-slate-900 mb-6 text-xs uppercase tracking-wider">Plans</h4>
+             <ul className="space-y-3 text-sm text-slate-500">
+              <li><Link href="/basic-service" className="hover:text-blue-600 transition-colors">베이직 플랜</Link></li>
+              <li><Link href="/premium-service" className="hover:text-blue-600 transition-colors">메이커스 플랜</Link></li>
+              <li><Link href="/showcase" className="hover:text-blue-600 transition-colors">자체 제작 컨텐츠 소개</Link></li>
+             </ul>
            </div>
         </div>
 
         {/* Divider */}
-        <div className="border-t border-slate-100 my-8" />
+        <div className="border-t border-slate-300 my-8" />
 
         {/* Bottom Info */}
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 text-xs text-slate-400">
+        <div className="flex flex-col lg:flex-row justify-between items-start lg:items-end gap-6 text-[12px] text-slate-500 leading-relaxed">
            <div className="space-y-1">
-             <p>상호명: {COMPANY_INFO.name} | 대표자: {COMPANY_INFO.ceo} | 사업자등록번호: {COMPANY_INFO.license}</p>
-             <p>주소: {COMPANY_INFO.address} | 이메일: {COMPANY_INFO.email}</p>
-             <p className="mt-2">© {currentYear} RuleMakers Inc. All rights reserved.</p>
+             <p className="font-bold text-slate-600 text-xs mb-2">{COMPANY_INFO.name}</p>
+             <p>
+               대표자: {COMPANY_INFO.ceo} <span className="mx-2">|</span> 
+               사업자등록번호: {COMPANY_INFO.license} <span className="mx-2">|</span> 
+               통신판매업신고번호: {COMPANY_INFO.telecommunication}
+             </p>
+             <p>
+               주소: {COMPANY_INFO.address} <span className="mx-2">|</span> 
+               개인정보보호책임자: {COMPANY_INFO.head}
+             </p>
+             <p>
+               대표전화: {COMPANY_INFO.phone} <span className="mx-2">|</span> 
+               이메일: {COMPANY_INFO.email}
+             </p>
+             <p className="mt-4">
+               Copyright © {currentYear} RuleMakers Inc. All rights reserved.
+             </p>
            </div>
            
-           <div className="flex gap-4">
-             <Link href="/terms" className="hover:text-slate-600 transition-colors">이용약관</Link>
-             <Link href="/privacy" className="hover:text-slate-600 transition-colors font-bold">개인정보처리방침</Link>
+           <div className="text-right hidden lg:block">
+              <p>평일 10:00 - 18:00 (점심시간 12:30 - 14:00)</p>
+              <p>수요일, 토요일 및 공휴일 휴무</p>
            </div>
         </div>
 
@@ -97,23 +123,20 @@ export default function Footer() {
   );
 }
 
-// [수정] SocialButton 컴포넌트: 이미지를 받도록 변경
 function SocialButton({ href, label, src }: { href: string, label: string, src: string }) {
   return (
     <a 
       href={href} 
       target="_blank" 
       rel="noopener noreferrer"
-      // hover:bg-blue-600 등의 색상 효과 대신 투명도나 그림자 효과로 변경
-      className="relative w-10 h-10 rounded-full bg-slate-50 flex items-center justify-center overflow-hidden border border-slate-200 hover:border-blue-200 hover:shadow-md transition-all group"
+      className="relative w-9 h-9 rounded-full bg-slate-50 flex items-center justify-center overflow-hidden border border-slate-200 hover:border-blue-300 hover:shadow-sm transition-all group grayscale hover:grayscale-0"
     >
-      {/* Next.js Image 컴포넌트 사용 */}
       <Image 
         src={src} 
         alt={label} 
         fill 
-        className="object-cover p-2 group-hover:scale-110 transition-transform duration-300" 
-        sizes="40px"
+        className="object-cover p-2 transition-transform duration-300 group-hover:scale-110" 
+        sizes="36px"
       />
     </a>
   );
