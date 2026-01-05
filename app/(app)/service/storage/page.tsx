@@ -1,5 +1,3 @@
-// app/(app)/service/storage/page.tsx
-
 "use client";
 
 import React, { useEffect, useState, useCallback, useMemo } from "react";
@@ -21,10 +19,11 @@ import {
   ChevronRightIcon, FolderOpenIcon, PrinterIcon, SparklesIcon,
   ChevronDownIcon, ChevronUpIcon, ListBulletIcon, Squares2X2Icon,
   MagnifyingGlassIcon, FunnelIcon, CheckCircleIcon, EllipsisHorizontalIcon,
-  ArrowRightOnRectangleIcon, ChartBarIcon
+  ArrowRightOnRectangleIcon, ChartBarIcon,
+  UserIcon, UsersIcon // [추가] 필터용 아이콘
 } from "@heroicons/react/24/outline";
 
-// --- DnD Kit (Grid View용 유지) ---
+// --- DnD Kit ---
 import { 
   DndContext, DragEndEvent, useDraggable, useDroppable,
   useSensor, useSensors, PointerSensor, TouchSensor
@@ -33,6 +32,8 @@ import {
 import ExamPrintModal from "@/components/ExamPrintModal";
 import { SavedExam } from "@/types/exam";
 import { LayoutMode } from "@/types/examTemplates";
+import { UserData } from "@/types/user";
+import { ClassData } from "@/types/academy";
 
 // --- Helper Functions ---
 const formatDate = (dateValue: any) => {
@@ -49,7 +50,7 @@ interface Folder {
   createdAt: Timestamp;
 }
 
-// --- DnD Components (Grid View) ---
+// --- DnD Components ---
 function DroppableFolder({ folder, children, onClick }: { folder: Folder, children: React.ReactNode, onClick: () => void }) {
   const { setNodeRef, isOver } = useDroppable({
     id: `folder-${folder.id}`,
@@ -132,13 +133,22 @@ function DraggableExam({ exam, children }: { exam: SavedExam, children: React.Re
 
 // --- Main Page Component ---
 export default function StoragePage() {
-  const { user, loading } = useAuth();
+  // [수정] userData 추가 (이 부분이 누락되어 에러 발생)
+  const { user, userData, loading } = useAuth();
   const router = useRouter();
   
   // Data State
   const [savedExams, setSavedExams] = useState<SavedExam[]>([]);
   const [folders, setFolders] = useState<Folder[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+
+  // [신규] 필터용 데이터 상태
+  const [instructors, setInstructors] = useState<UserData[]>([]); // 원장용
+  const [classes, setClasses] = useState<ClassData[]>([]);        // 강사용
+  
+  // [신규] 선택된 필터 상태
+  const [selectedInstructorId, setSelectedInstructorId] = useState<string>("ALL");
+  const [selectedClassId, setSelectedClassId] = useState<string>("ALL");
 
   // View State
   const [viewMode, setViewMode] = useState<'list' | 'grid'>('list');
@@ -149,15 +159,13 @@ export default function StoragePage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [sortOption, setSortOption] = useState<'date-desc' | 'date-asc' | 'name-asc'>('date-desc');
 
-  // Selection & Expansion State
+  // Selection & Modal State
   const [selectedExamIds, setSelectedExamIds] = useState<Set<string>>(new Set());
   const [expandedExamIds, setExpandedExamIds] = useState<Set<string>>(new Set());
-
-  // Modal State
   const [isCreateFolderOpen, setIsCreateFolderOpen] = useState(false);
   const [newFolderName, setNewFolderName] = useState("");
-  const [isMoveMode, setIsMoveMode] = useState<boolean>(false); // 일괄 이동 모드
-  const [isLegacyMoveMode, setIsLegacyMoveMode] = useState<string | null>(null); // 단일 이동 (Grid용)
+  const [isMoveMode, setIsMoveMode] = useState<boolean>(false);
+  const [isLegacyMoveMode, setIsLegacyMoveMode] = useState<string | null>(null);
   const [printTargetExam, setPrintTargetExam] = useState<SavedExam | null>(null);
   const [isRenameModalOpen, setIsRenameModalOpen] = useState(false);
   const [renameTarget, setRenameTarget] = useState<{ id: string, name: string } | null>(null);
@@ -171,14 +179,44 @@ export default function StoragePage() {
 
   // 1. Data Fetching
   const fetchData = useCallback(async () => {
-    if (!user) return;
+    if (!user || !userData) return;
     setIsLoading(true);
     try {
+      // (1) 폴더 로드
       const folderQuery = query(collection(db, "folders"), where("userId", "==", user.uid), orderBy("createdAt", "desc"));
       const folderSnap = await getDocs(folderQuery);
       setFolders(folderSnap.docs.map(d => ({ id: d.id, ...d.data() } as Folder)));
 
-      const examQuery = query(collection(db, "saved_exams"), where("userId", "==", user.uid), orderBy("createdAt", "desc"));
+      // (2) 시험지 로드 (권한별 분기)
+      let examQuery;
+      
+      if (userData.role === 'director') {
+        // 원장: 본인 소유(ownerId == me)인 모든 시험지 (본인 + 소속 강사)
+        examQuery = query(
+          collection(db, "saved_exams"), 
+          where("ownerId", "==", user.uid), 
+          orderBy("createdAt", "desc")
+        );
+        
+        // 원장용: 소속 강사 목록 로드 (필터용)
+        const userQ = query(collection(db, "users"), where("ownerId", "==", user.uid));
+        const userSnap = await getDocs(userQ);
+        setInstructors(userSnap.docs.map(d => d.data() as UserData));
+
+      } else {
+        // 강사: 본인이 만든(userId == me) 시험지
+        examQuery = query(
+          collection(db, "saved_exams"), 
+          where("userId", "==", user.uid), 
+          orderBy("createdAt", "desc")
+        );
+
+        // 강사용: 담당 반 목록 로드 (필터용)
+        const classQ = query(collection(db, "classes"), where("instructorId", "==", user.uid));
+        const classSnap = await getDocs(classQ);
+        setClasses(classSnap.docs.map(d => ({ id: d.id, ...d.data() } as ClassData)));
+      }
+
       const examSnap = await getDocs(examQuery);
       setSavedExams(examSnap.docs.map(d => ({ id: d.id, ...d.data() } as SavedExam)));
 
@@ -187,7 +225,7 @@ export default function StoragePage() {
       toast.error("데이터 로딩 실패");
     }
     setIsLoading(false);
-  }, [user]);
+  }, [user, userData]); // userData가 정의되어 있어야 에러가 안 남
 
   useEffect(() => {
     if (!loading && user) fetchData();
@@ -201,7 +239,6 @@ export default function StoragePage() {
     }
     const path: Folder[] = [];
     let currentId: string | null = currentFolderId;
-    // 무한 루프 방지용 limit
     let limit = 0;
     while (currentId && limit < 10) {
       const folder = folders.find(f => f.id === currentId);
@@ -215,46 +252,46 @@ export default function StoragePage() {
   }, [currentFolderId, folders]);
 
   // 3. Process Data (Filter, Sort, Group)
-  // [수정] processedExams와 clinicMap을 포함한 객체를 processedExams 변수로 받도록 rest syntax(...) 사용
   const { currentFolders, ...processedExams } = useMemo(() => {
-    // A. Folders
-    const currentFoldersFiltered = folders.filter(f => f.parentId === currentFolderId); // [참고] 내부 변수명 충돌 방지 위해 살짝 변경 권장되나 로직상 흐름은 유지
+    const currentFoldersFiltered = folders.filter(f => f.parentId === currentFolderId);
 
-    // B. Exams Filtering
+    // [기본 필터] 현재 폴더
     let filtered = savedExams.filter(e => (e.folderId || null) === currentFolderId);
 
+    // [검색 필터]
     if (searchTerm) {
       const lower = searchTerm.toLowerCase();
       filtered = filtered.filter(e => e.title.toLowerCase().includes(lower));
     }
 
-    // C. Sorting [수정된 부분]
+    // [신규] 원장님: 강사별 필터링
+    if (userData?.role === 'director' && selectedInstructorId !== 'ALL') {
+      filtered = filtered.filter(e => e.userId === selectedInstructorId);
+    }
+
+    // [신규] 강사님: 반별 필터링
+    if (userData?.role === 'instructor' && selectedClassId !== 'ALL') {
+      filtered = filtered.filter(e => e.classId === selectedClassId);
+    }
+
+    // [정렬]
     filtered.sort((a, b) => {
       if (sortOption === 'name-asc') return a.title.localeCompare(b.title);
-      
-      // 안전한 날짜 변환 헬퍼 함수
       const getTime = (date: any) => {
         if (!date) return 0;
-        // Firestore Timestamp
         if (typeof date.toDate === 'function') return date.toDate().getTime();
-        // JS Date 객체
         if (date instanceof Date) return date.getTime();
-        // 그 외 (number 등)
         return Number(date) || 0;
       };
-
       const dateA = getTime(a.createdAt);
       const dateB = getTime(b.createdAt);
-      
       return sortOption === 'date-asc' ? dateA - dateB : dateB - dateA;
     });
 
-    // D. Grouping (Tree Structure)
-    // 현재 리스트에 있는 시험지들 중에서 '부모-자식' 관계 형성
+    // [그룹핑]
     const parents: SavedExam[] = [];
     const clinicMap: Record<string, SavedExam[]> = {};
 
-    // 1. 맵핑
     filtered.forEach(exam => {
       if (exam.isClinic && exam.parentExamId) {
         if (!clinicMap[exam.parentExamId]) clinicMap[exam.parentExamId] = [];
@@ -262,21 +299,17 @@ export default function StoragePage() {
       }
     });
 
-    // 2. 구조화 (부모가 현재 리스트에 없으면 클리닉도 최상위로 표시)
     filtered.forEach(exam => {
-      // 클리닉인데 부모가 현재 리스트에 있으면 -> 건너뜀 (부모 밑에 넣을 거니까)
-      // 단, 부모가 현재 리스트에 없으면 -> 그냥 보여줌
       const parentInList = exam.parentExamId ? filtered.find(e => e.id === exam.parentExamId) : false;
-      
       if (exam.isClinic && parentInList) {
-        // Skip (will be rendered under parent)
+        // Skip
       } else {
         parents.push(exam);
       }
     });
 
     return { processedExams: parents, clinicMap, currentFolders: currentFoldersFiltered };
-  }, [savedExams, folders, currentFolderId, searchTerm, sortOption]);
+  }, [savedExams, folders, currentFolderId, searchTerm, sortOption, userData, selectedInstructorId, selectedClassId]);
 
   const currentFolderObj = folders.find(f => f.id === currentFolderId);
   const parentFolderId = currentFolderObj?.parentId || null;
@@ -294,15 +327,6 @@ export default function StoragePage() {
 
   const handleSelectAll = (isChecked: boolean) => {
     if (isChecked) {
-      const allIds = new Set<string>();
-      // 현재 보이는 모든 시험지 (클리닉 포함) ID 수집
-      const addIdsRecursive = (exams: SavedExam[]) => {
-        exams.forEach(e => {
-          allIds.add(e.id);
-          const children = (processedExams as any).clinicMap?.[e.id]; // useMemo 밖에서 접근 불가하므로 아래에서 처리
-        });
-      };
-      // 단순하게 현재 필터된 원본 savedExams 중 현재 폴더에 있는 것들만
       const currentFolderExamIds = savedExams
         .filter(e => (e.folderId || null) === currentFolderId)
         .map(e => e.id);
@@ -421,7 +445,7 @@ export default function StoragePage() {
     router.push(`/manage/reports?action=input&examId=${examId}`);
   };
 
-  // DnD Handlers (Grid View & Folder Move)
+  // DnD Handlers
   const handleDragEnd = async (event: DragEndEvent) => {
     const { active, over } = event;
     if (!over) return;
@@ -432,7 +456,6 @@ export default function StoragePage() {
 
     if (activeType === "exam" && overType === "folder") {
       const targetFolderId = over.data.current?.id;
-      // Optimistic update
       setSavedExams(prev => prev.map(e => e.id === examId ? { ...e, folderId: targetFolderId } : e));
       try {
         await updateDoc(doc(db, "saved_exams", examId), { folderId: targetFolderId });
@@ -451,14 +474,12 @@ export default function StoragePage() {
   // --- Rendering Helpers ---
   const renderBadge = (exam: SavedExam) => {
     if (exam.isClinic) return <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-purple-100 text-purple-700 border border-purple-200">클리닉</span>;
-    // mode 필드가 없으면 기본적으로 실전/연습 구분 불가하나, 가상으로 구분
     return <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-100 text-slate-600 border border-slate-200">시험지</span>;
   };
 
   const handleOpenPrint = (exam: SavedExam) => {
     const printData: SavedExam = {
       ...exam,
-      // 필요한 경우 누락된 필드 보정
       problems: exam.problems || [],
       layoutMode: (exam.layoutMode as LayoutMode) || 'dense',
       questionPadding: exam.questionPadding || 40,
@@ -475,13 +496,12 @@ export default function StoragePage() {
         
         {/* --- Header --- */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
-          <div className="flex flex-col gap-2">
+           {/* (기존 코드와 동일) */}
+           <div className="flex flex-col gap-2">
             <h1 className="text-2xl font-bold text-slate-900 flex items-center gap-2">
               <FolderIcon className="w-8 h-8 text-blue-600" />
               내 시험지 보관함
             </h1>
-            
-            {/* Breadcrumbs / Folder Nav */}
             <nav className="flex items-center gap-2 text-sm text-slate-500 min-h-[32px]">
               {currentFolderId ? (
                 <DroppableBackZone targetName={parentFolderName || "Root"} onClick={() => setCurrentFolderId(parentFolderId)}>
@@ -513,11 +533,11 @@ export default function StoragePage() {
           </div>
         </div>
 
-        {/* --- Toolbar (Search, Filter, View Toggle, Bulk Actions) --- */}
-        <div className="bg-white p-3 rounded-2xl border border-slate-200 shadow-sm mb-6 flex flex-col md:flex-row justify-between items-center gap-4">
+        {/* --- Toolbar --- */}
+        <div className="bg-white p-3 rounded-2xl border border-slate-200 shadow-sm mb-6 flex flex-col xl:flex-row justify-between items-center gap-4">
           
-          {/* Left: Bulk Actions OR Search/Sort */}
-          <div className="flex items-center gap-3 w-full md:w-auto overflow-x-auto no-scrollbar">
+          {/* Left: Filters & Search */}
+          <div className="flex flex-wrap items-center gap-3 w-full xl:w-auto">
             {selectedExamIds.size > 0 ? (
               <div className="flex items-center gap-2 animate-in fade-in slide-in-from-left-2 duration-200">
                 <span className="text-sm font-bold text-blue-600 bg-blue-50 px-3 py-1.5 rounded-lg whitespace-nowrap">
@@ -535,15 +555,51 @@ export default function StoragePage() {
               </div>
             ) : (
               <>
+                {/* [신규] 권한별 필터 드롭다운 */}
+                {userData?.role === 'director' && (
+                  <div className="relative">
+                    <select
+                      value={selectedInstructorId}
+                      onChange={(e) => setSelectedInstructorId(e.target.value)}
+                      className="appearance-none pl-9 pr-8 py-2 bg-slate-50 border border-transparent hover:border-slate-200 rounded-xl text-sm font-bold text-slate-600 cursor-pointer focus:ring-2 focus:ring-blue-100 focus:border-blue-500 outline-none min-w-[140px]"
+                    >
+                      <option value="ALL">전체 강사</option>
+                      <option value={user?.uid}>나 (원장)</option>
+                      {instructors.map(inst => (
+                        <option key={inst.uid} value={inst.uid}>{inst.name} T</option>
+                      ))}
+                    </select>
+                    <UserIcon className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                    <ChevronDownIcon className="w-3 h-3 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                  </div>
+                )}
+
+                {userData?.role === 'instructor' && (
+                  <div className="relative">
+                    <select
+                      value={selectedClassId}
+                      onChange={(e) => setSelectedClassId(e.target.value)}
+                      className="appearance-none pl-9 pr-8 py-2 bg-slate-50 border border-transparent hover:border-slate-200 rounded-xl text-sm font-bold text-slate-600 cursor-pointer focus:ring-2 focus:ring-blue-100 focus:border-blue-500 outline-none min-w-[140px]"
+                    >
+                      <option value="ALL">전체 반</option>
+                      {classes.map(cls => (
+                        <option key={cls.id} value={cls.id}>{cls.name}</option>
+                      ))}
+                    </select>
+                    <UsersIcon className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                    <ChevronDownIcon className="w-3 h-3 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                  </div>
+                )}
+
                 {/* Search */}
-                <div className="relative group">
+                <div className="relative group flex-grow md:flex-grow-0">
                   <MagnifyingGlassIcon className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 group-focus-within:text-blue-500 transition-colors" />
                   <input 
                     type="text" 
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
                     placeholder="시험지 제목 검색" 
-                    className="pl-9 pr-4 py-2 w-48 md:w-64 bg-slate-50 border border-transparent hover:border-slate-200 focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-100 rounded-xl text-sm transition-all outline-none"
+                    className="pl-9 pr-4 py-2 w-full md:w-56 bg-slate-50 border border-transparent hover:border-slate-200 focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-100 rounded-xl text-sm transition-all outline-none"
                   />
                 </div>
                 
@@ -566,7 +622,7 @@ export default function StoragePage() {
 
           {/* Right: View Toggle */}
           <div className="flex bg-slate-100 p-1 rounded-xl shrink-0">
-            <button 
+             <button 
               onClick={() => setViewMode('list')}
               className={`p-2 rounded-lg transition-all ${viewMode === 'list' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
               title="리스트 뷰"
@@ -582,16 +638,16 @@ export default function StoragePage() {
             </button>
           </div>
         </div>
-
+        
+        {/* --- Content (List/Grid) --- */}
         {isLoading ? (
           <div className="space-y-4">
-            {[1, 2, 3].map(i => <div key={i} className="h-20 bg-gray-100 rounded-xl animate-pulse" />)}
+             {[1, 2, 3].map(i => <div key={i} className="h-20 bg-gray-100 rounded-xl animate-pulse" />)}
           </div>
         ) : (
-          <div className="space-y-8">
-            
-            {/* 1. Folder List (Grid Only for Folders, or common) */}
-            {currentFolders.length > 0 && (
+           <div className="space-y-8">
+             {/* 1. Folders */}
+             {currentFolders.length > 0 && (
               <div>
                 <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3 px-1">Folders</h3>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -627,234 +683,185 @@ export default function StoragePage() {
                 </div>
               </div>
             )}
+             
+             {/* 2. Exam List */}
+             <div>
+               <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3 px-1">
+                 Files ({processedExams.processedExams.length})
+               </h3>
 
-            {/* 2. Exam List */}
-            <div>
-              <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3 px-1">
-                Files ({processedExams.processedExams.length})
-              </h3>
-              
-              {processedExams.processedExams.length === 0 ? (
-                <div className="text-center py-20 bg-white rounded-2xl border border-dashed border-slate-200">
-                  <DocumentTextIcon className="w-12 h-12 text-slate-300 mx-auto mb-3" />
-                  <p className="text-slate-500 font-medium">이 폴더에는 시험지가 없습니다.</p>
-                </div>
-              ) : viewMode === 'list' ? (
-                // === [LIST VIEW] ===
-                <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
-                  {/* [해결 1] table-fixed 적용 
-                    - 열 너비를 고정하여 내부 콘텐츠 변화에도 레이아웃이 흔들리지 않게 함 
-                  */}
-                  <table className="w-full text-left border-collapse table-fixed">
-                    <colgroup>
-                      <col className="w-14" />
-                      <col className="" />
-                      <col className="w-24" />
-                      <col className="w-32" />
-                      <col className="w-40" />
-                    </colgroup>
-                    <thead>
-                      <tr className="bg-slate-50 text-slate-500 text-xs font-bold uppercase border-b border-slate-200">
-                        <th className="p-4 text-center">
-                          <input 
-                            type="checkbox" 
-                            className="rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
-                            onChange={(e) => handleSelectAll(e.target.checked)}
-                            checked={savedExams.length > 0 && selectedExamIds.size === savedExams.filter(e => (e.folderId || null) === currentFolderId).length}
-                          />
-                        </th>
-                        <th className="p-4">시험지명</th>
-                        <th className="p-4 text-center">문항수</th>
-                        <th className="p-4 text-center">생성일</th>
-                        <th className="p-4 text-center">관리</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-100">
-                      {processedExams.processedExams.map((exam) => {
-                        const clinicList = processedExams.clinicMap[exam.id] || [];
-                        const hasClinics = clinicList.length > 0;
-                        const isExpanded = expandedExamIds.has(exam.id);
+               {processedExams.processedExams.length === 0 ? (
+                 <div className="text-center py-20 bg-white rounded-2xl border border-dashed border-slate-200">
+                    <DocumentTextIcon className="w-12 h-12 text-slate-300 mx-auto mb-3" />
+                    <p className="text-slate-500 font-medium">조건에 맞는 시험지가 없습니다.</p>
+                 </div>
+               ) : viewMode === 'list' ? (
+                 // [LIST VIEW]
+                 <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
+                    <table className="w-full text-left border-collapse table-fixed">
+                       <colgroup>
+                         <col className="w-14" />
+                         <col className="" />
+                         <col className="w-32" /> 
+                         <col className="w-24" />
+                         <col className="w-32" />
+                         <col className="w-40" />
+                       </colgroup>
+                       <thead>
+                         <tr className="bg-slate-50 text-slate-500 text-xs font-bold uppercase border-b border-slate-200">
+                           <th className="p-4 text-center">
+                             <input type="checkbox" className="rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer" onChange={(e) => handleSelectAll(e.target.checked)} checked={savedExams.length > 0 && selectedExamIds.size === savedExams.filter(e => (e.folderId || null) === currentFolderId).length} />
+                           </th>
+                           <th className="p-4">시험지명</th>
+                           <th className="p-4 text-center">
+                             {userData?.role === 'director' ? '작성자' : '반 정보'}
+                           </th>
+                           <th className="p-4 text-center">문항수</th>
+                           <th className="p-4 text-center">생성일</th>
+                           <th className="p-4 text-center">관리</th>
+                         </tr>
+                       </thead>
+                       <tbody className="divide-y divide-slate-100">
+                         {processedExams.processedExams.map((exam) => {
+                           const clinicList = processedExams.clinicMap[exam.id] || [];
+                           const hasClinics = clinicList.length > 0;
+                           const isExpanded = expandedExamIds.has(exam.id);
 
-                        return (
-                          <React.Fragment key={exam.id}>
-                            {/* Parent Row */}
-                            <tr className={`transition-colors group ${isExpanded ? 'bg-slate-50/50' : 'hover:bg-slate-50'}`}>
-                              <td className="p-4 text-center">
-                                <input 
-                                  type="checkbox" 
-                                  checked={selectedExamIds.has(exam.id)}
-                                  onChange={() => toggleSelection(exam.id)}
-                                  className="rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
-                                />
-                              </td>
-                              <td className="p-4">
-                                <div className="flex items-center">
-                                  
-                                  {/* [해결 2] 아이콘 공간 고정 (w-8) */}
-                                  <div className="w-8 flex-shrink-0 flex justify-center mr-1">
-                                    {hasClinics ? (
-                                      <button 
-                                        onClick={() => toggleExpansion(exam.id)}
-                                        className="p-1 rounded-md hover:bg-slate-200 text-slate-400 transition-colors"
-                                      >
-                                        {isExpanded ? <ChevronUpIcon className="w-4 h-4"/> : <ChevronDownIcon className="w-4 h-4"/>}
+                           return (
+                             <React.Fragment key={exam.id}>
+                               <tr className={`transition-colors group ${isExpanded ? 'bg-slate-50/50' : 'hover:bg-slate-50'}`}>
+                                 <td className="p-4 text-center">
+                                    <input type="checkbox" checked={selectedExamIds.has(exam.id)} onChange={() => toggleSelection(exam.id)} className="rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer" />
+                                 </td>
+                                 <td className="p-4">
+                                   <div className="flex items-center">
+                                     <div className="w-8 flex-shrink-0 flex justify-center mr-1">
+                                        {hasClinics ? (
+                                          <button onClick={() => toggleExpansion(exam.id)} className="p-1 rounded-md hover:bg-slate-200 text-slate-400 transition-colors">
+                                            {isExpanded ? <ChevronUpIcon className="w-4 h-4"/> : <ChevronDownIcon className="w-4 h-4"/>}
+                                          </button>
+                                        ) : <div className="w-6 h-6" />}
+                                     </div>
+                                     <div className="flex flex-col min-w-0 pr-4">
+                                        <div className="flex items-center gap-2">
+                                          {renderBadge(exam)}
+                                          <span className="font-bold text-slate-800 truncate" title={exam.title}>{exam.title}</span>
+                                        </div>
+                                        <span className="text-xs text-slate-400 mt-0.5 truncate">ID: {exam.id}</span>
+                                     </div>
+                                   </div>
+                                 </td>
+                                 
+                                 <td className="p-4 text-center text-xs text-slate-500 truncate">
+                                    {userData?.role === 'director' ? exam.instructorName : (exam.className || "-")}
+                                 </td>
+
+                                 <td className="p-4 text-center text-sm font-medium text-slate-600">{exam.problemCount}</td>
+                                 <td className="p-4 text-center text-xs text-slate-500">{formatDate(exam.createdAt)}</td>
+                                 <td className="p-4 text-center">
+                                   <div className="flex items-center justify-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                      <button onClick={() => handleGoToGrade(exam.id)} title="성적 입력" className="p-1.5 text-slate-400 hover:text-green-600 hover:bg-green-50 rounded-lg">
+                                        <ChartBarIcon className="w-4 h-4" />
                                       </button>
-                                    ) : (
-                                      // 아이콘이 없을 때도 공간을 차지하는 투명 박스
-                                      <div className="w-6 h-6" /> 
-                                    )}
-                                  </div>
-
-                                  <div className="flex flex-col min-w-0 pr-4"> {/* min-w-0: truncate 작동 필수 조건 */}
-                                    <div className="flex items-center gap-2">
-                                      {renderBadge(exam)}
-                                      <span className="font-bold text-slate-800 truncate" title={exam.title}>
-                                        {exam.title}
-                                      </span>
+                                      <Link href={`/service/maker?id=${exam.id}`} title="수정" className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg">
+                                        <PencilIcon className="w-4 h-4" />
+                                      </Link>
+                                      <button onClick={() => handleOpenPrint(exam)} title="인쇄" className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg">
+                                        <PrinterIcon className="w-4 h-4" />
+                                      </button>
+                                      <button onClick={() => handleDeleteExam(exam.id)} title="삭제" className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg">
+                                        <TrashIcon className="w-4 h-4" />
+                                      </button>
                                     </div>
-                                    <span className="text-xs text-slate-400 mt-0.5 truncate">
-                                      ID: {exam.id}
-                                    </span>
+                                 </td>
+                               </tr>
+                               {isExpanded && clinicList.map(clinic => (
+                                  <tr key={clinic.id} className="bg-slate-50/50 hover:bg-purple-50/10 transition-colors">
+                                     <td className="p-4 text-center relative">
+                                        <div className="absolute right-0 top-0 bottom-1/2 w-px bg-slate-200" />
+                                        <input type="checkbox" checked={selectedExamIds.has(clinic.id)} onChange={() => toggleSelection(clinic.id)} className="rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer relative z-10" />
+                                     </td>
+                                     <td className="p-4">
+                                        <div className="flex items-center pl-9">
+                                          <ArrowUturnLeftIcon className="w-3 h-3 text-slate-300 rotate-180 mr-2 flex-shrink-0" />
+                                          <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-purple-100 text-purple-700 border border-purple-200 mr-2 flex-shrink-0">클리닉</span>
+                                          <div className="flex flex-col min-w-0">
+                                            <span className="text-sm font-medium text-slate-700 truncate">{clinic.title}</span>
+                                            <span className="text-xs text-slate-400">학생: {clinic.studentName || "-"}</span>
+                                          </div>
+                                        </div>
+                                     </td>
+                                     <td className="p-4 text-center text-xs text-slate-400">-</td>
+                                     <td className="p-4 text-center text-sm text-slate-600">{clinic.problemCount}</td>
+                                     <td className="p-4 text-center text-xs text-slate-500">{formatDate(clinic.createdAt)}</td>
+                                     <td className="p-4 text-center">
+                                       <div className="flex items-center justify-center gap-2">
+                                          <Link href={`/service/maker?id=${clinic.id}`} title="수정" className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg"><PencilIcon className="w-4 h-4" /></Link>
+                                          <button onClick={() => handleOpenPrint(clinic)} title="인쇄" className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg"><PrinterIcon className="w-4 h-4" /></button>
+                                          <button onClick={() => handleDeleteExam(clinic.id)} title="삭제" className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg"><TrashIcon className="w-4 h-4" /></button>
+                                       </div>
+                                     </td>
+                                  </tr>
+                               ))}
+                             </React.Fragment>
+                           );
+                         })}
+                       </tbody>
+                    </table>
+                 </div>
+               ) : (
+                 // [GRID VIEW]
+                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {processedExams.processedExams.map((exam) => (
+                       <DraggableExam key={exam.id} exam={exam}>
+                          <div className="group bg-white p-5 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md hover:border-blue-300 transition-all relative flex flex-col justify-between h-full">
+                             <div>
+                                <div className="flex justify-between items-start mb-4">
+                                  <div className={`p-2.5 rounded-xl transition-colors ${exam.isClinic ? 'bg-purple-50 text-purple-600' : 'bg-slate-100 text-slate-500'}`}>
+                                    {exam.isClinic ? <SparklesIcon className="w-6 h-6"/> : <DocumentTextIcon className="w-6 h-6" />}
+                                  </div>
+                                  <div className="flex gap-1" onPointerDown={(e) => e.stopPropagation()}>
+                                     <button onClick={() => setIsLegacyMoveMode(exam.id)} className="p-2 text-slate-400 hover:bg-slate-100 rounded-lg"><ArrowRightOnRectangleIcon className="w-5 h-5"/></button>
+                                     <button onClick={() => handleOpenPrint(exam)} className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg"><PrinterIcon className="w-5 h-5"/></button>
+                                     <button onClick={() => handleDeleteExam(exam.id)} className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg"><TrashIcon className="w-5 h-5"/></button>
                                   </div>
                                 </div>
-                              </td>
-                              <td className="p-4 text-center text-sm font-medium text-slate-600">
-                                {exam.problemCount}
-                              </td>
-                              <td className="p-4 text-center text-xs text-slate-500">
-                                {formatDate(exam.createdAt)}
-                              </td>
-                              <td className="p-4 text-center">
-                                <div className="flex items-center justify-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                  <button onClick={() => handleGoToGrade(exam.id)} title="성적 입력" className="p-1.5 text-slate-400 hover:text-green-600 hover:bg-green-50 rounded-lg">
-                                    <ChartBarIcon className="w-4 h-4" />
-                                  </button>
-                                  <Link href={`/service/maker?id=${exam.id}`} title="수정" className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg">
-                                    <PencilIcon className="w-4 h-4" />
-                                  </Link>
-                                  <button onClick={() => handleOpenPrint(exam)} title="인쇄" className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg">
-                                    <PrinterIcon className="w-4 h-4" />
-                                  </button>
-                                  <button onClick={() => handleDeleteExam(exam.id)} title="삭제" className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg">
-                                    <TrashIcon className="w-4 h-4" />
-                                  </button>
+                                
+                                <div className="mb-4">
+                                  <h3 className="text-lg font-bold text-slate-900 mb-1 line-clamp-1 group-hover:text-blue-600 transition-colors">{exam.title}</h3>
+                                  <div className="flex items-center gap-2 text-xs text-slate-500">
+                                     <span className="flex items-center gap-1"><CalendarDaysIcon className="w-3.5 h-3.5" /> {formatDate(exam.createdAt)}</span>
+                                     <span className="w-1 h-1 bg-slate-300 rounded-full" />
+                                     <span>{exam.problemCount}문항</span>
+                                     <span className="w-1 h-1 bg-slate-300 rounded-full" />
+                                     <span className="font-bold text-slate-600">{userData?.role === 'director' ? exam.instructorName : exam.className}</span>
+                                  </div>
                                 </div>
-                              </td>
-                            </tr>
-
-                            {/* Nested Clinic Rows */}
-                            {isExpanded && clinicList.map(clinic => (
-                              <tr key={clinic.id} className="bg-slate-50/50 hover:bg-purple-50/10 transition-colors">
-                                <td className="p-4 text-center relative">
-                                  {/* 계층 연결선 디자인 (선택 사항) */}
-                                  <div className="absolute right-0 top-0 bottom-1/2 w-px bg-slate-200" />
-                                  <input 
-                                    type="checkbox" 
-                                    checked={selectedExamIds.has(clinic.id)}
-                                    onChange={() => toggleSelection(clinic.id)}
-                                    className="rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer relative z-10"
-                                  />
-                                </td>
-                                <td className="p-4">
-                                  <div className="flex items-center pl-9"> {/* 부모 텍스트 시작점(w-8 + mr-1)과 맞추기 위해 패딩 조정 */}
-                                    <ArrowUturnLeftIcon className="w-3 h-3 text-slate-300 rotate-180 mr-2 flex-shrink-0" />
-                                    <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-purple-100 text-purple-700 border border-purple-200 mr-2 flex-shrink-0">클리닉</span>
-                                    <div className="flex flex-col min-w-0">
-                                      <span className="text-sm font-medium text-slate-700 truncate">{clinic.title}</span>
-                                      <span className="text-xs text-slate-400">학생: {clinic.studentName || "-"}</span>
-                                    </div>
-                                  </div>
-                                </td>
-                                <td className="p-4 text-center text-sm text-slate-600">
-                                  {clinic.problemCount}
-                                </td>
-                                <td className="p-4 text-center text-xs text-slate-500">
-                                  {formatDate(clinic.createdAt)}
-                                </td>
-                                <td className="p-4 text-center">
-                                  <div className="flex items-center justify-center gap-2">
-                                    <Link href={`/service/maker?id=${clinic.id}`} title="수정" className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg">
-                                      <PencilIcon className="w-4 h-4" />
-                                    </Link>
-                                    <button onClick={() => handleOpenPrint(clinic)} title="인쇄" className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg">
-                                      <PrinterIcon className="w-4 h-4" />
-                                    </button>
-                                    <button onClick={() => handleDeleteExam(clinic.id)} title="삭제" className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg">
-                                      <TrashIcon className="w-4 h-4" />
-                                    </button>
-                                  </div>
-                                </td>
-                              </tr>
-                            ))}
-                          </React.Fragment>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-              ) : (
-                // === [GRID VIEW] (Existing Logic with Enhancements) ===
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {processedExams.processedExams.map((exam) => (
-                    <DraggableExam key={exam.id} exam={exam}>
-                      <div className="group bg-white p-5 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md hover:border-blue-300 transition-all relative flex flex-col justify-between h-full">
-                        {/* Grid Card Content (Same as before but cleaner) */}
-                        <div>
-                          <div className="flex justify-between items-start mb-4">
-                            <div className={`p-2.5 rounded-xl transition-colors ${exam.isClinic ? 'bg-purple-50 text-purple-600' : 'bg-slate-100 text-slate-500'}`}>
-                              {exam.isClinic ? <SparklesIcon className="w-6 h-6"/> : <DocumentTextIcon className="w-6 h-6" />}
-                            </div>
-                            <div className="flex gap-1" onPointerDown={(e) => e.stopPropagation()}>
-                               {/* Single item move for grid */}
-                               <button onClick={() => setIsLegacyMoveMode(exam.id)} className="p-2 text-slate-400 hover:bg-slate-100 rounded-lg"><ArrowRightOnRectangleIcon className="w-5 h-5"/></button>
-                               <button onClick={() => handleOpenPrint(exam)} className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg"><PrinterIcon className="w-5 h-5"/></button>
-                               <button onClick={() => handleDeleteExam(exam.id)} className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg"><TrashIcon className="w-5 h-5"/></button>
-                            </div>
+                             </div>
+                             
+                             <div className="flex items-center gap-2 pt-4 border-t border-slate-100 mt-auto" onPointerDown={(e) => e.stopPropagation()}>
+                                <button onClick={() => handleGoToGrade(exam.id)} className="flex-1 py-2 text-xs font-bold text-green-700 bg-green-50 rounded-lg hover:bg-green-100 transition-colors flex items-center justify-center gap-1">
+                                  <ChartBarIcon className="w-3.5 h-3.5" /> 성적
+                                </button>
+                                <Link href={`/service/maker?id=${exam.id}`} className="flex-1 py-2 text-xs font-bold text-blue-700 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors flex items-center justify-center gap-1">
+                                  <PencilSquareIcon className="w-3.5 h-3.5" /> 수정
+                                </Link>
+                             </div>
                           </div>
-                          
-                          <div className="mb-4">
-                            <h3 className="text-lg font-bold text-slate-900 mb-1 line-clamp-1 group-hover:text-blue-600 transition-colors">{exam.title}</h3>
-                            <div className="flex items-center gap-3 text-xs text-slate-500">
-                              <span className="flex items-center gap-1"><CalendarDaysIcon className="w-3.5 h-3.5" /> {formatDate(exam.createdAt)}</span>
-                              <span className="w-1 h-1 bg-slate-300 rounded-full" />
-                              <span>{exam.problemCount}문항</span>
-                            </div>
-                          </div>
-                        </div>
-                        
-                        <div className="flex items-center gap-2 pt-4 border-t border-slate-100 mt-auto" onPointerDown={(e) => e.stopPropagation()}>
-                          <button onClick={() => handleGoToGrade(exam.id)} className="flex-1 py-2 text-xs font-bold text-green-700 bg-green-50 rounded-lg hover:bg-green-100 transition-colors flex items-center justify-center gap-1">
-                            <ChartBarIcon className="w-3.5 h-3.5" /> 성적
-                          </button>
-                          <Link href={`/service/maker?id=${exam.id}`} className="flex-1 py-2 text-xs font-bold text-blue-700 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors flex items-center justify-center gap-1">
-                            <PencilSquareIcon className="w-3.5 h-3.5" /> 수정
-                          </Link>
-                        </div>
-                      </div>
-                    </DraggableExam>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
+                       </DraggableExam>
+                    ))}
+                 </div>
+               )}
+             </div>
+           </div>
         )}
-
-        {/* --- Modals --- */}
         
-        {/* 1. 폴더 생성 모달 */}
+        {/* --- Modals --- */}
         {isCreateFolderOpen && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
             <div className="bg-white rounded-2xl shadow-xl p-6 w-full max-w-md">
               <h3 className="text-lg font-bold text-slate-900 mb-4">새 폴더 만들기</h3>
-              <input 
-                autoFocus
-                type="text" 
-                placeholder="폴더 이름" 
-                value={newFolderName}
-                onChange={(e) => setNewFolderName(e.target.value)}
-                className="w-full p-3 border border-slate-200 rounded-xl mb-4 focus:ring-2 focus:ring-blue-500 outline-none"
-                onKeyDown={(e) => e.key === 'Enter' && handleCreateFolder()}
-              />
+              <input autoFocus type="text" placeholder="폴더 이름" value={newFolderName} onChange={(e) => setNewFolderName(e.target.value)} className="w-full p-3 border border-slate-200 rounded-xl mb-4 focus:ring-2 focus:ring-blue-500 outline-none" onKeyDown={(e) => e.key === 'Enter' && handleCreateFolder()} />
               <div className="flex gap-2 justify-end">
                 <button onClick={() => setIsCreateFolderOpen(false)} className="px-4 py-2 text-slate-500 hover:bg-slate-100 rounded-lg text-sm font-bold">취소</button>
                 <button onClick={handleCreateFolder} className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-bold hover:bg-blue-700">생성</button>
@@ -863,19 +870,11 @@ export default function StoragePage() {
           </div>
         )}
 
-        {/* 2. 폴더 이름 변경 모달 */}
         {isRenameModalOpen && renameTarget && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
             <div className="bg-white rounded-2xl shadow-xl p-6 w-full max-w-sm">
               <h3 className="text-lg font-bold text-slate-900 mb-4">폴더 이름 변경</h3>
-              <input 
-                autoFocus
-                type="text" 
-                value={renameInput}
-                onChange={(e) => setRenameInput(e.target.value)}
-                className="w-full p-3 border border-slate-200 rounded-xl mb-4 focus:ring-2 focus:ring-blue-500 outline-none"
-                onKeyDown={(e) => e.key === 'Enter' && handleRenameFolder()}
-              />
+              <input autoFocus type="text" value={renameInput} onChange={(e) => setRenameInput(e.target.value)} className="w-full p-3 border border-slate-200 rounded-xl mb-4 focus:ring-2 focus:ring-blue-500 outline-none" onKeyDown={(e) => e.key === 'Enter' && handleRenameFolder()} />
               <div className="flex gap-2 justify-end">
                 <button onClick={() => setIsRenameModalOpen(false)} className="px-4 py-2 text-slate-500 hover:bg-slate-100 rounded-lg text-sm font-bold">취소</button>
                 <button onClick={handleRenameFolder} className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-bold hover:bg-blue-700">변경</button>
@@ -884,7 +883,6 @@ export default function StoragePage() {
           </div>
         )}
 
-        {/* 3. 폴더 이동 모달 (Bulk & Single) */}
         {(isMoveMode || isLegacyMoveMode) && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
             <div className="bg-white rounded-2xl shadow-xl p-6 w-full max-w-sm">
@@ -927,19 +925,14 @@ export default function StoragePage() {
           </div>
         )}
 
-        {/* 4. 인쇄 모달 */}
         {printTargetExam && (
-          <ExamPrintModal 
-            exam={printTargetExam} 
-            onClose={() => setPrintTargetExam(null)} 
-          />
+          <ExamPrintModal exam={printTargetExam} onClose={() => setPrintTargetExam(null)} />
         )}
 
       </div>
     </DndContext>
   );
 
-  // Helper for single drag logic
   async function updateExamLocation(examId: string, targetFolderId: string | null, successMsg: string) {
     setSavedExams(prev => prev.map(e => e.id === examId ? { ...e, folderId: targetFolderId || undefined } : e));
     toast.success(successMsg);

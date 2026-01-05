@@ -13,7 +13,7 @@ import {
 } from "lucide-react";
 import { 
   Squares2X2Icon, ViewColumnsIcon, QueueListIcon, ListBulletIcon,
-  MapIcon, Cog6ToothIcon, ChartBarIcon // [수정] 올바른 패키지에서 임포트
+  MapIcon, Cog6ToothIcon, ChartBarIcon, UserGroupIcon // [수정] 올바른 패키지에서 임포트
 } from "@heroicons/react/24/outline";
 import ExamPaperLayout from "@/components/ExamPaperLayout";
 import { ExamPaperProblem, PrintOptions } from "@/types/exam";
@@ -21,7 +21,7 @@ import { useAuth } from "@/context/AuthContext";
 import { DragDropContext, Droppable, Draggable, DropResult } from "@hello-pangea/dnd"; 
 import { toast } from "react-hot-toast"; 
 import { db, storage } from "@/lib/firebase"; 
-import { collection, addDoc, serverTimestamp, doc, getDoc, query, where, getDocs, limit } from "firebase/firestore"; 
+import { collection, addDoc, serverTimestamp, doc, getDoc, query, where, getDocs, limit, orderBy } from "firebase/firestore"; 
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { useRouter, useSearchParams } from "next/navigation"; 
 
@@ -31,6 +31,7 @@ import { TEMPLATES, ExamTemplateStyle, LayoutMode } from "@/types/examTemplates"
 import { getSecureImageSrc } from "@/lib/imageHelper";
 import ExamBuilderTour from "@/components/ExamBuilderTour";
 import ExamAnalysisPanel from "@/components/ExamAnalysisPanel";
+import { ClassData } from "@/types/academy";
 
 // 난이도 정렬 순서
 const DIFFICULTY_ORDER: Record<string, number> = {
@@ -99,6 +100,10 @@ function ExamBuilderContent() {
   const [isSaving, setIsSaving] = useState(false);
   const [isLoaded, setIsLoaded] = useState(false); 
   const [isMounted, setIsMounted] = useState(false);
+
+  // [신규] 반 선택 관련 상태
+  const [availableClasses, setAvailableClasses] = useState<ClassData[]>([]);
+  const [selectedClassId, setSelectedClassId] = useState<string>("");
 
   // 마운트 체크
   useEffect(() => {
@@ -448,6 +453,44 @@ function ExamBuilderContent() {
       setIsLoaded(true);
     }
   }, [examId, isMounted]);
+  
+  // [신규] 사용자가 접근 가능한 반 목록 불러오기
+  useEffect(() => {
+    if (!user || !userData) return;
+    
+    const fetchClasses = async () => {
+      try {
+        let q;
+        // 원장: 본인 소유의 모든 반
+        if (userData.role === 'director') {
+          q = query(
+            collection(db, "classes"),
+            where("ownerId", "==", user.uid),
+            orderBy("createdAt", "desc")
+          );
+        } 
+        // 강사: 본인이 담당하는 반
+        else {
+          q = query(
+            collection(db, "classes"),
+            where("instructorId", "==", user.uid),
+            orderBy("createdAt", "desc")
+          );
+        }
+        
+        const snap = await getDocs(q);
+        const list = snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as ClassData));
+        setAvailableClasses(list);
+        
+        // (수정 모드일 때) 불러온 시험지에 classId가 있다면 자동 선택
+        // -> loadExam useEffect에서 처리됨
+      } catch (e) {
+        console.error("반 목록 로딩 실패", e);
+      }
+    };
+    
+    fetchClasses();
+  }, [user, userData]);
 
   // DB 시험지 불러오기 (수정 모드)
   useEffect(() => {
@@ -475,6 +518,9 @@ function ExamBuilderContent() {
 
           if (data.isClinic) setIsClinicMode(true);
           else setIsClinicMode(false);
+
+          // [신규] 저장된 반 정보 복구
+          if (data.classId) setSelectedClassId(data.classId);
 
           setExamProblems(data.problems || []);
           isDbLoadedRef.current = true;
@@ -541,6 +587,11 @@ function ExamBuilderContent() {
   const handleSaveExam = async () => {
     if (!user) { toast.error("로그인 필요"); return; }
     if (examProblems.length === 0) { toast.error("문제가 없습니다."); return; }
+    // [신규] 반 선택 강제 (선택 사항으로 둘 수도 있지만, 데이터 구조상 필수로 권장)
+    if (!selectedClassId) {
+      toast.error("이 시험지를 사용할 반을 선택해주세요.");
+      return;
+    }
 
     setIsSaving(true);
     try {
@@ -557,8 +608,14 @@ function ExamBuilderContent() {
         customLabel: p.customLabel || null
       }));
 
+      // 선택된 반 이름 찾기
+      const targetClass = availableClasses.find(c => c.id === selectedClassId);
+      // [신규] 소유주 ID 결정 (원장이면 본인, 강사면 소속 원장)
+      const ownerId = userData.role === 'director' ? user.uid : (userData.ownerId || user.uid);
+
       await addDoc(collection(db, "saved_exams"), {
         userId: user.uid,
+        ownerId: ownerId,
         instructorName,
         title: examTitle,
         subTitle, 
@@ -572,6 +629,11 @@ function ExamBuilderContent() {
         layoutMode: layoutMode,
         questionPadding: printOptions.questionPadding,
         academyLogo: academyLogo, 
+
+        // [신규] 반 정보 저장
+        classId: selectedClassId,
+        className: targetClass?.name || "미지정 반",
+
         createdAt: serverTimestamp(),
         problemCount: examProblems.length,
         
@@ -806,6 +868,24 @@ function ExamBuilderContent() {
       <main className="flex-1 flex flex-col h-full bg-slate-100 relative min-w-0 transition-all duration-300">
         <header className="h-16 bg-white border-b border-gray-200 flex items-center justify-between px-6 flex-shrink-0 shadow-sm z-10">
           <div id="maker-exam-title" className="flex items-center gap-4 flex-1">
+            {/* [신규] 반 선택 드롭다운 (제목 입력 왼쪽에 배치) */}
+            <div className="relative">
+              <select
+                value={selectedClassId}
+                onChange={(e) => setSelectedClassId(e.target.value)}
+                className="pl-8 pr-8 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm font-bold text-slate-700 outline-none focus:ring-2 focus:ring-blue-500 appearance-none cursor-pointer hover:bg-slate-100 transition-colors"
+              >
+                <option value="">반 선택 (필수)</option>
+                {availableClasses.map(cls => (
+                  <option key={cls.id} value={cls.id}>{cls.name}</option>
+                ))}
+              </select>
+              <UserGroupIcon className="w-4 h-4 text-slate-500 absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+              <ChevronDown className="w-3 h-3 text-slate-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+            </div>
+
+            <div className="h-6 w-px bg-slate-200 mx-2"></div>
+
             <div className="flex flex-col gap-1 w-full max-w-lg">
                 <input type="text" value={examTitle} onChange={(e) => setExamTitle(e.target.value)} className="font-bold text-lg text-gray-800 outline-none bg-transparent placeholder-gray-300 w-full truncate" placeholder="시험지 제목 입력" />
                 <div className="flex gap-2">

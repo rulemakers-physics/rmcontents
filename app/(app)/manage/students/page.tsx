@@ -56,32 +56,58 @@ export default function StudentManagementPage() {
     setFormData(prev => ({ ...prev, [field]: formatted }));
   };
 
-  // 1. 초기 데이터 로드 (학생 + 반)
+  // 1. 초기 데이터 로드 (학생 + 반) - [핵심 로직 수정]
   const fetchData = async () => {
     if (!user || !userData) return;
     setIsLoading(true);
 
     try {
-      const targetOwnerId = userData.role === 'director' ? user.uid : userData.ownerId;
-      if (!targetOwnerId) return;
+      // (1) 반 목록 먼저 로드 (내 권한 파악용)
+      let qClasses;
+      if (userData.role === 'director') {
+        qClasses = query(collection(db, "classes"), where("ownerId", "==", user.uid), orderBy("createdAt", "desc"));
+      } else {
+        qClasses = query(collection(db, "classes"), where("instructorId", "==", user.uid), orderBy("createdAt", "desc"));
+      }
+      const snapClasses = await getDocs(qClasses);
+      const myClasses = snapClasses.docs.map(doc => ({ id: doc.id, ...doc.data() } as ClassData));
+      setClasses(myClasses);
+      
+      const myClassIds = myClasses.map(c => c.id);
 
-      // (1) 학생 목록
+      // (2) 학생 목록 로드 (권한별 분기)
+      const targetOwnerId = userData.role === 'director' ? user.uid : userData.ownerId;
+      
+      // 학원 소속이 아니면 로드 중단 (프리랜서 등 예외 케이스)
+      if (!targetOwnerId) { 
+          setIsLoading(false); 
+          return; 
+      }
+
+      // 기본적으로 해당 학원(ownerId)의 모든 학생을 가져옵니다.
+      // (Firestore 쿼리 제약상 '내가 담당하는 반에 속한 학생만' 쿼리하는 것은 복잡하므로,
+      //  일단 학원 학생 전체를 가져온 뒤 메모리에서 필터링하는 전략을 사용합니다.
+      //  학생 수가 수천 명이 넘지 않는 한 이 방식이 반응성이 좋습니다.)
       const qStudents = query(
         collection(db, "students"),
         where("ownerId", "==", targetOwnerId),
         orderBy("joinedAt", "desc")
       );
       const snapStudents = await getDocs(qStudents);
-      setStudents(snapStudents.docs.map(doc => ({ id: doc.id, ...doc.data() } as StudentData)));
+      const allStudents = snapStudents.docs.map(doc => ({ id: doc.id, ...doc.data() } as StudentData));
 
-      // (2) 반 목록 (배정용)
-      const qClasses = query(
-        collection(db, "classes"),
-        where("ownerId", "==", targetOwnerId),
-        orderBy("createdAt", "desc")
-      );
-      const snapClasses = await getDocs(qClasses);
-      setClasses(snapClasses.docs.map(doc => ({ id: doc.id, ...doc.data() } as ClassData)));
+      // [필터링 로직]
+      if (userData.role === 'director' || userData.permissions?.studentManagement === 'manage_all') {
+        // 원장 혹은 '전체 관리' 권한 강사는 모든 학생 표시
+        setStudents(allStudents);
+      } else {
+        // '배정된 학생만' 권한 강사는 본인 반에 속한 학생만 필터링
+        // enrolledClassIds 배열에 myClassIds 중 하나라도 포함되어 있는지 확인
+        const filtered = allStudents.filter(student => 
+          student.enrolledClassIds && student.enrolledClassIds.some(cid => myClassIds.includes(cid))
+        );
+        setStudents(filtered);
+      }
 
     } catch (e) {
       console.error(e);
@@ -223,6 +249,10 @@ export default function StudentManagementPage() {
     s.name.includes(searchTerm) || (s.school && s.school.includes(searchTerm))
   );
 
+  // [수정] 강사 권한에 따른 UI 제어 (신규 등록 버튼 등)
+  // 'assigned_only' 권한인 경우 신규 등록이나 삭제를 막는 것이 일반적입니다.
+  const canManageAll = userData?.role === 'director' || userData?.permissions?.studentManagement === 'manage_all';
+
   if (loading) return <div className="p-8 text-center">로딩 중...</div>;
 
   return (
@@ -236,7 +266,11 @@ export default function StudentManagementPage() {
               <UserGroupIcon className="w-8 h-8 text-blue-600" />
               원생 관리
             </h1>
-            <p className="text-slate-500 mt-1">학원 전체 원생 명부를 관리하고 반을 배정합니다.</p>
+            <p className="text-slate-500 mt-1">
+              {canManageAll 
+                ? "학원 전체 원생 명부를 관리하고 반을 배정합니다." 
+                : "담당하는 반의 학생 목록을 조회합니다."}
+            </p>
           </div>
           <div className="flex gap-3">
              <div className="relative">
@@ -247,9 +281,13 @@ export default function StudentManagementPage() {
                 />
                 <MagnifyingGlassIcon className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
              </div>
-             <button onClick={openCreateModal} className="flex items-center gap-2 px-5 py-2.5 bg-slate-900 text-white rounded-xl font-bold hover:bg-slate-800 shadow-lg active:scale-95">
-               <PlusIcon className="w-5 h-5" /> 신규 원생 등록
-             </button>
+             
+             {/* [수정] 권한이 있는 경우에만 등록 버튼 표시 */}
+             {canManageAll && (
+               <button onClick={openCreateModal} className="flex items-center gap-2 px-5 py-2.5 bg-slate-900 text-white rounded-xl font-bold hover:bg-slate-800 shadow-lg active:scale-95">
+                 <PlusIcon className="w-5 h-5" /> 신규 원생 등록
+               </button>
+             )}
           </div>
         </div>
 
@@ -300,12 +338,17 @@ export default function StudentManagementPage() {
                       <button onClick={() => openAssignModal(student)} className="flex items-center gap-1 px-3 py-1.5 text-xs font-bold bg-indigo-50 text-indigo-600 rounded-lg hover:bg-indigo-100">
                         <ArrowRightOnRectangleIcon className="w-3.5 h-3.5" /> 반 배정
                       </button>
-                      <button onClick={() => openEditModal(student)} className="p-1.5 text-slate-400 hover:text-blue-600 bg-slate-50 rounded-lg">
-                        <PencilSquareIcon className="w-4 h-4" />
-                      </button>
-                      <button onClick={() => handleDeleteStudent(student.id)} className="p-1.5 text-slate-400 hover:text-red-600 bg-slate-50 rounded-lg">
-                        <TrashIcon className="w-4 h-4" />
-                      </button>
+                      {/* 수정/삭제는 권한 있는 사람만 */}
+                      {canManageAll && (
+                        <>
+                          <button onClick={() => openEditModal(student)} className="p-1.5 text-slate-400 hover:text-blue-600 bg-slate-50 rounded-lg">
+                            <PencilSquareIcon className="w-4 h-4" />
+                          </button>
+                          <button onClick={() => handleDeleteStudent(student.id)} className="p-1.5 text-slate-400 hover:text-red-600 bg-slate-50 rounded-lg">
+                            <TrashIcon className="w-4 h-4" />
+                          </button>
+                        </>
+                      )}
                     </div>
                   </td>
                 </tr>
