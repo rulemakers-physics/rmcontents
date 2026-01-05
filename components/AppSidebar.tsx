@@ -64,7 +64,8 @@ const MENU_GROUPS = [
       iconColor: "text-teal-500",
     },
     items: [
-      { name: "반/학생 관리", href: "/manage/classes", icon: UserGroupIcon },
+      { name: "반 관리", href: "/manage/classes", icon: PresentationChartLineIcon }, // 이름 변경
+      { name: "원생 관리", href: "/manage/students", icon: UserGroupIcon }, // [신규] 메뉴 신설
       { name: "성적 리포트", href: "/manage/reports", icon: ChartBarIcon },
       { name: "강사 관리", href: "/manage/instructors", icon: IdentificationIcon, role: "director" },
     ]
@@ -140,6 +141,13 @@ export default function AppSidebar({ isCollapsed, toggleSidebar }: AppSidebarPro
                 // 단, 'director' 권한은 'admin'도 볼 수 있게 하거나, 로직을 유연하게 조정
                 // 여기서는 간단히 'director' 전용 메뉴는 강사(instructor)에게 숨기는 로직으로 처리
                 if (item.role === "director" && userData?.role === "instructor") return null;
+                // [신규] '원생 관리' 메뉴 권한 체크
+                if (item.name === "원생 관리" && userData?.role === 'instructor') {
+                  // 강사인데 '전체 학생 관리' 권한이 없으면 메뉴 숨김
+                  if (userData.permissions?.studentManagement !== 'manage_all') {
+                    return null;
+                  }
+                }
 
                 const isActive = pathname.startsWith(item.href);
                 // 테마 적용 로직

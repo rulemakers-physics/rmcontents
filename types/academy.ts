@@ -12,15 +12,19 @@ export interface ClassData {
   createdAt: Timestamp;
 }
 
+// [핵심 변경] 학생은 특정 반(classId) 하나에만 속하지 않고, 여러 반의 ID 배열을 가집니다.
 export interface StudentData {
   id: string;
-  instructorId: string;
-  classId: string;     // 소속 반 ID
+  ownerId: string;       // [신규] 학생 데이터의 소유자 (원장)
   name: string;
-  school?: string;     // 학교
+  school?: string;
   phone?: string;
-  parentPhone?: string;     
-  joinedAt: Timestamp;
+  parentPhone?: string;
+  
+  // [신규] 수강 중인 반 ID 목록 (1:N 관계)
+  enrolledClassIds: string[]; 
+  
+  joinedAt: any; // Timestamp
 }
 
 export interface CounselingLog {

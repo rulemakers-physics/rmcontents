@@ -6,17 +6,18 @@ import { useEffect, useState } from "react";
 import { db } from "@/lib/firebase";
 import { 
   collection, query, where, orderBy, getDocs, 
-  addDoc, deleteDoc, doc, serverTimestamp, updateDoc, increment 
+  doc, updateDoc, increment, arrayRemove 
 } from "firebase/firestore";
 import { 
-  XMarkIcon, UserPlusIcon, TrashIcon, UserIcon, PhoneIcon,
-  CalendarDaysIcon, ClipboardDocumentListIcon // [신규] 탭 아이콘 추가
+  XMarkIcon, TrashIcon, UserIcon, PhoneIcon,
+  CalendarDaysIcon, ClipboardDocumentListIcon,
+  UserGroupIcon
 } from "@heroicons/react/24/outline";
 import { toast } from "react-hot-toast";
 import { ClassData, StudentData } from "@/types/academy";
 import StudentDetailModal from "./StudentDetailModal";
-import ClassAttendance from "./ClassAttendance"; // [신규]
-import ClassAssignments from "./ClassAssignments"; // [신규]
+import ClassAttendance from "./ClassAttendance"; 
+import ClassAssignments from "./ClassAssignments"; 
 
 interface Props {
   classData: ClassData;
@@ -24,106 +25,55 @@ interface Props {
 }
 
 export default function ClassDetailModal({ classData, onClose }: Props) {
+  // 상태 관리
   const [students, setStudents] = useState<StudentData[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  
-  // [신규] 학생 상세 모달 상태
   const [selectedStudent, setSelectedStudent] = useState<StudentData | null>(null);
-
-  // [신규] 탭 상태 관리 ('students' | 'attendance' | 'assignments')
   const [activeTab, setActiveTab] = useState<'students' | 'attendance' | 'assignments'>('students');
 
-  // 학생 추가 폼 상태
-  const [newName, setNewName] = useState("");
-  const [newSchool, setNewSchool] = useState("");
-  const [newPhone, setNewPhone] = useState("");
-  const [newParentPhone, setNewParentPhone] = useState("");
-
-  // 학생 목록 불러오기
-  const fetchStudents = async () => {
+  // 반에 배정된 학생 목록 불러오기
+  const fetchEnrolledStudents = async () => {
     setIsLoading(true);
     try {
+      // enrolledClassIds 배열에 현재 classId가 포함된 학생만 조회
       const q = query(
         collection(db, "students"),
-        where("classId", "==", classData.id),
+        where("enrolledClassIds", "array-contains", classData.id),
         orderBy("name")
       );
       const snap = await getDocs(q);
       setStudents(snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as StudentData)));
     } catch (e) {
       console.error(e);
+      toast.error("학생 목록을 불러오지 못했습니다.");
     }
     setIsLoading(false);
   };
 
   useEffect(() => {
-    fetchStudents();
+    fetchEnrolledStudents();
   }, [classData]);
 
-  // [신규] 전화번호 자동 하이픈 포맷팅 함수 (StudentDetailModal과 동일)
-  const formatPhoneNumber = (value: string) => {
-    const numbers = value.replace(/[^0-9]/g, ""); // 숫자만 남김
-    if (numbers.length <= 3) return numbers;
-    if (numbers.length <= 7) return `${numbers.slice(0, 3)}-${numbers.slice(3)}`;
-    return `${numbers.slice(0, 3)}-${numbers.slice(3, 7)}-${numbers.slice(7, 11)}`;
-  };
-
-  // [신규] 입력 핸들러
-  const handlePhoneInput = (e: React.ChangeEvent<HTMLInputElement>, setter: (val: string) => void) => {
-    const formatted = formatPhoneNumber(e.target.value);
-    setter(formatted);
-  };
-
-  // 학생 등록 핸들러
-  const handleAddStudent = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newName) return toast.error("이름을 입력해주세요.");
-
+  // 반에서 제외 (Unassign) - 데이터 삭제가 아님
+  const handleRemoveStudent = async (e: React.MouseEvent, studentId: string) => {
+    e.stopPropagation(); 
+    if (!confirm("이 반에서 학생을 제외하시겠습니까? (원생 명부에는 유지됩니다)")) return;
+    
     try {
-      await addDoc(collection(db, "students"), {
-        classId: classData.id,
-        instructorId: classData.instructorId,
-        name: newName,
-        school: newSchool,
-        phone: newPhone,
-        parentPhone: newParentPhone,
-        joinedAt: serverTimestamp(),
+      // 1. Student 문서 업데이트 (반 ID 제거)
+      await updateDoc(doc(db, "students", studentId), {
+        enrolledClassIds: arrayRemove(classData.id)
       });
-
-      const classRef = doc(db, "classes", classData.id);
-      await updateDoc(classRef, {
-        studentCount: increment(1)
-      });
-
-      toast.success("학생이 등록되었습니다.");
       
-      setNewName("");
-      setNewSchool("");
-      setNewPhone("");
-      setNewParentPhone(""); 
-      
-      fetchStudents();
-    } catch (e) {
-      toast.error("등록 실패");
-    }
-  };
-
-  // 학생 삭제 핸들러
-  const handleDeleteStudent = async (e: React.MouseEvent, studentId: string) => {
-    e.stopPropagation(); // 카드 클릭 전파 방지
-    if (!confirm("학생을 목록에서 삭제하시겠습니까?")) return;
-    try {
-      await deleteDoc(doc(db, "students", studentId));
-      
-      const classRef = doc(db, "classes", classData.id);
-      await updateDoc(classRef, {
+      // 2. Class 문서 업데이트 (학생 수 감소)
+      await updateDoc(doc(db, "classes", classData.id), {
         studentCount: increment(-1)
       });
 
-      toast.success("삭제되었습니다.");
-      fetchStudents();
+      toast.success("반에서 제외되었습니다.");
+      fetchEnrolledStudents(); // 목록 갱신
     } catch (e) {
-      toast.error("삭제 실패");
+      toast.error("제외 실패");
     }
   };
 
@@ -149,7 +99,7 @@ export default function ClassDetailModal({ classData, onClose }: Props) {
               onClick={() => setActiveTab('students')}
               className={`flex-1 py-4 text-sm font-bold flex items-center justify-center gap-2 border-b-2 transition-colors ${activeTab === 'students' ? 'border-blue-600 text-blue-600 bg-blue-50/50' : 'border-transparent text-slate-500 hover:text-slate-700'}`}
             >
-              <UserIcon className="w-4 h-4" /> 학생 관리
+              <UserIcon className="w-4 h-4" /> 수강생 목록
             </button>
             <button 
               onClick={() => setActiveTab('attendance')}
@@ -168,54 +118,24 @@ export default function ClassDetailModal({ classData, onClose }: Props) {
           {/* 탭 컨텐츠 영역 */}
           <div className="flex-1 overflow-y-auto p-6 bg-white">
             
-            {/* 1. 학생 관리 탭 */}
+            {/* 1. 수강생 목록 탭 (검색/추가 기능 제거됨) */}
             {activeTab === 'students' && (
               <>
-                {/* 학생 추가 폼 */}
-                <form onSubmit={handleAddStudent} className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm mb-6">
-                  <h4 className="text-xs font-bold text-slate-500 mb-3 uppercase tracking-wider">신규 학생 등록</h4>
-                  <div className="grid grid-cols-1 md:grid-cols-5 gap-3 items-end">
-                    <div className="md:col-span-1 space-y-1">
-                      <input type="text" placeholder="이름 (필수)" value={newName} onChange={(e) => setNewName(e.target.value)} className="w-full p-2.5 border border-slate-200 rounded-lg text-sm focus:border-blue-500 outline-none" />
-                    </div>
-                    <div className="md:col-span-1 space-y-1">
-                      <input type="text" placeholder="학교" value={newSchool} onChange={(e) => setNewSchool(e.target.value)} className="w-full p-2.5 border border-slate-200 rounded-lg text-sm focus:border-blue-500 outline-none" />
-                    </div>
-                    <div className="md:col-span-1 space-y-1">
-                      {/* [수정] 학생 연락처 입력 필드 */}
-                      <input 
-                        type="text" 
-                        placeholder="학생 연락처" 
-                        value={newPhone} 
-                        onChange={(e) => handlePhoneInput(e, setNewPhone)} // 포맷팅 핸들러 적용
-                        maxLength={13} // 길이 제한
-                        className="w-full p-2.5 border border-slate-200 rounded-lg text-sm focus:border-blue-500 outline-none" 
-                      />
-                    </div>
-                    <div className="md:col-span-1 space-y-1">
-                      {/* [수정] 학부모 연락처 입력 필드 */}
-                      <input 
-                        type="text" 
-                        placeholder="학부모 연락처" 
-                        value={newParentPhone} 
-                        onChange={(e) => handlePhoneInput(e, setNewParentPhone)} // 포맷팅 핸들러 적용
-                        maxLength={13} // 길이 제한
-                        className="w-full p-2.5 border border-slate-200 rounded-lg text-sm focus:border-blue-500 outline-none bg-yellow-50/50 focus:bg-white" 
-                      />
-                    </div>
-                    <div className="md:col-span-1">
-                      <button type="submit" className="w-full h-[42px] bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-bold text-sm flex items-center justify-center gap-1 shadow-sm active:scale-95 transition-all">
-                        <UserPlusIcon className="w-4 h-4" /> 등록
-                      </button>
-                    </div>
-                  </div>
-                </form>
+                <div className="flex justify-between items-center mb-4">
+                  <h4 className="text-sm font-bold text-slate-800 flex items-center gap-2">
+                    <UserGroupIcon className="w-5 h-5 text-slate-500" />
+                    수강생 목록 ({students.length}명)
+                  </h4>
+                  {/* 안내 문구 추가 */}
+                  <span className="text-xs text-slate-400 bg-slate-50 px-2 py-1 rounded">
+                    * 학생 추가/배정은 '원생 관리' 메뉴에서 가능합니다.
+                  </span>
+                </div>
 
-                {/* 학생 목록 */}
                 {students.length === 0 && !isLoading ? (
-                  <div className="text-center py-12 text-slate-400 bg-white rounded-xl border border-dashed border-slate-300">
+                  <div className="text-center py-20 text-slate-400 bg-slate-50 rounded-xl border border-dashed border-slate-200">
                     <UserIcon className="w-12 h-12 mx-auto mb-2 opacity-20" />
-                    <p>등록된 학생이 없습니다.</p>
+                    <p>이 반에 배정된 학생이 없습니다.</p>
                   </div>
                 ) : (
                   <div className="space-y-3">
@@ -242,23 +162,15 @@ export default function ClassDetailModal({ classData, onClose }: Props) {
                               <div className="flex items-center gap-1">
                                 <PhoneIcon className="w-3 h-3" /> {student.phone || "-"}
                               </div>
-                              {student.parentPhone && (
-                                <div className="flex items-center gap-1 text-orange-400">
-                                  <span className="font-bold bg-orange-50 px-1 rounded text-[10px]">P</span> {student.parentPhone}
-                                </div>
-                              )}
                             </div>
                           </div>
                         </div>
 
                         <div className="flex items-center gap-2 pl-14 sm:pl-0">
-                          <button className="px-3 py-1.5 text-xs font-bold text-blue-600 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors">
-                            상담/성적 관리
-                          </button>
                           <button 
-                            onClick={(e) => handleDeleteStudent(e, student.id)}
+                            onClick={(e) => handleRemoveStudent(e, student.id)}
                             className="p-2 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all"
-                            title="삭제"
+                            title="반에서 제외"
                           >
                             <TrashIcon className="w-4 h-4" />
                           </button>
@@ -289,7 +201,7 @@ export default function ClassDetailModal({ classData, onClose }: Props) {
         <StudentDetailModal 
           student={selectedStudent} 
           onClose={() => setSelectedStudent(null)}
-          onUpdate={fetchStudents}
+          onUpdate={fetchEnrolledStudents}
         />
       )}
     </>

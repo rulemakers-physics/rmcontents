@@ -63,4 +63,10 @@ export interface UserData {
 
   businessInfo?: BusinessInfo; 
   createdAt?: Timestamp | Date | any; 
+  // [신규] 강사 권한 설정 (원장/관리자가 부여)
+  permissions?: {
+    studentManagement: 'manage_all' | 'assigned_only'; 
+    // manage_all: 학원 전체 학생 명부 접근 및 본인 반 배정 가능
+    // assigned_only: 본인 반에 배정된 학생만 조회/관리 가능 (배정은 원장만)
+  };
 }

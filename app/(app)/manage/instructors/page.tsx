@@ -103,6 +103,19 @@ export default function InstructorManagePage() {
     }
   };
 
+  // [추가] 권한 변경 핸들러
+  const handlePermissionChange = async (instId: string, type: 'manage_all' | 'assigned_only') => {
+    try {
+      await updateDoc(doc(db, "users", instId), {
+        "permissions.studentManagement": type
+      });
+      toast.success("권한이 변경되었습니다.");
+      fetchInstructors(); // 목록 새로고침
+    } catch(e) {
+      toast.error("권한 변경 실패");
+    }
+  };
+
   return (
     <div className="p-8 max-w-5xl mx-auto min-h-full">
       <div className="flex justify-between items-center mb-8">
@@ -165,6 +178,18 @@ export default function InstructorManagePage() {
             <button onClick={() => handleDelete(inst.uid)} className="text-slate-300 hover:text-red-500 p-2">
               <TrashIcon className="w-5 h-5" />
             </button>
+          {/* [신규] 권한 설정 토글/셀렉트 */}
+            <div className="mt-3 pt-3 border-t border-slate-100">
+              <label className="text-xs font-bold text-slate-500 block mb-1">학생 관리 권한</label>
+              <select 
+                value={inst.permissions?.studentManagement || 'assigned_only'}
+                onChange={(e) => handlePermissionChange(inst.uid, e.target.value as any)}
+                className="text-xs border border-slate-200 rounded p-1 w-full"
+              >
+                <option value="assigned_only">배정된 학생만 관리 (기본)</option>
+                <option value="manage_all">전체 학생 명부 접근</option>
+              </select>
+            </div>
           </div>
         ))}
         {instructors.length === 0 && (
