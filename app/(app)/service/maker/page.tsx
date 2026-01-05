@@ -263,7 +263,7 @@ function ExamBuilderContent() {
     setExamProblems([]); 
   };
 
-  // [수정] 문제 자동 배분 로직 (라운드 로빈 방식 적용)
+  // [수정된 로직] 사용자 제안 반영: 낮은 난이도부터 단원별로 돌아가며 채우기
   useEffect(() => {
     if (!isLoaded || isFetching) return;
     if (isClinicMode) return;
@@ -271,70 +271,72 @@ function ExamBuilderContent() {
     if (isDraftLoadedRef.current) { isDraftLoadedRef.current = false; return; }
 
     if (fetchedProblems.length > 0) {
-      let finalSelectedProblems: DBProblem[] = [];
-
-      // 난이도별로 루프 실행
-      Object.entries(difficultyCounts).forEach(([diff, targetCount]) => {
-        if (targetCount <= 0) return;
-
-        // 1. 해당 난이도이면서 & 선택된 소단원에 해당하는 문제들만 필터링
-        const pool = fetchedProblems.filter(p => 
-          p.difficulty === diff && selectedMinorTopics.includes(p.minorTopic)
-        );
-
-        // 2. 소단원별로 문제 그룹화
-        const problemsByTopic: Record<string, DBProblem[]> = {};
-        selectedMinorTopics.forEach(t => problemsByTopic[t] = []);
-        pool.forEach(p => {
-          if (problemsByTopic[p.minorTopic]) {
-            problemsByTopic[p.minorTopic].push(p);
-          }
-        });
-
-        // 3. 실제로 뽑을 수 있는 문제가 있는 소단원만 추리기
-        let validTopics = Object.keys(problemsByTopic).filter(t => problemsByTopic[t].length > 0);
-        
-        // [중요] 시작 소단원을 랜덤하게 섞어서, 매번 앞쪽 소단원만 먼저 뽑히는 편향 방지
-        validTopics.sort(() => Math.random() - 0.5);
-
-        const selectedForThisDiff: DBProblem[] = [];
-
-        // 4. 라운드 로빈(Round Robin) 방식으로 하나씩 순회하며 추출
-        // 목표 개수를 채우거나, 더 이상 뽑을 문제가 없을 때까지 반복
-        while (selectedForThisDiff.length < targetCount && validTopics.length > 0) {
-          const topicsToRemove: string[] = [];
-
-          for (const topic of validTopics) {
-            // 목표치 도달 시 즉시 종료
-            if (selectedForThisDiff.length >= targetCount) break;
-
-            const topicPool = problemsByTopic[topic];
-            
-            // 해당 소단원 풀에서 랜덤하게 1개 추출
-            const randIdx = Math.floor(Math.random() * topicPool.length);
-            const problem = topicPool[randIdx];
-
-            selectedForThisDiff.push(problem);
-
-            // 추출된 문제는 풀에서 제거 (중복 방지)
-            topicPool.splice(randIdx, 1);
-
-            // 해당 소단원의 문제가 바닥나면 제거 목록에 추가
-            if (topicPool.length === 0) {
-              topicsToRemove.push(topic);
-            }
-          }
-
-          // 문제가 바닥난 소단원은 다음 루프부터 제외
-          if (topicsToRemove.length > 0) {
-            validTopics = validTopics.filter(t => !topicsToRemove.includes(t));
-          }
-        }
-
-        finalSelectedProblems.push(...selectedForThisDiff);
+      // 1. 문제 풀(Pool) 구성: Difficulty -> MinorTopic -> DBProblem[]
+      const pool: Record<string, Record<string, DBProblem[]>> = {};
+      
+      fetchedProblems.forEach(p => {
+        if (!pool[p.difficulty]) pool[p.difficulty] = {};
+        if (!pool[p.difficulty][p.minorTopic]) pool[p.difficulty][p.minorTopic] = [];
+        pool[p.difficulty][p.minorTopic].push(p);
       });
 
-      // 5. 정렬 (기존 로직 유지: 소단원 순서 -> 난이도 순서)
+      // 2. 단원별 누적 선택 횟수 카운터 (Global Tracker)
+      const topicUsageCount: Record<string, number> = {};
+      // 초기값에 약간의 랜덤성을 주어(0 또는 -0.5 등) 매번 똑같은 단원 순서로 뽑히는 것 방지 (선택 사항)
+      selectedMinorTopics.forEach(topic => {
+        topicUsageCount[topic] = 0;
+      });
+
+      const finalSelectedProblems: DBProblem[] = [];
+
+      // 3. [핵심] 난이도 오름차순 순회 (기본 -> 킬러)
+      // 사용자의 의도대로 낮은 난이도부터 채워나갑니다.
+      const difficultySequence: Difficulty[] = ['기본', '하', '중', '상', '킬러'];
+
+      difficultySequence.forEach((diff) => {
+        const targetCount = difficultyCounts[diff] || 0;
+        if (targetCount <= 0) return;
+
+        let needed = targetCount;
+        
+        // 해당 난이도의 목표 개수를 채울 때까지 반복
+        while (needed > 0) {
+          // A. 현재 난이도의 문제를 '하나라도 가지고 있는' 소단원만 후보로 선정
+          const availableTopics = selectedMinorTopics.filter(topic => 
+            pool[diff] && pool[diff][topic] && pool[diff][topic].length > 0
+          );
+
+          // 더 이상 뽑을 수 있는 소단원이 없으면 중단 (문제 부족 시 무한루프 방지)
+          if (availableTopics.length === 0) break;
+
+          // B. [우선순위 결정]
+          // 1순위: 지금까지 가장 적게 뽑힌 단원 (topicUsageCount 오름차순)
+          // 2순위: 동률일 경우 랜덤 (매번 같은 단원만 먼저 뽑히는 쏠림 방지)
+          availableTopics.sort((a, b) => {
+            const countDiff = topicUsageCount[a] - topicUsageCount[b];
+            if (countDiff !== 0) return countDiff;
+            return Math.random() - 0.5;
+          });
+
+          // C. 최우선 단원 선정
+          const targetTopic = availableTopics[0];
+          const topicPool = pool[diff][targetTopic];
+          
+          // D. 해당 단원 풀에서 랜덤 1개 추출
+          const randIdx = Math.floor(Math.random() * topicPool.length);
+          const selectedProblem = topicPool[randIdx];
+
+          // E. 결과 저장 및 상태 업데이트
+          finalSelectedProblems.push(selectedProblem);
+          
+          topicUsageCount[targetTopic]++; // 이 단원은 이제 1번 더 뽑힌 상태가 됨
+          topicPool.splice(randIdx, 1);   // 중복 방지를 위해 풀에서 제거
+          
+          needed--;
+        }
+      });
+
+      // 4. 정렬 (소단원 순서 -> 난이도 순서)
       const allMinorTopicsOrdered = SCIENCE_UNITS.flatMap(s => s.majorTopics.flatMap(m => m.minorTopics));
       
       finalSelectedProblems.sort((a, b) => {
@@ -347,7 +349,7 @@ function ExamBuilderContent() {
          return diffA - diffB;
       });
 
-      // 6. 데이터 매핑 (기존 로직 유지)
+      // 5. 화면 표시용 데이터 매핑
       const formatted: ExamPaperProblem[] = finalSelectedProblems.map((p, idx) => ({
         id: p.id,
         number: idx + 1,
@@ -370,7 +372,15 @@ function ExamBuilderContent() {
     else if (fetchedProblems.length === 0 && selectedMajorTopics.length > 0) {
       setExamProblems([]);
     }
-  }, [fetchedProblems, difficultyCounts, isLoaded, isFetching, isClinicMode, selectedMajorTopics.length, selectedMinorTopics]);
+  }, [
+    fetchedProblems, 
+    difficultyCounts, 
+    isLoaded, 
+    isFetching, 
+    isClinicMode, 
+    selectedMajorTopics.length, 
+    JSON.stringify(selectedMinorTopics) 
+  ]);
 
   // 문제 교체 핸들러
   const handleReplaceProblem = useCallback(async (problemId: string, currentMajor: string, currentDifficulty: string) => {
@@ -611,7 +621,11 @@ function ExamBuilderContent() {
 
   // 저장하기
   const handleSaveExam = async () => {
-    if (!user) { toast.error("로그인 필요"); return; }
+    // [수정] user와 userData가 모두 있는지 확인합니다.
+    if (!user || !userData) { 
+      toast.error("로그인 정보가 없습니다."); 
+      return; 
+    }
     if (examProblems.length === 0) { toast.error("문제가 없습니다."); return; }
     // [신규] 반 선택 강제 (선택 사항으로 둘 수도 있지만, 데이터 구조상 필수로 권장)
     if (!selectedClassId) {

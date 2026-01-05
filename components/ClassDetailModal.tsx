@@ -202,6 +202,7 @@ export default function ClassDetailModal({ classData, onClose }: Props) {
       {selectedStudent && (
         <StudentDetailModal 
           student={selectedStudent} 
+          classId={classData.id}
           onClose={() => setSelectedStudent(null)}
           onUpdate={fetchEnrolledStudents}
         />

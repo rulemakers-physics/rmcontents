@@ -291,7 +291,6 @@ export default function ClassManagePage() {
 
       {isDetailOpen && selectedClass && (
         <ClassDetailModal 
-          isOpen={isDetailOpen}
           onClose={() => setIsDetailOpen(false)}
           classData={selectedClass}
         />

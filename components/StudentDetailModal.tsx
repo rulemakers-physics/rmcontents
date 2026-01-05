@@ -29,11 +29,12 @@ import { useRouter } from "next/navigation";
 
 interface Props {
   student: StudentData;
+  classId: string;
   onClose: () => void;
   onUpdate?: () => void; // [수정] 부모 컴포넌트 목록 새로고침을 위한 콜백 추가
 }
 
-export default function StudentDetailModal({ student, onClose, onUpdate }: Props) {
+export default function StudentDetailModal({ student, classId, onClose, onUpdate }: Props) {
   const { user } = useAuth();
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<'info' | 'counseling' | 'analysis'>('counseling');
@@ -115,11 +116,11 @@ export default function StudentDetailModal({ student, onClose, onUpdate }: Props
   // 2. 성적 기록 불러오기 (해당 반의 모든 시험 결과 중 이 학생의 점수만 필터링)
   useEffect(() => {
     const fetchExams = async () => {
-      if (!student.classId) return;
+      if (!classId) return;
       try {
         const q = query(
           collection(db, "exam_results"),
-          where("classId", "==", student.classId),
+          where("classId", "==", classId),
           orderBy("date", "asc")
         );
         const snapshot = await getDocs(q);
@@ -148,16 +149,16 @@ export default function StudentDetailModal({ student, onClose, onUpdate }: Props
     if (activeTab === 'analysis') {
       fetchExams();
     }
-  }, [student.id, student.classId, activeTab]);
+  }, [student.id, classId, activeTab]);
 
   // 상담 등록 핸들러
   const handleAddLog = async () => { /* ... */ };
   const handleDeleteLog = async (logId: string) => { /* ... */ };
   
   const runAnalysis = async () => {
-    if (!student.classId) return;
+    if (!classId) return;
     setIsAnalyzing(true);
-    const data = await analyzeCumulativeWeakness(student.id, student.classId);
+    const data = await analyzeCumulativeWeakness(student.id, classId);
     setAiAnalysisData(data);
     setIsAnalyzing(false);
     if (data.length === 0) toast("분석할 충분한 누적 데이터가 없습니다.");

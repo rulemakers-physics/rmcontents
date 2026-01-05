@@ -10,6 +10,8 @@ export interface ClassData {
   schedule?: string;   // 수업 시간 (예: 월/수 7시)
   studentCount: number; // 학생 수 (집계용)
   createdAt: Timestamp;
+  createdBy?: string;
+  createdByName?: string;
 }
 
 // [핵심 변경] 학생은 특정 반(classId) 하나에만 속하지 않고, 여러 반의 ID 배열을 가집니다.

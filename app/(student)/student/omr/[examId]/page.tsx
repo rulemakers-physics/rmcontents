@@ -100,7 +100,6 @@ export default function OMRPage() {
       let score = 0;
       let correctCount = 0;
       const results: Record<number, boolean> = {};
-      // [수정] 타입 변경
       const wrongProblems: WrongProblemInfo[] = [];
 
       examData.problems.forEach((p) => {
@@ -112,20 +111,21 @@ export default function OMRPage() {
         if (isCorrect) {
           correctCount++;
         } else {
-          // [수정] ID와 번호 저장
           wrongProblems.push({ id: p.id, number: p.number });
         }
       });
 
       score = Math.round((correctCount / examData.problems.length) * 100);
 
-      // exam_results 업데이트 (트랜잭션 대신 간단한 조회-업데이트 사용)
-      // 1. 해당 시험지, 해당 반의 결과 문서 찾기
+      // [수정] exam_results 업데이트 시 examData의 classId 사용
+      // 시험지 데이터(SavedExam)에 classId가 저장되어 있다고 가정합니다.
+      const targetClassId = examData.classId || "unknown_class";
+
       const resultsRef = collection(db, "exam_results");
       const q = query(
         resultsRef,
         where("examId", "==", examId),
-        where("classId", "==", studentInfo.classId)
+        where("classId", "==", targetClassId) // [수정] studentInfo.classId -> targetClassId
       );
       const snap = await getDocs(q);
 
@@ -160,12 +160,10 @@ export default function OMRPage() {
         });
       } else {
         // 결과 문서가 없으면 생성 (최초 제출)
-        // 반 정보(className)를 가져오기 위해 class doc 조회 필요할 수 있음
-        // 여기서는 편의상 studentInfo의 정보를 활용하거나, examData의 정보 활용
         await setDoc(doc(resultsRef), {
           examId: examId,
-          classId: studentInfo.classId,
-          className: "자동 생성된 리포트", // 추후 class DB에서 가져오도록 보완 가능
+          classId: targetClassId, // [수정] studentInfo.classId -> targetClassId
+          className: examData.className || "미지정 반", // [수정] 시험지에 저장된 반 이름 사용
           examTitle: examData.title,
           date: serverTimestamp(),
           scores: [newScoreData],
