@@ -18,10 +18,19 @@ export default function TermsPage() {
           </Link>
         </div>
 
-        <article className="prose prose-lg max-w-none prose-headings:font-bold prose-h1:text-3xl prose-h2:text-xl prose-h2:mt-8 prose-p:text-gray-600 prose-li:text-gray-600">
+        <article className="prose prose-lg max-w-none text-black 
+          prose-headings:font-bold prose-headings:text-black 
+          prose-h1:text-3xl 
+          prose-h2:text-xl prose-h2:mt-8 
+          prose-body:text-black 
+          prose-p:text-black 
+          prose-li:text-black 
+          prose-strong:text-black 
+          prose-td:text-black 
+          prose-th:text-black">
           <h1>서비스 이용약관</h1>
           <p className="text-sm text-gray-500 border-b pb-4">
-            시행일: 2026년 1월 19일 (v1.4 - Open Beta)
+            시행일: 2026년 1월 19일 (v1.0)
           </p>
 
           <h2>제1조 (목적)</h2>
@@ -135,7 +144,7 @@ export default function TermsPage() {
           <p>
             1. 환불 시 결제 수수료 및 송금 수수료는 공제될 수 있습니다.<br />
             2. 프로모션으로 제공된 무료 기간이나 추가 혜택은 환불 기간 산정에 포함되지 않습니다.<br />
-            3. <strong>Maker's Plan(맞춤 제작)</strong>은 제작 착수 후에는 원칙적으로 환불이 불가능합니다.
+            3. <strong>Maker's Plan(맞춤 제작)</strong>은 회원의 요청에 따라 개별적으로 생산되는 재화로서, 제작 착수(담당자 배정 및 분석, 제작 시작) 이후에는 「전자상거래 등에서의 소비자보호에 관한 법률」 제17조 제2항 제6호에 의거하여 청약철회 및 환불이 불가능합니다.
           </p>
 
           <h2>제14조 (면책조항 및 비보증)</h2>
@@ -149,13 +158,14 @@ export default function TermsPage() {
           <h2>제15조 (부정 이용 금지 및 위약벌)</h2>
           <p>
             1. 회사는 다음 각 호를 부정 이용행위로 간주합니다.
+          </p>
             <ul className="list-disc pl-5 mt-2 space-y-1">
               <li>동일한 ID를 복수의 인원이 공유하여 사용하는 행위</li>
               <li>자신의 ID를 타인에게 판매, 대여, 양도하는 행위</li>
               <li>회사의 문제 이미지를 대량으로 저장하거나 데이터베이스를 구축하는 행위</li>
               <li><strong>계약되지 않은 장소 사용:</strong> 등록된 학원이 아닌 다른 학원이나 장소에서 ID를 사용하는 행위 (예: 이직, 출강 등 포함)</li>
             </ul>
-          </p>
+
           <p className="mt-4">
             2. <strong>제재 및 손해배상:</strong> 부정 이용이 적발될 경우, 회사는 즉시 해당 계정을 정지 및 강제 탈퇴 처리할 수 있습니다. 또한 회원은 회사에 발생한 손해를 배상해야 하며, 이와 별도로 <strong>위약벌(Penalty)</strong>을 지급해야 합니다.
           </p>

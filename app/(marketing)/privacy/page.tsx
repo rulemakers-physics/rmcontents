@@ -18,7 +18,16 @@ export default function PrivacyPage() {
           </Link>
         </div>
 
-        <article className="prose prose-lg max-w-none prose-headings:font-bold prose-h1:text-3xl prose-h2:text-xl prose-h2:mt-8 prose-p:text-gray-600 prose-li:text-gray-600">
+        <article className="prose prose-lg max-w-none text-black 
+          prose-headings:font-bold prose-headings:text-black 
+          prose-h1:text-3xl 
+          prose-h2:text-xl prose-h2:mt-8 
+          prose-body:text-black 
+          prose-p:text-black 
+          prose-li:text-black 
+          prose-strong:text-black 
+          prose-td:text-black 
+          prose-th:text-black">
           <h1>개인정보처리방침</h1>
           <p className="text-sm text-gray-500 border-b pb-4">
             시행일: 2026년 1월 19일 (v1.0)
