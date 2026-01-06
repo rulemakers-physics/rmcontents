@@ -23,9 +23,24 @@ import { toast } from "react-hot-toast";
 import Link from "next/link"; // Link 컴포넌트 추가
 
 // --- 데이터 정의 ---
-
+// [1] Plan 인터페이스 정의 추가
+interface Plan {
+  id: string;
+  name: string;
+  tag: string;
+  originalPrice?: string; // 할인가가 없는 경우도 있으므로 optional
+  price: string;
+  period: string;
+  desc: string;
+  promotionText?: string; // [핵심] 선택적 속성으로 정의 (있을 수도 있고 없을 수도 있음)
+  features: string[];
+  highlight: boolean;
+  buttonText: string;
+  buttonStyle: string;
+  notice?: string; // 오류 메시지에 notice가 보였으므로 추가 (사용하지 않는다면 제거 가능)
+}
 // 1. 강사/학원용 플랜 (심사 제출용 메인 상품)
-const INSTRUCTOR_PLANS = [
+const INSTRUCTOR_PLANS: Plan[] = [
   {
     id: "BASIC",
     name: "Basic Plan",
@@ -68,7 +83,7 @@ const INSTRUCTOR_PLANS = [
 ];
 
 // 2. 학생용 플랜 (관리자 확인용, 런칭 시 숨김 처리 가능)
-const STUDENT_PLANS = [
+const STUDENT_PLANS: Plan[] = [
   {
     id: "STD_STANDARD",
     name: "내신 한 달 Plan",
