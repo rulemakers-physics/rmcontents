@@ -432,10 +432,10 @@ export default function HomePage() {
                 </p>
                 <ul className="space-y-4 mb-10">
                   {[
-                    "자체 개발 문항 및 최신 기출 100% 반영",
+                    "22개정 교육과정 및 최신 기출 반영 100% '자체 제작 문항'",
                     "단원/난이도/유형(객관식, 서술형) 상세 필터링",
                     "AI 분석 기반 유사 문항 무제한 교체 (One-Click)",
-                    "학교 로고 삽입 및 다단(2단/4단) 편집 지원",
+                    "학원 로고 삽입 및 다단(2단/4단) 편집 지원",
                     "드래그 앤 드롭으로 문항 순서 변경 지원"
                   ].map((item, i) => (
                     <li key={i} className="flex items-center gap-3 text-slate-700 font-medium">
