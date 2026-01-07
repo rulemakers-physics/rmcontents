@@ -654,8 +654,11 @@ function ExamBuilderContent() {
         height: p.height || 0,         
         solutionHeight: p.solutionHeight || 0,
         materialLevel: p.materialLevel || null,
-        customLabel: p.customLabel || null
-      }));
+        customLabel: p.customLabel || null,
+        // [추가] undefined 방지 처리
+          dataTypes: (p as any).dataTypes || null,       // undefined면 null로
+          isConvergence: (p as any).isConvergence || false // undefined면 false로
+        }));
 
       // 선택된 반 이름 찾기
       const targetClass = availableClasses.find(c => c.id === selectedClassId);

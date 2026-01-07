@@ -57,7 +57,9 @@ function ExamBuilderContent() {
     questions: true,
     answers: true,
     solutions: true,
-    questionPadding: 40
+    questionPadding: 40,
+    showMinorTopic: true,    // [수정] 누락된 필드 추가 (기본값 true)
+    showMaterialLevel: true  // [수정] 누락된 필드 추가 (기본값 true)
   });
 
   const [isTeacherMode, setIsTeacherMode] = useState(false);

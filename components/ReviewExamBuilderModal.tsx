@@ -164,6 +164,8 @@ export default function ReviewExamBuilderModal({ studentName, sourceExamTitle, s
         templateId: "math-pro",
         layoutMode: "dense",
         questionPadding: 40,
+        showMinorTopic: true,    // [수정] 누락된 필드 추가 (기본값 true)
+        showMaterialLevel: true,  // [수정] 누락된 필드 추가 (기본값 true)
         // [수정] 클리닉 메타데이터 추가 저장
         isClinic: true,
         parentExamId: sourceExamId || null, // 원본 시험지 ID 연결

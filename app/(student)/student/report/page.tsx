@@ -242,6 +242,8 @@ export default function ReportDashboard() {
             solutions: false,
             // [수정] 필수값 추가
             questionPadding: 40,
+            showMinorTopic: true,    // [수정] 누락된 필드 추가 (기본값 true)
+            showMaterialLevel: true,  // [수정] 누락된 필드 추가 (기본값 true)
             layoutMode: 'dense'
           }}
           isTeacherVersion={false}

@@ -231,7 +231,9 @@ export default function ScrapbookPage() {
             solutions: true,
             // [수정] 필수값 추가
             questionPadding: 40,
-            layoutMode: 'dense'
+            layoutMode: 'dense',
+            showMinorTopic: true,    // [수정] 누락된 필드 추가 (기본값 true)
+            showMaterialLevel: true,  // [수정] 누락된 필드 추가 (기본값 true)
           }} 
           isTeacherVersion={false}
         />
