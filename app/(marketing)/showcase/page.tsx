@@ -262,7 +262,7 @@ function ShowcaseItem({ sample, idx }: { sample: any, idx: number }) {
             {sample.badge}
           </span>
           <div className="flex items-center gap-1 text-xs font-medium text-slate-500">
-            <DocumentArrowDownIcon className="w-4 h-4" /> {sample.stats.download} 다운로드
+            {/*<DocumentArrowDownIcon className="w-4 h-4" /> {sample.stats.download} 다운로드*/}
           </div>
         </div>
 
