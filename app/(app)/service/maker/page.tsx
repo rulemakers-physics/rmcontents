@@ -13,7 +13,7 @@ import {
 } from "lucide-react";
 import { 
   Squares2X2Icon, ViewColumnsIcon, QueueListIcon, ListBulletIcon,
-  MapIcon, Cog6ToothIcon, ChartBarIcon, UserGroupIcon, QuestionMarkCircleIcon // [수정] 올바른 패키지에서 임포트
+  MapIcon, Cog6ToothIcon, ChartBarIcon, UserGroupIcon, QuestionMarkCircleIcon, InformationCircleIcon // [수정] 올바른 패키지에서 임포트
 } from "@heroicons/react/24/outline";
 import ExamPaperLayout from "@/components/ExamPaperLayout";
 import { ExamPaperProblem, PrintOptions } from "@/types/exam";
@@ -85,7 +85,9 @@ function ExamBuilderContent() {
     questions: true,
     answers: true,
     solutions: true,
-    questionPadding: 40
+    questionPadding: 40,
+    showMinorTopic: true,    // [신규] 기본값: 보임
+    showMaterialLevel: true  // [신규] 기본값: 보임
   });
 
   const [currentTemplate, setCurrentTemplate] = useState<ExamTemplateStyle>(TEMPLATES[0]);
@@ -547,7 +549,14 @@ function ExamBuilderContent() {
           const savedTemplate = TEMPLATES.find(t => t.id === data.templateId);
           if (savedTemplate) setCurrentTemplate(savedTemplate);
           if (data.layoutMode) setLayoutMode(data.layoutMode as LayoutMode);
-          if (data.questionPadding) setPrintOptions((prev: any) => ({ ...prev, questionPadding: data.questionPadding }));
+          // [수정] printOptions 상태 업데이트 로직 변경
+          // 저장된 값이 있으면 사용하고, 없으면 기본값(true)을 사용하여 기존 데이터 호환성 유지
+          setPrintOptions((prev) => ({
+            ...prev,
+            questionPadding: data.questionPadding ?? 40,
+            showMinorTopic: data.showMinorTopic ?? true,
+            showMaterialLevel: data.showMaterialLevel ?? true
+          }));
 
           if (data.selectedMajorTopics) setSelectedMajorTopics(data.selectedMajorTopics);
           if (data.selectedMinorTopics) setSelectedMinorTopics(data.selectedMinorTopics);
@@ -642,8 +651,8 @@ function ExamBuilderContent() {
         difficulty: p.difficulty || null,
         answer: p.answer || null,
         solutionUrl: p.solutionUrl || null,
-        height: p.height,
-        solutionHeight: p.solutionHeight,
+        height: p.height || 0,         
+        solutionHeight: p.solutionHeight || 0,
         materialLevel: p.materialLevel || null,
         customLabel: p.customLabel || null
       }));
@@ -657,9 +666,9 @@ function ExamBuilderContent() {
         userId: user.uid,
         ownerId: ownerId,
         instructorName,
-        title: examTitle,
-        subTitle, 
-        academyName,
+        title: examTitle || "제목 없음",
+        subTitle: subTitle || null,           // undefined 방지
+        academyName: academyName || null,     // undefined 방지
         problems: cleanProblems,
         
         selectedMajorTopics, 
@@ -669,6 +678,10 @@ function ExamBuilderContent() {
         layoutMode: layoutMode,
         questionPadding: printOptions.questionPadding,
         academyLogo: academyLogo, 
+
+        // [신규] 옵션 저장
+        showMinorTopic: printOptions.showMinorTopic,
+        showMaterialLevel: printOptions.showMaterialLevel,
 
         // [신규] 반 정보 저장
         classId: selectedClassId,
@@ -892,6 +905,33 @@ function ExamBuilderContent() {
                      </div>
                   )}
                </div>
+
+               {/* [신규] 문항 정보 표시 옵션 추가 */}
+                <div className="pt-4 border-t border-gray-200">
+                  <h3 className="text-sm font-bold text-gray-900 mb-3 flex items-center gap-2">
+                    <InformationCircleIcon className="w-4 h-4"/> 문항 정보 표시
+                  </h3>
+                  <div className="space-y-2">
+                    <label className="flex items-center gap-2 cursor-pointer p-2 border rounded-lg hover:bg-gray-50 bg-white">
+                      <input 
+                        type="checkbox" 
+                        checked={printOptions.showMinorTopic} 
+                        onChange={(e) => setPrintOptions(prev => ({...prev, showMinorTopic: e.target.checked}))} 
+                        className="rounded text-blue-600" 
+                      />
+                      <span className="text-sm text-slate-700">소단원명 표시</span>
+                    </label>
+                    <label className="flex items-center gap-2 cursor-pointer p-2 border rounded-lg hover:bg-gray-50 bg-white">
+                      <input 
+                        type="checkbox" 
+                        checked={printOptions.showMaterialLevel} 
+                        onChange={(e) => setPrintOptions(prev => ({...prev, showMaterialLevel: e.target.checked}))} 
+                        className="rounded text-blue-600" 
+                      />
+                      <span className="text-sm text-slate-700">심화 교과 여부 표시</span>
+                    </label>
+                  </div>
+                </div>
 
                {/* 출력 옵션 */}
                <div className="pt-4 border-t border-gray-200 pb-10">

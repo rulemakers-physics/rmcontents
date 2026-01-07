@@ -50,6 +50,10 @@ export interface SavedExam {
   // [신규] 반 종속성 필드 추가
   classId?: string;   // 시험지가 배정된 반 ID
   className?: string; // 반 이름 (표시용)
+  
+  // [신규] 저장된 시험지에도 설정값을 유지하기 위해 추가
+  showMinorTopic?: boolean;
+  showMaterialLevel?: boolean;
 }
 
 export interface PrintOptions {
@@ -59,4 +63,7 @@ export interface PrintOptions {
   questionPadding: number;
   // [삭제됨] solutionPadding: number; 
   layoutMode: LayoutMode;
+  // [신규] 메타 정보 표시 여부
+  showMinorTopic: boolean;   // 소단원명 표시 여부
+  showMaterialLevel: boolean; // 심화/교과서 라벨 표시 여부
 }

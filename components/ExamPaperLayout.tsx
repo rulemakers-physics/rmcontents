@@ -373,29 +373,25 @@ const ExamPaperLayout = forwardRef<HTMLDivElement, ExamPaperLayoutProps>(
                              </div>
                            )}
                            <div className="flex items-center gap-1">
-                              <img 
-                                src="/images/logo.png" 
-                                alt="RM" 
-                                className="h-5 w-5 object-contain" 
-                              />
-                              <span 
-                                className="font-semibold text-xl leading-none" 
-                                style={{ color: template.borderColor }}
-                              >
-                                {formatNumber(prob.number)}
-                              </span>
-                              {prob.minorTopic && (
+                            <img src="/images/logo.png" alt="RM" className="h-5 w-5 object-contain" />
+                            <span className="font-semibold text-xl leading-none" style={{ color: template.borderColor }}>
+                              {formatNumber(prob.number)}
+                            </span>
+                            
+                            {/* [수정] 소단원명 표시 조건 추가 */}
+                            {printOptions.showMinorTopic && prob.minorTopic && (
                               <span className="ml-1 text-[8.5px] font-bold text-slate-500 tracking-tight translate-x-[-2px] translate-y-[5px]">
                                   {prob.minorTopic}
                               </span>
-                              )}
+                            )}
 
-                              {prob.materialLevel && prob.materialLevel !== "학교 교과서" && (
+                            {/* [수정] 심화 교과 라벨 표시 조건 추가 */}
+                            {printOptions.showMaterialLevel && prob.materialLevel && prob.materialLevel !== "학교 교과서" && (
                               <span className="ml-auto px-1.5 py-0.5 rounded border border-slate-400 text-[10px] font-bold text-slate-500 bg-white whitespace-nowrap mb-[1px] translate-y-[3px]">
                                   심화 교과
                               </span>
-                              )}
-                           </div>
+                            )}
+                        </div>
                            
                            <div className="flex-1">
                               {prob.imageUrl ? (
