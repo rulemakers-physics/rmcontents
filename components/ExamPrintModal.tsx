@@ -30,11 +30,15 @@ export default function ExamPrintModal({ exam, onClose }: Props) {
     answers: sections.answers,
     solutions: sections.solutions,
     
+    
     // 저장된 값이 있으면 사용, 없으면 기본값 (40px)
     questionPadding: exam.questionPadding ?? 40,
     
     // 저장된 모드가 있으면 사용, 없으면 'dense'(기본)
-    layoutMode: exam.layoutMode ?? 'dense' 
+    layoutMode: exam.layoutMode ?? 'dense',
+    // [수정] 누락된 필드 추가 (저장된 값 우선, 없으면 true)
+    showMinorTopic: exam.showMinorTopic ?? true,
+    showMaterialLevel: exam.showMaterialLevel ?? true
   };
 
   // 템플릿 로드
