@@ -119,16 +119,13 @@ export default function LoginPage() {
                   width={20}
                   height={20}
                 />
-                <span>Google 계정으로 로그인</span>
+                <span>Google 계정으로 로그인 또는 회원가입</span>
               </button>
               
               <div className="mt-8 border-t border-gray-100 pt-6 text-center">
+                {/* [수정] 묵시적 동의 문구 제거 및 안내 문구 변경 */}
                 <p className="text-xs text-gray-400">
-                  로그인 시 
-                  <Link href="/terms" className="text-blue-600 hover:underline mx-1">이용약관</Link>
-                  및 
-                  <Link href="/privacy" className="text-blue-600 hover:underline mx-1">개인정보처리방침</Link>
-                  에 동의하게 됩니다.
+                  처음 가입하시는 경우, 구글 로그인 후 다음 단계에서 회원가입 절차가 계속됩니다.
                 </p>
               </div>
             </div>
