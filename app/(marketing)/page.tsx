@@ -1396,8 +1396,10 @@ function MobileShowcaseCard({ category, title, imgSrc, href }: { category: strin
 const TrustBanner = () => {
   // 예시 데이터: 실제로는 제휴 학교명이나 학원 로고 이미지를 넣으면 더 좋습니다.
   const brands = [
-    "메가스터디",
+    "시대인재 손은정 선생님",
     "이투스 조윤호 선생님",
+    "새이솔(메가스터디)",
+    "천재 교과서",
     "샤인학원 고등 본관",
     "샤인수학과학학원",
     "EG학원 금천 캠퍼스",

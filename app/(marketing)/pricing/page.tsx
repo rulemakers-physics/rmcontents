@@ -340,9 +340,9 @@ export default function PricingPage() {
               <InformationCircleIcon className="w-4 h-4" /> 서비스 이용 및 환불 안내
             </div>
             <ul className="list-disc pl-4 space-y-1">
-              <li>모든 플랜은 부가세(VAT)가 포함된 가격입니다.</li>
+              <li>모든 플랜은 부가가치세(V.A.T)가 포함된 가격입니다.</li>
+              <li>무료 체험 기간(4주)이 종료 후 등록된 결제 수단으로 정상 요금이 자동 결제됩니다.</li>
               <li>Basic Plan은 매월 결제되는 구독형 상품이며, 결제 시점으로부터 1개월간 서비스 이용 권한이 제공됩니다.</li>
-              <li>무료 체험 기간(4주)이 종료되면 등록된 결제 수단으로 정상 요금이 자동 결제됩니다.</li>
               <li>결제 후 7일 이내 미사용 시 전액 환불이 가능하며, 이후에는 '이용약관' 및 '환불 정책'에 따라 환불됩니다.</li>
               <li>Maker's Plan은 별도 계약을 통해 진행되며, 제작 착수 이후에는 환불이 제한될 수 있습니다.</li>
             </ul>
