@@ -16,7 +16,8 @@ import { toast } from "react-hot-toast";
 import Image from "next/image";
 import { 
   UserIcon, BuildingOffice2Icon, 
-  ArrowRightIcon, UserGroupIcon, StarIcon, DevicePhoneMobileIcon, CheckCircleIcon
+  ArrowRightIcon, UserGroupIcon, StarIcon, DevicePhoneMobileIcon, CheckCircleIcon,
+  DocumentTextIcon // [신규] 약관 아이콘
 } from "@heroicons/react/24/outline"; 
 import { UserRole } from "@/types/user";
 import { SCIENCE_UNITS } from "@/types/scienceUnits";
@@ -55,6 +56,13 @@ export default function ProfileSetupPage() {
   const [verificationId, setVerificationId] = useState<ConfirmationResult | null>(null); 
   const [isPhoneVerified, setIsPhoneVerified] = useState(false); 
   
+  // [신규] 약관 동의 상태
+  const [agreements, setAgreements] = useState({
+    terms: false,    // [필수] 이용약관
+    privacy: false,  // [필수] 개인정보처리방침
+    marketing: false // [선택] 마케팅 정보 수신
+  });
+  
   // 로딩 상태들
   const [isSendingSms, setIsSendingSms] = useState(false);
   const [isVerifying, setIsVerifying] = useState(false);
@@ -65,7 +73,6 @@ export default function ProfileSetupPage() {
 
   // --- 2. 데이터 보존 로직 (SessionStorage) ---
 
-  // [수정됨] 컴포넌트 마운트 시 저장된 데이터 + 인증 상태까지 완벽 복구
   useEffect(() => {
     // 1. 역할 복구
     const savedRole = sessionStorage.getItem("setup_selectedRole");
@@ -81,8 +88,7 @@ export default function ProfileSetupPage() {
     const savedSchool = sessionStorage.getItem("setup_school");
     if (savedSchool) setSchool(savedSchool);
 
-    // 3. [핵심] 휴대폰 인증 상태 및 번호 복구
-    // 리렌더링이 되어도 이 값이 있으면 강제로 인증 완료 처리
+    // 3. 휴대폰 인증 상태 복구
     const savedIsVerified = sessionStorage.getItem("setup_isVerified");
     const savedPhone = sessionStorage.getItem("setup_phone");
     
@@ -113,14 +119,28 @@ export default function ProfileSetupPage() {
     sessionStorage.setItem("setup_school", e.target.value);
   };
 
+  // [신규] 전체 동의 핸들러
+  const handleAllAgree = (checked: boolean) => {
+    setAgreements({
+      terms: checked,
+      privacy: checked,
+      marketing: checked
+    });
+  };
+
+  // [신규] 개별 동의 핸들러
+  const handleSingleAgree = (key: keyof typeof agreements) => {
+    setAgreements(prev => ({ ...prev, [key]: !prev[key] }));
+  };
+
   // 모든 세션 데이터 삭제 (가입 완료 시 호출)
   const clearSessionData = () => {
     sessionStorage.removeItem("setup_selectedRole");
     sessionStorage.removeItem("setup_name");
     sessionStorage.removeItem("setup_academy");
     sessionStorage.removeItem("setup_school");
-    sessionStorage.removeItem("setup_phone");       // 추가됨
-    sessionStorage.removeItem("setup_isVerified");  // 추가됨
+    sessionStorage.removeItem("setup_phone");       
+    sessionStorage.removeItem("setup_isVerified");  
   };
 
   const handleResetRole = () => {
@@ -146,14 +166,12 @@ export default function ProfileSetupPage() {
     return `${m}:${s < 10 ? '0' : ''}${s}`;
   };
 
-  // 리캡차 & 이미 인증된 사용자(User 객체에 폰번호가 있는 경우) 처리
+  // 리캡차 & 이미 인증된 사용자 처리
   useEffect(() => {
     if (!auth || !recaptchaContainerRef.current) return;
     
-    // 이미 Firebase User 객체에 폰번호가 있다면 인증 완료로 처리
     if (user?.phoneNumber) {
       setIsPhoneVerified(true);
-      // 저장된 폰 번호가 없으면 User 객체에서 가져옴
       if (!phone) {
         const p = user.phoneNumber.replace("+82", "0");
         setPhone(p);
@@ -190,7 +208,7 @@ export default function ProfileSetupPage() {
     const value = e.target.value.replace(/[^0-9]/g, ""); 
     if (value.length <= 11) {
       setPhone(value);
-      sessionStorage.setItem("setup_phone", value); // 폰 번호 입력 시 바로 저장
+      sessionStorage.setItem("setup_phone", value); 
     }
   };
 
@@ -217,9 +235,8 @@ export default function ProfileSetupPage() {
     } catch (error: any) {
       console.error("SMS Error:", error);
       if (error.code === 'auth/provider-already-linked') {
-        // 이미 연동된 경우도 성공 처리
         setIsPhoneVerified(true);
-        sessionStorage.setItem("setup_isVerified", "true"); // 저장
+        sessionStorage.setItem("setup_isVerified", "true"); 
         toast.success("이미 인증된 계정입니다.");
         setVerificationId(null);
       } else if (error.code === 'auth/credential-already-in-use') {
@@ -245,10 +262,8 @@ export default function ProfileSetupPage() {
     setIsVerifying(true); 
 
     try {
-      // 1. Firebase 인증 확인
       await verificationId.confirm(otpCode);
       
-      // 2. [핵심] 상태 업데이트 및 스토리지 저장 (리렌더링 대비)
       setIsPhoneVerified(true);
       sessionStorage.setItem("setup_isVerified", "true"); 
       sessionStorage.setItem("setup_phone", phone);
@@ -258,7 +273,6 @@ export default function ProfileSetupPage() {
 
       toast.success("본인 인증 완료!");
       
-      // 3. User 객체 즉시 갱신 (AuthContext 동기화)
       try { await user?.reload(); } catch(e) { console.log(e); }
 
     } catch (error: any) {
@@ -278,6 +292,11 @@ export default function ProfileSetupPage() {
     e.preventDefault();
     if (!user || !selectedRole) return;
 
+    // [신규] 필수 약관 체크
+    if (!agreements.terms || !agreements.privacy) {
+      return toast.error("서비스 이용을 위해 필수 약관에 동의해주세요.");
+    }
+
     if (!isPhoneVerified) return toast.error("휴대폰 인증을 완료해주세요.");
     if (!name.trim()) return toast.error("이름을 입력해주세요.");
     if ((selectedRole === 'director' || selectedRole === 'instructor') && !academy.trim()) return toast.error("소속명은 필수입니다.");
@@ -296,6 +315,13 @@ export default function ProfileSetupPage() {
         phone: phone, 
         createdAt: serverTimestamp(),
         isInvited: false,
+        // [신규] 약관 동의 내역 저장
+        agreements: {
+          termsOfService: true,
+          privacyPolicy: true,
+          marketing: agreements.marketing, // 마케팅 동의 여부 저장
+          agreedAt: serverTimestamp() 
+        }
       };
 
       let additionalData = {};
@@ -327,7 +353,6 @@ export default function ProfileSetupPage() {
 
       await setDoc(userDocRef, { ...baseData, ...additionalData }, { merge: true });
       
-      // 저장 성공 시 세션 전체 삭제
       clearSessionData();
       
       await new Promise(resolve => setTimeout(resolve, 2000)); 
@@ -356,8 +381,7 @@ export default function ProfileSetupPage() {
   // --- 5. 렌더링 ---
   if (!user) return null;
 
-  // [추가된 부분] 제출 중(가입 처리 중)이라면, 무조건 전체 로딩 화면을 보여줍니다.
-  // 이렇게 하면 아래의 역할 선택 로직(!selectedRole)으로 넘어가지 않아 화면 깜빡임이 사라집니다.
+  // [중요] 제출 중 화면 깜빡임 방지용 로딩 화면
   if (isSubmitting) {
     return (
       <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-4">
@@ -458,7 +482,6 @@ export default function ProfileSetupPage() {
                   value={phone} 
                   onChange={handlePhoneChange} 
                   disabled={isPhoneVerified || !!verificationId || isSendingSms}
-                  // disabled 스타일 강제 적용 (CSS 우선순위 확보)
                   className={`w-full pl-10 pr-4 py-3 border rounded-xl outline-none transition-all duration-300 ${
                     isPhoneVerified 
                       ? "bg-green-50 border-green-500 text-green-700 font-bold shadow-sm disabled:bg-green-50 disabled:text-green-700 disabled:border-green-500 disabled:opacity-100" 
@@ -541,7 +564,6 @@ export default function ProfileSetupPage() {
 
             <div ref={recaptchaContainerRef} id="recaptcha-container"></div>
           </div>
-          {/* 휴대폰 인증 섹션 끝 */}
 
           {!isStudent && (
             <div className="space-y-1">
@@ -598,13 +620,77 @@ export default function ProfileSetupPage() {
             </>
           )}
 
+          {/* ▼▼▼ [신규] 약관 동의 섹션 추가 ▼▼▼ */}
+          <div className="pt-4 mt-6 border-t border-slate-100">
+            <h3 className="text-sm font-bold text-slate-900 mb-3 flex items-center gap-2">
+              <DocumentTextIcon className="w-4 h-4 text-blue-600" />
+              약관 동의
+            </h3>
+            
+            <div className="space-y-3">
+              {/* 전체 동의 */}
+              <label className="flex items-center gap-2 p-3 bg-slate-50 rounded-xl cursor-pointer hover:bg-slate-100 transition-colors border border-slate-200">
+                <input 
+                  type="checkbox"
+                  checked={agreements.terms && agreements.privacy && agreements.marketing}
+                  onChange={(e) => handleAllAgree(e.target.checked)}
+                  className="w-5 h-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                />
+                <span className="text-sm font-bold text-slate-800">모두 동의합니다</span>
+              </label>
+
+              {/* 개별 동의 항목들 */}
+              <div className="space-y-2 px-1">
+                <div className="flex items-start gap-2">
+                  <input 
+                    type="checkbox" id="agree-terms"
+                    checked={agreements.terms}
+                    onChange={() => handleSingleAgree('terms')}
+                    className="mt-1 w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                  />
+                  <label htmlFor="agree-terms" className="text-xs text-slate-600 cursor-pointer select-none leading-relaxed">
+                    <span className="text-blue-600 font-bold">[필수]</span> 서비스 이용약관 동의
+                    <a href="/terms" target="_blank" className="ml-1 text-slate-400 underline hover:text-slate-600" onClick={(e)=>e.stopPropagation()}>(보기)</a>
+                  </label>
+                </div>
+
+                <div className="flex items-start gap-2">
+                  <input 
+                    type="checkbox" id="agree-privacy"
+                    checked={agreements.privacy}
+                    onChange={() => handleSingleAgree('privacy')}
+                    className="mt-1 w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                  />
+                  <label htmlFor="agree-privacy" className="text-xs text-slate-600 cursor-pointer select-none leading-relaxed">
+                    <span className="text-blue-600 font-bold">[필수]</span> 개인정보 수집 및 이용 동의
+                    <a href="/privacy" target="_blank" className="ml-1 text-slate-400 underline hover:text-slate-600" onClick={(e)=>e.stopPropagation()}>(보기)</a>
+                  </label>
+                </div>
+
+                <div className="flex items-start gap-2">
+                  <input 
+                    type="checkbox" id="agree-marketing"
+                    checked={agreements.marketing}
+                    onChange={() => handleSingleAgree('marketing')}
+                    className="mt-1 w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                  />
+                  <label htmlFor="agree-marketing" className="text-xs text-slate-600 cursor-pointer select-none leading-relaxed">
+                    <span className="text-slate-500 font-bold">[선택]</span> 마케팅 정보 수신 동의 (이벤트/혜택 알림)
+                  </label>
+                </div>
+              </div>
+            </div>
+          </div>
+          {/* ▲▲▲ [신규] 약관 동의 섹션 끝 ▲▲▲ */}
+
           {/* 하단 버튼 섹션 */}
           <div className="pt-4 mt-4 border-t border-slate-100">
             <button 
               type="submit" 
-              disabled={isSubmitting || !isPhoneVerified} 
+              // [수정] 필수 약관 미동의 시 버튼 비활성화 로직 추가
+              disabled={isSubmitting || !isPhoneVerified || !agreements.terms || !agreements.privacy} 
               className={`w-full flex items-center justify-center gap-2 rounded-xl px-6 py-4 font-bold text-lg transition-all duration-300 transform ${
-                isSubmitting || !isPhoneVerified 
+                isSubmitting || !isPhoneVerified || !agreements.terms || !agreements.privacy
                   ? 'bg-slate-200 text-slate-400 cursor-not-allowed' 
                   : 'bg-slate-900 text-white hover:bg-slate-800 hover:scale-[1.02] shadow-lg hover:shadow-xl shadow-slate-200'
               }`}
@@ -616,8 +702,11 @@ export default function ProfileSetupPage() {
                 </>
               ) : (
                 <>
-                  {isPhoneVerified ? "회원가입 완료하기" : "휴대폰 인증을 진행해주세요"} 
-                  {isPhoneVerified && <ArrowRightIcon className="w-5 h-5 animate-pulse" />} 
+                  {/* 버튼 텍스트 조건부 변경 */}
+                  {!isPhoneVerified ? "휴대폰 인증을 진행해주세요" : 
+                   (!agreements.terms || !agreements.privacy) ? "필수 약관에 동의해주세요" :
+                   "회원가입 완료하기"} 
+                  {(isPhoneVerified && agreements.terms && agreements.privacy) && <ArrowRightIcon className="w-5 h-5 animate-pulse" />} 
                 </>
               )}
             </button>
