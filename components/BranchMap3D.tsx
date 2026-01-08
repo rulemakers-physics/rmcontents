@@ -1,215 +1,247 @@
 "use client";
 
-import React, { useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import Image from "next/image";
-import Link from "next/link";
-// 아이콘이 없다면 `npm install lucide-react` 설치 필요
-// 설치가 어렵다면 아래 import를 지우고 텍스트나 기본 div로 대체해도 됩니다.
-import { MapPin, Building2, BookOpen } from "lucide-react"; 
+import React, { useEffect, useRef, useState } from "react";
+import Script from "next/script";
+import { MapPinIcon, ArrowPathIcon, ExclamationTriangleIcon, CheckCircleIcon } from "@heroicons/react/24/solid";
 
 // ----------------------------------------------------------------------
-// [설정 및 데이터]
+// [데이터] 학원 지점 목록
 // ----------------------------------------------------------------------
-
-// 지도 회전 각도 (지도가 누워있는 각도)
-const MAP_ROTATION = { x: 60, z: -20 };
-
 interface Branch {
   id: number;
   name: string;
   subText: string;
+  address: string;
   type: "Academy" | "Study Center";
-  top: number;  // % 좌표
-  left: number; // % 좌표
 }
 
 const BRANCHES: Branch[] = [
-  { id: 6, name: "샤인독서실", subText: "동작 본관", type: "Study Center", top: 20, left: 65 },
-  { id: 1, name: "샤인학원", subText: "고등 본관", type: "Academy", top: 45, left: 45 },
-  { id: 2, name: "샤인학원", subText: "수학과학관", type: "Academy", top: 48, left: 50 },
-  { id: 3, name: "샤인학원", subText: "초중등관", type: "Academy", top: 42, left: 40 },
-  { id: 4, name: "EG학원", subText: "금천관", type: "Academy", top: 75, left: 25 },
-  { id: 5, name: "EG학원", subText: "난곡관", type: "Academy", top: 60, left: 30 },
+  { id: 1, name: "샤인학원 고등 본관", subText: "동작구 여의대방로 200", address: "서울 동작구 여의대방로 200", type: "Academy" },
+  { id: 2, name: "샤인수학과학학원", subText: "영등포구 여의대방로 79", address: "서울 영등포구 여의대방로 79", type: "Academy" },
+  { id: 3, name: "샤인학원 초중등관", subText: "동작구 대방동길 86", address: "서울 동작구 대방동길 86", type: "Academy" },
+  { id: 4, name: "EG학원 금천관", subText: "금천구 남부순환로 1372", address: "서울 금천구 남부순환로 1372", type: "Academy" },
+  { id: 5, name: "EG학원 난곡관", subText: "관악구 남부순환로 1495", address: "서울 관악구 남부순환로 1495", type: "Academy" },
+  { id: 6, name: "샤인독서실 동작 본관", subText: "동작구 여의대방로 200", address: "서울 동작구 여의대방로 200", type: "Study Center" },
 ];
 
-export default function BranchMap3D() {
-  const [hoveredId, setHoveredId] = useState<number | null>(null);
-
-  return (
-    <section className="w-full h-[800px] bg-[#050505] relative overflow-hidden flex items-center justify-center">
-      
-      {/* 1. 배경: 노이즈 및 조명 효과 */}
-      <div className="absolute inset-0 pointer-events-none">
-        {/* 노이즈 패턴 (URL 방식 대신 CSS로 간단히 처리 가능하지만, 여기선 외부 SVG 패턴 사용) */}
-        <div className="absolute inset-0 opacity-20 bg-[url('https://grainy-gradients.vercel.app/noise.svg')]"></div>
-        <div className="absolute top-[-10%] left-[10%] w-[800px] h-[800px] bg-blue-600/10 rounded-full blur-[120px]" />
-        <div className="absolute bottom-[-10%] right-[10%] w-[800px] h-[800px] bg-purple-600/10 rounded-full blur-[120px]" />
-      </div>
-
-      {/* 2. 3D 맵 컨테이너 */}
-      <div className="perspective-[2000px] w-full h-full flex items-center justify-center">
-        <motion.div 
-          initial={{ opacity: 0, rotateX: 90 }}
-          whileInView={{ opacity: 1, rotateX: MAP_ROTATION.x }}
-          transition={{ duration: 1.5, ease: "easeOut" }}
-          style={{ 
-            transformStyle: "preserve-3d", // 3D 자식 요소 보존
-            rotateZ: MAP_ROTATION.z,
-          }}
-          className="relative w-[90vw] max-w-[1000px] aspect-[4/3] md:w-[800px] md:h-[600px]"
-        >
-          
-          {/* --- [MAP BASE LAYERS] --- */}
-          
-          {/* 그림자 (지도가 붕 떠있는 느낌) */}
-          <div 
-             className="absolute inset-0 rounded-[3rem] bg-black/50 blur-2xl"
-             style={{ transform: 'translateZ(-50px) scale(0.9)' }} 
-          />
-
-          {/* 실제 지도 플레이트 */}
-          <div className="absolute inset-0 rounded-[2rem] overflow-hidden border border-white/10 bg-[#0F111A] shadow-2xl backface-hidden group">
-            
-            {/* 지도 배경 패턴 (이미지 없을 때 표시됨) */}
-            <div className="absolute inset-0 bg-[#0B0C15] opacity-90">
-               {/* 그리드 라인 */}
-               <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.03)_1px,transparent_1px)] bg-[size:40px_40px]" />
-               {/* 중앙 하이라이트 */}
-               <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(59,130,246,0.1),transparent_70%)]" />
-            </div>
-
-            {/* ⚠️ 지도 이미지: 이미지를 구하면 아래 주석을 해제하고 경로를 수정하세요 */}
-            <Image 
-              src="/images/map-dark.png" 
-              alt="Map Background" 
-              fill
-              className="object-cover opacity-60 grayscale mix-blend-overlay"
-            />
-
-            {/* 스캔 라인 애니메이션 (global.css에 정의됨) */}
-            <div className="absolute inset-0 bg-gradient-to-b from-transparent via-blue-500/10 to-transparent h-[200%] w-full animate-scan-slow pointer-events-none" />
-            
-          </div>
-
-          {/* --- [PINS & MARKERS] --- */}
-          {BRANCHES.map((branch) => (
-            <MapMarker 
-              key={branch.id} 
-              branch={branch} 
-              isHovered={hoveredId === branch.id}
-              setHovered={setHoveredId}
-            />
-          ))}
-
-        </motion.div>
-      </div>
-    </section>
-  );
+declare global {
+  interface Window {
+    kakao: any;
+  }
 }
 
-// ----------------------------------------------------------------------
-// [핀 컴포넌트] : 핀과 툴팁이 정면을 보게 만드는 핵심 로직 포함
-// ----------------------------------------------------------------------
+export default function BranchMap3D() {
+  const mapContainer = useRef<HTMLDivElement>(null);
+  const [isMapLoaded, setIsMapLoaded] = useState(false);
+  const [debugStatus, setDebugStatus] = useState("초기화 중...");
+  const [apiKeyStatus, setApiKeyStatus] = useState<string>("");
+  const [mapInstance, setMapInstance] = useState<any>(null);
+  const [activeBranchId, setActiveBranchId] = useState<number | null>(null);
 
-function MapMarker({ 
-  branch, 
-  isHovered, 
-  setHovered 
-}: { 
-  branch: Branch; 
-  isHovered: boolean; 
-  setHovered: (id: number | null) => void; 
-}) {
-  // [중요] 지도 회전(X: 60, Z: -20)을 역으로 계산하여 핀을 똑바로 세움
-  const antiRotationStyle = {
-    transform: `rotateZ(${-MAP_ROTATION.z}deg) rotateX(${-MAP_ROTATION.x}deg)`,
+  // API 키 가져오기
+  const apiKey = process.env.NEXT_PUBLIC_KAKAO_MAP_API_KEY;
+
+  // 1. [진단] 컴포넌트 마운트 시 API 키 확인
+  useEffect(() => {
+    if (!apiKey) {
+      setApiKeyStatus("❌ API 키 없음 (undefined)");
+      setDebugStatus("에러: .env.local 파일이 없거나 변수명이 틀렸습니다.");
+    } else {
+      // 보안을 위해 앞 5자리만 표시
+      setApiKeyStatus(`✅ API 키 확인됨 (${apiKey.substring(0, 5)}...)`);
+      setDebugStatus("스크립트 로딩 대기 중...");
+    }
+  }, [apiKey]);
+
+  // 2. 지도 그리기 함수
+  const loadKakaoMap = () => {
+    if (!window.kakao || !window.kakao.maps) {
+      setDebugStatus("⚠️ window.kakao 객체를 찾을 수 없음 (재시도 중)");
+      return;
+    }
+
+    setDebugStatus("🔄 지도 생성 시도 중...");
+
+    window.kakao.maps.load(() => {
+      if (!mapContainer.current) {
+        setDebugStatus("❌ 지도 컨테이너(div)를 찾을 수 없음");
+        return;
+      }
+
+      try {
+        const center = new window.kakao.maps.LatLng(37.5061, 126.9230);
+        const options = { center: center, level: 7 };
+        const map = new window.kakao.maps.Map(mapContainer.current, options);
+        setMapInstance(map);
+
+        // 줌 컨트롤
+        const zoomControl = new window.kakao.maps.ZoomControl();
+        map.addControl(zoomControl, window.kakao.maps.ControlPosition.RIGHT);
+
+        // 마커 생성
+        const geocoder = new window.kakao.maps.services.Geocoder();
+        
+        BRANCHES.forEach((branch) => {
+          geocoder.addressSearch(branch.address, (result: any, status: any) => {
+            if (status === window.kakao.maps.services.Status.OK) {
+              const coords = new window.kakao.maps.LatLng(result[0].y, result[0].x);
+              
+              const imageSrc = branch.type === 'Academy' 
+                ? "https://t1.daumcdn.net/localimg/localimages/07/mapapidoc/markerStar.png" 
+                : "https://t1.daumcdn.net/mapjsapi/images/2x/marker.png";
+              
+              const marker = new window.kakao.maps.Marker({
+                map: map,
+                position: coords,
+                image: new window.kakao.maps.MarkerImage(imageSrc, new window.kakao.maps.Size(24, 35)),
+                title: branch.name
+              });
+
+              // 커스텀 오버레이 (심플 버전)
+              const content = `
+                <div style="padding:5px 10px; background:white; border:1px solid #ccc; border-radius:5px; font-size:12px; font-weight:bold;">
+                  ${branch.name}
+                </div>`;
+                
+              const overlay = new window.kakao.maps.CustomOverlay({
+                content: content,
+                map: map,
+                position: coords,
+                yAnchor: 2.0
+              });
+              overlay.setMap(null);
+
+              window.kakao.maps.event.addListener(marker, 'mouseover', () => overlay.setMap(map));
+              window.kakao.maps.event.addListener(marker, 'mouseout', () => overlay.setMap(null));
+            }
+          });
+        });
+
+        setIsMapLoaded(true);
+        setDebugStatus("✅ 지도 로드 완료!");
+      } catch (err: any) {
+        console.error(err);
+        setDebugStatus(`❌ 지도 생성 중 에러 발생: ${err.message}`);
+      }
+    });
+  };
+
+  // 3. [안전 장치] Script onLoad가 안 먹힐 경우를 대비해 0.5초마다 체크
+  useEffect(() => {
+    if (isMapLoaded) return;
+
+    const intervalId = setInterval(() => {
+      if (window.kakao && window.kakao.maps) {
+        loadKakaoMap();
+        clearInterval(intervalId); // 성공하면 반복 중단
+      }
+    }, 500);
+
+    // 10초 뒤에도 안 되면 포기
+    const timeoutId = setTimeout(() => {
+      clearInterval(intervalId);
+      if (!isMapLoaded) {
+        setDebugStatus("❌ 타임아웃: 스크립트가 로드되지 않았습니다. (도메인 등록 확인 필요)");
+      }
+    }, 10000);
+
+    return () => {
+      clearInterval(intervalId);
+      clearTimeout(timeoutId);
+    };
+  }, [isMapLoaded]);
+
+  const handleMoveTo = (branch: Branch) => {
+    if (!mapInstance || !window.kakao) return;
+    setActiveBranchId(branch.id);
+    const geocoder = new window.kakao.maps.services.Geocoder();
+    geocoder.addressSearch(branch.address, (result: any, status: any) => {
+      if (status === window.kakao.maps.services.Status.OK) {
+        const coords = new window.kakao.maps.LatLng(result[0].y, result[0].x);
+        mapInstance.panTo(coords);
+        setTimeout(() => mapInstance.setLevel(3), 300);
+      }
+    });
   };
 
   return (
-    <div
-      className="absolute transform-style-3d"
-      style={{ 
-        top: `${branch.top}%`, 
-        left: `${branch.left}%`,
-        zIndex: isHovered ? 100 : 10, 
-      }}
-    >
-      {/* 인터랙션 영역 */}
-      <motion.div
-        className="relative w-12 h-12 -translate-x-1/2 -translate-y-1/2 flex items-center justify-center cursor-pointer group"
-        style={antiRotationStyle} // 👈 핀을 세우는 핵심 스타일
-        onMouseEnter={() => setHovered(branch.id)}
-        onMouseLeave={() => setHovered(null)}
-        initial={false}
-        animate={isHovered ? { scale: 1.1, y: -20 } : { scale: 1, y: 0 }}
-      >
-        
-        {/* 1. 핀 디자인 (비콘 스타일) */}
-        <div className="relative flex flex-col items-center justify-center">
-           {/* 아이콘 원형 */}
-           <div className={`w-10 h-10 rounded-full flex items-center justify-center border backdrop-blur-md shadow-[0_0_30px_rgba(0,0,0,0.5)] transition-colors duration-300 ${
-             branch.type === 'Academy' 
-               ? 'bg-blue-500/20 border-blue-400/50 text-blue-200' 
-               : 'bg-purple-500/20 border-purple-400/50 text-purple-200'
-           }`}>
-             {/* 아이콘이 없다면 텍스트로 대체 */}
-             {branch.type === 'Academy' ? <BookOpen size={16} /> : <Building2 size={16} />}
+    <section className="w-full h-[600px] bg-slate-900 relative flex flex-col items-center justify-center border-y border-slate-800">
+      
+      {/* API Key가 있을 때만 스크립트 로드 시도 */}
+      {apiKey && (
+        <Script
+          src={`//dapi.kakao.com/v2/maps/sdk.js?appkey=${apiKey}&libraries=services&autoload=false`}
+          strategy="afterInteractive"
+          onLoad={() => {
+            console.log("Script onLoad fired");
+            loadKakaoMap();
+          }}
+          onError={(e) => {
+             console.error("Script load error", e);
+             setDebugStatus("❌ 스크립트 네트워크 로드 실패 (차단됨?)");
+          }}
+        />
+      )}
+
+      <div className="relative w-full h-full">
+        {/* 지도 컨테이너 */}
+        <div ref={mapContainer} className="w-full h-full" />
+
+        {/* [진단용] 로딩 및 상태 표시 화면 (디버깅용 UI) */}
+        {!isMapLoaded && (
+          <div className="absolute inset-0 flex items-center justify-center bg-slate-900 z-50">
+             <div className="flex flex-col items-center gap-4 p-8 bg-slate-800 rounded-2xl border border-slate-700 max-w-md w-full shadow-2xl">
+               {/* 로딩 아이콘 */}
+               <ArrowPathIcon className="w-10 h-10 animate-spin text-blue-500" />
+               
+               <div className="space-y-3 w-full">
+                 {/* 1. API 키 상태 */}
+                 <div className="bg-slate-900 p-3 rounded border border-slate-700 flex items-center gap-2">
+                   <span className="text-xs text-slate-400">KEY:</span>
+                   <span className={`text-xs font-mono ${apiKey ? 'text-green-400' : 'text-red-400'}`}>
+                     {apiKeyStatus || "확인 중..."}
+                   </span>
+                 </div>
+
+                 {/* 2. 현재 진행 상태 */}
+                 <div className="bg-slate-900 p-3 rounded border border-slate-700 flex items-center gap-2">
+                   <span className="text-xs text-slate-400">STATUS:</span>
+                   <span className="text-xs text-yellow-400 font-bold">
+                     {debugStatus}
+                   </span>
+                 </div>
+               </div>
+
+               <p className="text-[10px] text-slate-500 mt-2 text-center">
+                 문제가 지속되면 개발자 도구(F12) Console을 캡처해주세요.
+               </p>
+             </div>
+          </div>
+        )}
+
+        {/* (성공 시) 우측 지점 리스트 */}
+        {isMapLoaded && (
+           <div className="absolute top-4 right-4 z-20 w-64 bg-white/95 backdrop-blur rounded-xl shadow-lg overflow-hidden hidden md:block max-h-[550px]">
+             {/* 기존 리스트 UI 유지 */}
+             <div className="p-3 bg-slate-800 text-white flex justify-between items-center">
+                <h3 className="font-bold text-sm flex items-center gap-2">학원 목록</h3>
+                <CheckCircleIcon className="w-4 h-4 text-green-400" />
+             </div>
+             <div className="overflow-y-auto max-h-[400px]">
+               {BRANCHES.map((branch) => (
+                 <button
+                   key={branch.id}
+                   onClick={() => handleMoveTo(branch)}
+                   className={`w-full text-left p-3 border-b hover:bg-slate-50 ${activeBranchId === branch.id ? 'bg-blue-50' : ''}`}
+                 >
+                   <div className="font-bold text-xs text-slate-800">{branch.name}</div>
+                   <div className="text-[10px] text-slate-500">{branch.subText}</div>
+                 </button>
+               ))}
+             </div>
            </div>
-           
-           {/* 핀 기둥 (광선) */}
-           <div className={`w-[2px] h-8 bg-gradient-to-b from-current to-transparent opacity-50 ${
-              branch.type === 'Academy' ? 'text-blue-400' : 'text-purple-400'
-           }`} />
-
-           {/* 바닥 포인트 (접지점 - 펄스 효과) */}
-           <div className={`absolute -bottom-8 w-2 h-2 rounded-full animate-ping ${
-              branch.type === 'Academy' ? 'bg-blue-500' : 'bg-purple-500'
-           }`} />
-        </div>
-
-        {/* 2. 툴팁 (정보 카드) */}
-        <AnimatePresence>
-          {isHovered && (
-            <motion.div
-              initial={{ opacity: 0, y: 10, scale: 0.9 }}
-              animate={{ opacity: 1, y: -10, scale: 1 }}
-              exit={{ opacity: 0, y: 5, scale: 0.9 }}
-              className="absolute bottom-[140%] left-1/2 -translate-x-1/2 w-[280px]"
-            >
-              {/* 툴팁 카드 디자인 */}
-              <Link href={`/company/branch/${branch.id}`}>
-                <div className="relative bg-[#0B0C15]/90 backdrop-blur-xl border border-white/10 p-5 rounded-xl shadow-2xl overflow-hidden group-hover:border-white/20 transition-colors text-left">
-                    
-                    {/* 상단 컬러 바 */}
-                    <div className={`absolute top-0 left-0 w-full h-1 bg-gradient-to-r ${
-                        branch.type === 'Academy' ? 'from-blue-500 to-cyan-400' : 'from-purple-500 to-pink-400'
-                    }`} />
-
-                    <div className="flex justify-between items-start mb-2">
-                        <span className={`text-[11px] font-bold px-2 py-0.5 rounded-full border ${
-                            branch.type === 'Academy' 
-                             ? 'bg-blue-500/10 border-blue-500/20 text-blue-300' 
-                             : 'bg-purple-500/10 border-purple-500/20 text-purple-300'
-                        }`}>
-                            {branch.type}
-                        </span>
-                    </div>
-
-                    <h3 className="text-white font-bold text-lg leading-tight">{branch.name}</h3>
-                    <p className="text-white/50 text-sm mt-0.5 mb-4">{branch.subText}</p>
-
-                    <div className="flex items-center justify-between text-xs text-white/80 font-medium bg-white/5 p-2 rounded-lg hover:bg-white/10 transition-colors">
-                       <span>상세 정보 보기</span>
-                       <span>→</span>
-                    </div>
-                </div>
-              </Link>
-            </motion.div>
-          )}
-        </AnimatePresence>
-
-      </motion.div>
-    </div>
+        )}
+      </div>
+    </section>
   );
 }

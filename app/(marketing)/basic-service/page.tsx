@@ -7,7 +7,6 @@ import Link from "next/link";
 import { motion } from "framer-motion";
 import {
   CheckCircleIcon,
-  GiftIcon,
   DocumentTextIcon,
   BeakerIcon,
   AcademicCapIcon,
@@ -166,78 +165,6 @@ export default function BasicServicePage() {
       </div>
     </section>
     {/* ▲▲▲ [추가] ▲▲▲ */}
-
-      {/* 3. Promotion Section (Redesigned) 
-      <section className="bg-white pb-24">
-        <div className="container mx-auto max-w-4xl px-6">
-          <motion.div
-            initial={{ opacity: 0, scale: 0.98 }}
-            whileInView={{ opacity: 1, scale: 1 }}
-            viewport={{ once: true }}
-            className="relative overflow-hidden rounded-3xl bg-slate-900 px-6 py-16 text-center text-white shadow-2xl ring-1 ring-white/10 sm:px-16"
-          >
-            <div className="absolute top-0 right-0 -mt-10 -mr-10 h-64 w-64 rounded-full bg-blue-500/20 blur-3xl"></div>
-            <div className="absolute bottom-0 left-0 -mb-10 -ml-10 h-64 w-64 rounded-full bg-amber-500/10 blur-3xl"></div>
-
-            <div className="relative z-10">
-              <GiftIcon className="mx-auto h-16 w-16 text-amber-400" />
-              
-              <h2 className="mt-6 text-3xl font-bold sm:text-4xl tracking-tight">
-                베이직 플랜 <span className="text-amber-400">선착순 한정 프로모션</span>
-              </h2>
-              
-              <div className="mt-6 mb-8 animate-pulse">
-                 <p className="text-2xl font-bold text-red-400">
-                   현재 마감까지 <span className="text-4xl text-white mx-1">{seatsLeft}</span>자리 남았습니다!
-                 </p>
-              </div>
-              
-              <p className="mt-6 text-xl text-gray-300">
-                최초 도입 비용 
-                <span className="mx-2 text-2xl font-bold text-gray-400 line-through decoration-red-400 decoration-4">100만원</span> 
-                <span className="text-3xl font-extrabold text-amber-400">전액 면제</span>
-              </p>
-              
-              <div className="mt-8 inline-flex items-center rounded-full bg-amber-400/10 px-4 py-1.5 text-sm font-medium text-amber-300 ring-1 ring-inset ring-amber-400/30">
-                선착순 한정 혜택
-              </div>
-
-              <div className="mt-10 grid gap-6 text-left sm:grid-cols-2 sm:gap-x-12">
-                <ul className="space-y-4 text-gray-300">
-                  <li className="flex items-center gap-3">
-                    <CheckCircleIcon className="h-5 w-5 flex-shrink-0 text-amber-500" />
-                    <span>학원 홍보용 블로그 컨텐츠 제공</span>
-                  </li>
-                  <li className="flex items-center gap-3">
-                    <CheckCircleIcon className="h-5 w-5 flex-shrink-0 text-amber-500" />
-                    <span>학원 블로그 개설 및 배너 제공</span>
-                  </li>
-                </ul>
-                <ul className="space-y-4 text-gray-300">
-                  <li className="flex items-center gap-3">
-                    <CheckCircleIcon className="h-5 w-5 flex-shrink-0 text-amber-500" />
-                    <span>학부모 상담용 가이드북 제공</span>
-                  </li>
-                  <li className="flex items-center gap-3">
-                    <CheckCircleIcon className="h-5 w-5 flex-shrink-0 text-amber-500" />
-                    <span>RuleMakers 공식 인증서 발급</span>
-                  </li>
-                </ul>
-              </div>
-
-              <div className="mt-12">
-                <Link
-                  href="/contact"
-                  className="inline-flex items-center gap-2 rounded-lg bg-white px-8 py-4 text-lg font-bold text-slate-900 transition-all hover:bg-gray-100 hover:scale-105"
-                >
-                  도입 문의하기
-                  <ArrowRightIcon className="h-5 w-5" />
-                </Link>
-              </div>
-            </div>
-          </motion.div>
-        </div>
-      </section>*/}
     </div>
   );
 }
