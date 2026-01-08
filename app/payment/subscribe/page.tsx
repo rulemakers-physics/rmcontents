@@ -17,7 +17,7 @@ export default function SubscribePage() {
   // 다음 결제일 계산 (예: 오늘로부터 30일 뒤, 혹은 무료체험 종료일)
   // 실제로는 DB의 trialStartDate를 기준으로 계산해야 정확하지만, 여기선 UX상 표시용
   const trialEndDate = new Date();
-  trialEndDate.setDate(trialEndDate.getDate() + 14); // 예시: 남은 14일 뒤
+  trialEndDate.setDate(trialEndDate.getDate() + 28); // 예시: 남은 14일 뒤
   const nextPaymentDateStr = trialEndDate.toLocaleDateString();
 
   const handleCardRegistration = async () => {
@@ -44,9 +44,9 @@ export default function SubscribePage() {
         
         {/* 상단 헤더 */}
         <div className="bg-slate-900 p-8 text-center text-white">
-          <h1 className="text-2xl font-bold mb-2">무료 체험 연장하기</h1>
+          <h1 className="text-2xl font-bold mb-2">무료 체험하기</h1>
           <p className="text-slate-300 text-sm">
-            카드를 등록하고 남은 기간도 <span className="text-yellow-400 font-bold">무료</span>로 이용하세요.
+            카드를 등록하고, RuleMakers의 서비스를 <span className="text-yellow-400 font-bold">무료</span>로 이용하세요.
           </p>
         </div>
 

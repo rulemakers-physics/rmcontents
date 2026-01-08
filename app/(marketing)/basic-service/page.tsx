@@ -167,7 +167,7 @@ export default function BasicServicePage() {
     </section>
     {/* ▲▲▲ [추가] ▲▲▲ */}
 
-      {/* 3. Promotion Section (Redesigned) */}
+      {/* 3. Promotion Section (Redesigned) 
       <section className="bg-white pb-24">
         <div className="container mx-auto max-w-4xl px-6">
           <motion.div
@@ -176,7 +176,6 @@ export default function BasicServicePage() {
             viewport={{ once: true }}
             className="relative overflow-hidden rounded-3xl bg-slate-900 px-6 py-16 text-center text-white shadow-2xl ring-1 ring-white/10 sm:px-16"
           >
-            {/* 은은한 배경 조명 효과 */}
             <div className="absolute top-0 right-0 -mt-10 -mr-10 h-64 w-64 rounded-full bg-blue-500/20 blur-3xl"></div>
             <div className="absolute bottom-0 left-0 -mb-10 -ml-10 h-64 w-64 rounded-full bg-amber-500/10 blur-3xl"></div>
 
@@ -238,7 +237,7 @@ export default function BasicServicePage() {
             </div>
           </motion.div>
         </div>
-      </section>
+      </section>*/}
     </div>
   );
 }
