@@ -87,7 +87,12 @@ export default function GradeInputModal({ classData, preSelectedExamId, onClose 
   // 3. 학생 목록 로드 & 초기 상태 설정
   useEffect(() => {
     const fetchStudents = async () => {
-      const q = query(collection(db, "students"), where("classId", "==", classData.id), orderBy("name"));
+      const q = query(
+        collection(db, "students"), 
+        where("enrolledClassIds", "array-contains", classData.id), 
+        orderBy("name")
+      );
+
       const snap = await getDocs(q);
       const studentList = snap.docs.map(d => ({ id: d.id, ...d.data() } as StudentData));
       setStudents(studentList);

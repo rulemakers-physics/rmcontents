@@ -76,7 +76,13 @@ export default function WeeklyReportModal({ classData, onClose, onComplete }: Pr
       setIsLoadingData(true);
       try {
         // 1. 학생 목록 조회
-        const studQ = query(collection(db, "students"), where("classId", "==", classData.id), orderBy("name"));
+        // [수정 후] enrolledClassIds 배열에 포함 여부로 조회
+        const studQ = query(
+          collection(db, "students"), 
+          where("enrolledClassIds", "array-contains", classData.id), 
+          orderBy("name")
+        );
+
         const studSnap = await getDocs(studQ);
         const studentList = studSnap.docs.map(doc => ({ id: doc.id, name: doc.data().name }));
 

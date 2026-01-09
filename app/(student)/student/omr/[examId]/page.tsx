@@ -52,17 +52,22 @@ export default function OMRPage() {
     if (!examData) return;
 
     try {
-      // 해당 강사(userId)가 등록한 학생 중에서 검색
+      // [수정] instructorId 대신 ownerId를 사용하여 조회
+      // examData.ownerId가 없는 경우(예전 데이터)를 대비해 userId를 fallback으로 사용
+      const targetOwnerId = examData.ownerId || examData.userId;
+
       const q = query(
         collection(db, "students"),
-        where("instructorId", "==", examData.userId), 
+        where("ownerId", "==", targetOwnerId), 
         where("name", "==", name)
       );
       const snap = await getDocs(q);
       
       const matched = snap.docs.find(d => {
         const p = d.data().phone || "";
-        return p.endsWith(phoneLast4);
+        // 전화번호 형식(010-xxxx-xxxx 또는 010xxxxxxxx)에 상관없이 뒷자리 비교
+        const cleanPhone = p.replace(/[^0-9]/g, ""); 
+        return cleanPhone.endsWith(phoneLast4);
       });
 
       if (matched) {
@@ -70,12 +75,7 @@ export default function OMRPage() {
         setStep('exam');
         toast.success(`${name} 학생 확인되었습니다!`);
       } else {
-        // [모니터링 연계] 미등록 학생 처리
-        if(confirm("등록된 학생 정보가 없습니다.\n새로운 학생으로 등록하고 응시하시겠습니까?")) {
-           // 임시 학생 등록 로직 (선택 사항)
-           // 여기서는 UX상 일단 진행하지 않도록 처리하거나, 관리자에게 알림을 보낼 수 있습니다.
-           toast.error("선생님께 문의해주세요.");
-        }
+        toast.error("일치하는 학생 정보가 없습니다.");
       }
     } catch (e) {
       console.error(e);
