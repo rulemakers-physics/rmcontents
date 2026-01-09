@@ -85,7 +85,7 @@ const BRANCH_LIST = [
   {
     id: 6,
     name: "샤인독서실 동작 본관",
-    address: "주소를 입력해주세요",
+    address: "서울 동작구 여의대방로 200",
     phone: "02-6267-8262",
     type: "Study Center",
   },
