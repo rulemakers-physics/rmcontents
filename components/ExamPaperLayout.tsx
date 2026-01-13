@@ -84,7 +84,9 @@ function distributeItems(
     // 높이 추산
     const rawHeight = type === 'question' 
       ? (item.height ? item.height * IMG_SCALE_FACTOR : 10)
-      : (item.solutionHeight ? item.solutionHeight * IMG_SCALE_FACTOR : 10);
+      : (item.solutionHeight 
+          ? item.solutionHeight * IMG_SCALE_FACTOR 
+          : (item.difficulty === '기본' ? 30 : 10)); // [수정] 기본 문항 텍스트 높이 확보 (40px)
     
     // 문항 번호 헤더 높이 계산
     let headerOffset = type === 'question' ? 40 : 25; 
