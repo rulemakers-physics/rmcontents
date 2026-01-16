@@ -18,7 +18,7 @@ const COMPANY_INFO = {
   head: "이정한",
   address: "서울특별시 관악구 솔밭로 19-1",
   license: "665-86-02814",
-  // [보완] 통신판매업신고번호 및 전화번호 추가 (실제 번호로 수정해주세요)
+  // 통신판매업신고번호 및 전화번호 추가
   telecommunication: "2025-서울관악-0481", 
   phone: "010-5900-4869",
   email: "contact@rulemakers.co.kr",
