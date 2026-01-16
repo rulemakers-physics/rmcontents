@@ -45,8 +45,8 @@ export default function Footer() {
                />
              </div>
              <p className="text-sm text-slate-500 leading-relaxed font-medium max-w-xs">
-               교육의 새로운 기준, RuleMakers<br/>
-               최적의 학습 경험을 설계합니다.
+               RuleMakers의 교육 지원 솔루션을 통해<br/>
+               최적화된 교육을 만나보세요!
              </p>
              <div className="flex gap-3">
                <SocialButton href={LINKS.blog} label="Blog" src="/images/blog.png" />

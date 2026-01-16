@@ -283,7 +283,6 @@ export default function CompanyPage() {
                       { year: "2021~", desc: "(주) RuleBreakersBooks 법인 설립" },
                       { year: "2019~", desc: "RuleBreakers Contents Team 설립" },
                       { year: "2018", desc: "시대인재 컨텐츠팀 출제위원" },
-                      { year: "2017", desc: "서울대학교 화학교육과 입학" }, 
                     ].map((item, i) => (
                       <div key={i} className="relative pl-6 text-sm flex flex-col sm:flex-row sm:gap-4">
                         <span className="absolute left-0 top-1.5 w-3 h-3 bg-white border-2 border-blue-400 rounded-full z-10"></span>
@@ -303,6 +302,7 @@ export default function CompanyPage() {
                   <div className="bg-slate-50 p-5 rounded-2xl border border-slate-100">
                     <ul className="space-y-2 text-sm text-slate-700">
                       <li className="font-bold text-slate-900 pb-2 mb-2 border-b border-slate-200 block">대표이사 (CEO)</li>
+                      <li>• 서울대학교 화학교육과 졸업</li>
                       <li>• RuleMakers / RuleBreakersBooks</li>
                       <li>• 샤인학원 (고등 본관 / 수학과학관 / 초중등관)</li>
                       <li>• EG학원 (금천관 / 난곡관)</li>
