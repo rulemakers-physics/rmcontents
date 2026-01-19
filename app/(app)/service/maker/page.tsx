@@ -384,80 +384,85 @@ function ExamBuilderContent() {
     JSON.stringify(selectedMinorTopics) 
   ]);
 
-  // 문제 교체 핸들러
-  const handleReplaceProblem = useCallback(async (problemId: string, currentMajor: string, currentDifficulty: string) => {
-    if (!currentMajor) return;
+  // [수정됨] 문항 교체 핸들러 (원본 기준 순차 교체)
+  const handleReplaceProblem = useCallback(async (targetProblemId: string) => {
+    // 1. 현재 리스트에서 교체 대상 문제 찾기
+    const targetProblem = examProblems.find(p => p.id === targetProblemId);
+    if (!targetProblem) return;
+
     const toastId = toast.loading("유사 문항을 탐색 중...");
-    
+
     try {
-      const currentProblemRef = doc(db, "problems", problemId);
-      const currentProblemSnap = await getDoc(currentProblemRef);
-      const currentProblemData = currentProblemSnap.data() as DBProblem;
+      // 2. 기준이 되는 '원본 문제 ID' 결정
+      // 이미 교체된 문제라면 기록된 originalProblemId를 사용, 아니면 자기 자신이 원본
+      const sourceProblemId = targetProblem.originalProblemId || targetProblem.id;
+      
+      // 3. 다음 순서 인덱스 결정 (처음이면 0, 아니면 현재 + 1)
+      const currentIndex = targetProblem.replacementIndex ?? -1;
+      const nextIndex = currentIndex + 1;
 
-      let newProblemData: DBProblem | null = null;
+      // 4. 원본 문제 데이터 조회 (유사 문항 리스트 확보)
+      const sourceDocRef = doc(db, "problems", sourceProblemId);
+      const sourceDocSnap = await getDoc(sourceDocRef);
+      
+      if (!sourceDocSnap.exists()) {
+         toast.error("원본 문항 데이터를 찾을 수 없습니다.", { id: toastId });
+         return;
+      }
 
-      // 1. DB에 저장된 유사 문항 우선 검색
-      if (currentProblemData?.similarProblems && currentProblemData.similarProblems.length > 0) {
-        const currentIds = examProblems.map(p => p.id);
-        const candidates = currentProblemData.similarProblems;
-        
-        for (let i = 0; i < 5; i++) { 
-          const randomSim = candidates[Math.floor(Math.random() * candidates.length)];
-          const q = query(collection(db, "problems"), where("filename", "==", randomSim.targetFilename));
-          const snap = await getDocs(q);
-          if (!snap.empty) {
-            const candidateDoc = snap.docs[0];
-            if (!currentIds.includes(candidateDoc.id)) {
-              newProblemData = { id: candidateDoc.id, ...candidateDoc.data() } as DBProblem;
-              break;
-            }
-          }
+      const sourceData = sourceDocSnap.data() as DBProblem;
+      // DB 업로드 스크립트를 통해 이미 정렬된 same_topic_similarities 데이터가 similarProblems에 저장되어 있음
+      const similarList = sourceData.similarProblems || [];
+
+      // 5. 교체할 문항이 있는지 확인
+      if (similarList.length === 0 || nextIndex >= similarList.length) {
+        toast.error("더 이상 교체할 유사 문항이 없습니다.", { id: toastId });
+        return;
+      }
+
+      // 6. 다음 순서의 유사 문항 정보 가져오기
+      const nextSimInfo = similarList[nextIndex];
+      
+      // 7. 타겟 문항 상세 정보 조회 (filename으로 검색)
+      const q = query(collection(db, "problems"), where("filename", "==", nextSimInfo.targetFilename));
+      const snap = await getDocs(q);
+
+      if (snap.empty) {
+         toast.error("유사 문항 파일을 찾을 수 없습니다.", { id: toastId });
+         return;
+      }
+
+      const newProblemDoc = snap.docs[0];
+      const newProblemData = { id: newProblemDoc.id, ...newProblemDoc.data() } as DBProblem;
+
+      // 8. 상태 업데이트 (교체 수행)
+      setHistory(prev => [...prev, examProblems]); // Undo 히스토리 저장
+
+      setExamProblems(prev => prev.map(p => {
+        if (p.id === targetProblemId) {
+          return {
+            ...p, 
+            id: newProblemData.id,
+            imageUrl: newProblemData.imgUrl,
+            content: newProblemData.content,
+            answer: newProblemData.answer,
+            solutionUrl: newProblemData.solutionUrl,
+            minorTopic: newProblemData.minorTopic,
+            difficulty: newProblemData.difficulty,
+            height: (newProblemData as any).imgHeight,
+            solutionHeight: (newProblemData as any).solutionHeight,
+            materialLevel: newProblemData.materialLevel,
+            
+            // [핵심] 원본 ID 유지 및 인덱스 증가
+            originalProblemId: sourceProblemId,
+            replacementIndex: nextIndex
+          };
         }
-      }
+        return p;
+      }));
+      
+      toast.success("유사 문항으로 교체되었습니다.", { id: toastId });
 
-      // 2. 없으면 같은 조건 검색
-      if (!newProblemData) {
-        const q = query(
-          collection(db, "problems"),
-          where("majorTopic", "==", currentMajor),
-          where("difficulty", "==", currentDifficulty),
-          limit(30)
-        );
-        const snapshot = await getDocs(q);
-        const candidates = snapshot.docs.map(d => ({id: d.id, ...d.data()} as DBProblem));
-        const currentIds = examProblems.map(p => p.id);
-        const validCandidates = candidates.filter(p => !currentIds.includes(p.id) && p.id !== problemId);
-
-        if (validCandidates.length > 0) {
-          newProblemData = validCandidates[Math.floor(Math.random() * validCandidates.length)];
-        }
-      }
-
-      if (newProblemData) {
-        setHistory(prev => [...prev, examProblems]); // 히스토리 저장
-
-        setExamProblems(prev => prev.map(p => {
-          if (p.id === problemId) {
-            return {
-              ...p, 
-              id: newProblemData!.id,
-              imageUrl: newProblemData!.imgUrl,
-              content: newProblemData!.content,
-              answer: newProblemData!.answer,
-              solutionUrl: newProblemData!.solutionUrl,
-              minorTopic: newProblemData!.minorTopic,
-              difficulty: newProblemData!.difficulty,
-              height: (newProblemData as any).imgHeight,
-              solutionHeight: (newProblemData as any).solutionHeight,
-              materialLevel: newProblemData!.materialLevel
-            };
-          }
-          return p;
-        }));
-        toast.success("교체되었습니다.", { id: toastId });
-      } else {
-        toast.error("교체할 문항이 없습니다.", { id: toastId });
-      }
     } catch (e) {
       console.error(e);
       toast.error("오류가 발생했습니다.", { id: toastId });

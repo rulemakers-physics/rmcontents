@@ -16,6 +16,9 @@ export interface ExamPaperProblem {
   solutionHeight?: number;
   materialLevel?: string;
   customLabel?: string;
+  // ▼▼▼ [신규] 교체 로직을 위한 추적 필드 추가 ▼▼▼
+  originalProblemId?: string; // 교체되기 전 최초 원본 문항의 ID
+  replacementIndex?: number;  // 유사 문항 리스트에서의 순서 (0부터 시작)
 }
 
 export interface SavedExam {
