@@ -142,3 +142,23 @@ button {
     display: none !important;
   }
 }
+
+@media screen and (max-width: 1600px) {
+  /* 1600px 이하 화면(대부분의 노트북)에서는 화면을 80%로 축소 */
+  body {
+    zoom: 0.8; 
+    /* 파이어폭스 호환성 보완 */
+    -moz-transform: scale(0.8);
+    -moz-transform-origin: 0 0;
+  }
+}
+
+@media screen and (max-width: 1300px) {
+  /* 1300px 이하 화면(작은 맥북 등)에서는 67%로 축소 */
+  body {
+    zoom: 0.67;
+    /* 파이어폭스 호환성 보완 */
+    -moz-transform: scale(0.67);
+    -moz-transform-origin: 0 0;
+  }
+}
