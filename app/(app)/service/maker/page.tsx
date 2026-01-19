@@ -998,13 +998,13 @@ function ExamBuilderContent() {
         <header className="h-16 bg-white border-b border-gray-200 flex items-center justify-between px-6 flex-shrink-0 shadow-sm z-10">
           <div id="maker-exam-title" className="flex items-center gap-4 flex-1">
             {/* [신규] 반 선택 드롭다운 (제목 입력 왼쪽에 배치) */}
-            <div className="relative">
+            <div className="relative w-[110px]">
               <select
                 value={selectedClassId}
                 onChange={(e) => setSelectedClassId(e.target.value)}
-                className="pl-8 pr-8 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm font-bold text-slate-700 outline-none focus:ring-2 focus:ring-blue-500 appearance-none cursor-pointer hover:bg-slate-100 transition-colors"
+                className="w-full pl-8 pr-8 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm font-bold text-slate-700 outline-none focus:ring-2 focus:ring-blue-500 appearance-none cursor-pointer hover:bg-slate-100 transition-colors"
               >
-                <option value="">반 선택 (필수)</option>
+                <option value="">반 선택</option>
                 {availableClasses.map(cls => (
                   <option key={cls.id} value={cls.id}>{cls.name}</option>
                 ))}
@@ -1041,7 +1041,7 @@ function ExamBuilderContent() {
              </button>
              {/* [신규] 분석 패널 토글 버튼 */}
              <button onClick={() => setShowAnalysis(!showAnalysis)} className={`p-2 rounded-lg transition-colors border ${showAnalysis ? 'bg-indigo-50 border-indigo-200 text-indigo-600' : 'bg-white border-slate-200 text-slate-400 hover:bg-slate-50'}`} title="분석 패널 토글"><ChartBarIcon className="w-5 h-5" /></button>
-             <button id="maker-save-button" onClick={handleSaveExam} disabled={isSaving} className="flex items-center gap-2 px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-bold text-sm shadow-md transition-all active:scale-95 disabled:opacity-50"><SaveIcon className="w-4 h-4" /> {isSaving ? "저장 중..." : "보관함 저장"}</button>
+             <button id="maker-save-button" onClick={handleSaveExam} disabled={isSaving} className="flex items-center gap-2 px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-bold text-sm shadow-md transition-all active:scale-95 disabled:opacity-50"><SaveIcon className="w-4 h-4" /> {isSaving ? "저장 중..." : "저장"}</button>
           </div>
         </header>
         <div id="maker-preview-stage" className="flex-1 overflow-y-auto p-10 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-transparent bg-slate-100">

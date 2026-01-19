@@ -143,22 +143,33 @@ button {
   }
 }
 
-@media screen and (max-width: 1600px) {
-  /* 1600px 이하 화면(대부분의 노트북)에서는 화면을 80%로 축소 */
-  body {
-    zoom: 0.8; 
-    /* 파이어폭스 호환성 보완 */
-    -moz-transform: scale(0.8);
-    -moz-transform-origin: 0 0;
+/* 맥북(13~14인치) 및 작은 화면 대응 */
+@media screen and (max-width: 2500px) {
+  /* 1. 배경색 통일: 빈 공간이 생겨도 티가 나지 않도록 앱의 배경색(Gray/Slate 50)을 html에 칠합니다 */
+  html {
+    background-color: #f8fafc; /* bg-slate-50 색상 코드 */
+    height: 100%;
+    overflow: hidden; /* 이중 스크롤 방지 */
   }
-}
 
-@media screen and (max-width: 1300px) {
-  /* 1300px 이하 화면(작은 맥북 등)에서는 67%로 축소 */
   body {
-    zoom: 0.67;
-    /* 파이어폭스 호환성 보완 */
-    -moz-transform: scale(0.67);
-    -moz-transform-origin: 0 0;
+    /* 2. 화면 축소 (0.67배) */
+    transform: scale(0.67);
+    transform-origin: top left;
+    
+    /* 3. 컨테이너 크기 재조정 (100 ÷ 0.67 = 149.25... 이지만 넉넉하게 150으로 설정) */
+    /* % 대신 vw/vh 단위를 사용하여 뷰포트 기준 절대 크기로 고정합니다 */
+    width: 150vw;  
+    height: 150vh; 
+    
+    /* 4. 위치 고정 및 레이아웃 보정 */
+    position: absolute;
+    top: 0;
+    left: 0;
+    overflow-x: hidden;
+    overflow-y: auto; /* 세로 스크롤 허용 */
+    
+    /* Next.js 레이아웃 충돌 방지 */
+    display: block !important; 
   }
 }
