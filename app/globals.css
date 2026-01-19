@@ -143,33 +143,27 @@ button {
   }
 }
 
-/* 맥북(13~14인치) 및 작은 화면 대응 */
+/* 기존의 transform 코드를 지우고 아래 코드로 대체 */
 @media screen and (max-width: 2500px) {
-  /* 1. 배경색 통일: 빈 공간이 생겨도 티가 나지 않도록 앱의 배경색(Gray/Slate 50)을 html에 칠합니다 */
   html {
-    background-color: #f8fafc; /* bg-slate-50 색상 코드 */
+    /* 150vh 같은 강제 높이 제거 */
     height: 100%;
-    overflow: hidden; /* 이중 스크롤 방지 */
+    overflow-x: hidden;
   }
 
   body {
-    /* 2. 화면 축소 (0.67배) */
-    transform: scale(0.67);
-    transform-origin: top left;
+    /* transform 대신 zoom 사용 */
+    zoom: 0.67; /* 0.67은 너무 작을 수 있어 0.75~0.8 추천 */
     
-    /* 3. 컨테이너 크기 재조정 (100 ÷ 0.67 = 149.25... 이지만 넉넉하게 150으로 설정) */
-    /* % 대신 vw/vh 단위를 사용하여 뷰포트 기준 절대 크기로 고정합니다 */
-    width: 150vw;  
-    height: 150vh; 
+    /* 기존의 복잡한 설정들 제거 */
+    /* transform: scale(0.67);  <-- 삭제 */
+    /* transform-origin: top left; <-- 삭제 */
+    /* width: 150vw; <-- 삭제 */
+    /* height: 150vh; <-- 삭제 */
+    /* position: absolute; ... <-- 삭제 */
     
-    /* 4. 위치 고정 및 레이아웃 보정 */
-    position: absolute;
-    top: 0;
-    left: 0;
+    width: 100%;
+    min-height: 100%;
     overflow-x: hidden;
-    overflow-y: auto; /* 세로 스크롤 허용 */
-    
-    /* Next.js 레이아웃 충돌 방지 */
-    display: block !important; 
   }
 }

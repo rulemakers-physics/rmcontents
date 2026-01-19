@@ -90,7 +90,7 @@ export default function AppSidebar({ isCollapsed, toggleSidebar }: AppSidebarPro
     <aside 
       className={`${
         isCollapsed ? "w-20" : "w-64"
-      } bg-[#0F172A] text-slate-300 flex flex-col h-screen fixed left-0 top-0 z-50 transition-all duration-300 ease-in-out border-r border-slate-800 shadow-2xl`}
+      } bg-[#0F172A] text-slate-300 flex flex-col h-full z-50 transition-all duration-300 ease-in-out border-r border-slate-800 shadow-2xl flex-shrink-0`}
     >
       {/* 1. 로고 영역 */}
       <div className={`

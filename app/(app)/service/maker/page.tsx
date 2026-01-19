@@ -728,7 +728,7 @@ function ExamBuilderContent() {
   if (!isLoaded || !isMounted) return <div className="flex h-screen items-center justify-center">로딩 중...</div>;
 
   return (
-    <div className="flex w-full h-[calc(100vh-64px)] bg-gray-50 font-sans overflow-hidden">
+    <div className="flex w-full h-full bg-gray-50 font-sans overflow-hidden">
       <ExamBuilderTour />
       
       {/* 1. 통합 왼쪽 사이드바 */}

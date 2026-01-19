@@ -36,9 +36,7 @@ export default function AppLayout({
       />
       
       <div 
-        className={`flex-1 flex flex-col h-full transition-all duration-300 ease-in-out ${
-          isSidebarCollapsed ? "ml-20" : "ml-64"
-        }`}
+        className="flex-1 flex flex-col h-full transition-all duration-300 ease-in-out min-w-0"
       >
         <header className="h-16 bg-white/50 backdrop-blur-sm border-b border-slate-200 flex items-center px-8 sticky top-0 z-40 flex-shrink-0">
           <Breadcrumbs />
