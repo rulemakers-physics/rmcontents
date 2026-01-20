@@ -414,26 +414,46 @@ function ExamBuilderContent() {
       // DB 업로드 스크립트를 통해 이미 정렬된 same_topic_similarities 데이터가 similarProblems에 저장되어 있음
       const similarList = sourceData.similarProblems || [];
 
-      // 5. 교체할 문항이 있는지 확인
+      // [수정] 5. 교체할 문항이 있는지 확인
       if (similarList.length === 0 || nextIndex >= similarList.length) {
         toast.error("더 이상 교체할 유사 문항이 없습니다.", { id: toastId });
         return;
       }
 
-      // 6. 다음 순서의 유사 문항 정보 가져오기
-      const nextSimInfo = similarList[nextIndex];
-      
-      // 7. 타겟 문항 상세 정보 조회 (filename으로 검색)
-      const q = query(collection(db, "problems"), where("filename", "==", nextSimInfo.targetFilename));
-      const snap = await getDocs(q);
+      // [신규] 중복 방지 루프: 현재 시험지에 없는 문항을 찾을 때까지 탐색
+      const currentIds = new Set(examProblems.map(p => p.id)); // 현재 문항 ID 집합
+      let foundData: DBProblem | null = null;
+      let finalIndex = nextIndex;
+      const MAX_RETRIES = 10; // 무한 루프 방지를 위한 최대 시도 횟수
+      let retryCount = 0;
 
-      if (snap.empty) {
-         toast.error("유사 문항 파일을 찾을 수 없습니다.", { id: toastId });
+      while (finalIndex < similarList.length && retryCount < MAX_RETRIES) {
+        const nextSimInfo = similarList[finalIndex];
+        
+        // 타겟 문항 상세 정보 조회
+        const q = query(collection(db, "problems"), where("filename", "==", nextSimInfo.targetFilename));
+        const snap = await getDocs(q);
+
+        if (!snap.empty) {
+          const docSnap = snap.docs[0];
+          // [핵심] 현재 리스트에 없고, 원본 문항과도 다른 경우에만 선택
+          if (!currentIds.has(docSnap.id) && docSnap.id !== targetProblemId) {
+            foundData = { id: docSnap.id, ...docSnap.data() } as DBProblem;
+            break; // 유효한 문항을 찾았으므로 루프 종료
+          }
+        }
+
+        // 중복이거나 파일이 없으면 다음 인덱스로 이동
+        finalIndex++;
+        retryCount++;
+      }
+
+      if (!foundData) {
+         toast.error("교체 가능한(중복되지 않는) 유사 문항을 찾을 수 없습니다.", { id: toastId });
          return;
       }
 
-      const newProblemDoc = snap.docs[0];
-      const newProblemData = { id: newProblemDoc.id, ...newProblemDoc.data() } as DBProblem;
+      const newProblemData = foundData;
 
       // 8. 상태 업데이트 (교체 수행)
       setHistory(prev => [...prev, examProblems]); // Undo 히스토리 저장
@@ -453,9 +473,9 @@ function ExamBuilderContent() {
             solutionHeight: (newProblemData as any).solutionHeight,
             materialLevel: newProblemData.materialLevel,
             
-            // [핵심] 원본 ID 유지 및 인덱스 증가
+            // [핵심] 원본 ID 유지 및 최종 인덱스(finalIndex) 저장
             originalProblemId: sourceProblemId,
-            replacementIndex: nextIndex
+            replacementIndex: finalIndex
           };
         }
         return p;
@@ -981,7 +1001,7 @@ function ExamBuilderContent() {
                                     <p className="text-xs font-bold text-slate-800 truncate">{prob.minorTopic}</p>
                                     <span className="text-[10px] text-slate-500">{prob.difficulty}</span>
                                   </div>
-                                  <button onClick={() => handleReplaceProblem(prob.id, prob.majorTopic || "", prob.difficulty || "중")} onPointerDown={(e) => e.stopPropagation()} className="p-1.5 hover:bg-blue-50 text-slate-400 hover:text-blue-600 rounded cursor-pointer" title="유사 문항 교체"><RotateCcw className="w-3.5 h-3.5" /></button>
+                                  <button onClick={() => handleReplaceProblem(prob.id)} onPointerDown={(e) => e.stopPropagation()} className="p-1.5 hover:bg-blue-50 text-slate-400 hover:text-blue-600 rounded cursor-pointer" title="유사 문항 교체"><RotateCcw className="w-3.5 h-3.5" /></button>
                                 </div>
                               )}
                             </Draggable>
