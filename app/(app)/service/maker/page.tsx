@@ -21,7 +21,7 @@ import { useAuth } from "@/context/AuthContext";
 import { DragDropContext, Droppable, Draggable, DropResult } from "@hello-pangea/dnd"; 
 import { toast } from "react-hot-toast"; 
 import { db, storage } from "@/lib/firebase"; 
-import { collection, addDoc, serverTimestamp, doc, getDoc, query, where, getDocs, limit, orderBy } from "firebase/firestore"; 
+import { collection, addDoc, serverTimestamp, doc, getDoc, updateDoc, setDoc, query, where, getDocs, limit, orderBy } from "firebase/firestore"; 
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { useRouter, useSearchParams } from "next/navigation"; 
 
@@ -72,6 +72,8 @@ function ExamBuilderContent() {
   // Refs
   const isDraftLoadedRef = useRef(false);
   const isDbLoadedRef = useRef(false);
+  // [추가] DB 로드 중임을 나타내는 상태 (무한 루프 및 데이터 덮어쓰기 방지)
+  const [isInitialLoading, setIsInitialLoading] = useState(!!examId);
 
   // 메타데이터 & 옵션
   const [examTitle, setExamTitle] = useState("제목을 입력해주세요");
@@ -267,10 +269,11 @@ function ExamBuilderContent() {
 
   // [수정된 로직] 사용자 제안 반영: 낮은 난이도부터 단원별로 돌아가며 채우기
   useEffect(() => {
-    if (!isLoaded || isFetching) return;
+    // 1. 필수 가드: 로딩 중이거나, DB/임시저장에서 이미 로드했다면 실행 금지
+    if (!isLoaded || isFetching || isInitialLoading) return; // [수정] isInitialLoading 추가
     if (isClinicMode) return;
-    if (isDbLoadedRef.current) { isDbLoadedRef.current = false; return; }
-    if (isDraftLoadedRef.current) { isDraftLoadedRef.current = false; return; }
+    if (isDbLoadedRef.current) return; // [수정] 플래그 체크 후 바로 리턴
+    if (isDraftLoadedRef.current) return;
 
     if (fetchedProblems.length > 0) {
       // 1. 문제 풀(Pool) 구성: Difficulty -> MinorTopic -> DBProblem[]
@@ -557,7 +560,11 @@ function ExamBuilderContent() {
 
   // DB 시험지 불러오기 (수정 모드)
   useEffect(() => {
-    if (!examId) return;
+    if (!examId) {
+      setIsInitialLoading(false); // 수정 모드가 아니면 즉시 해제하여 자동 생성 허용
+      return;
+    }
+    
     const loadExam = async () => {
       try {
         const docRef = doc(db, "saved_exams", examId);
@@ -565,17 +572,19 @@ function ExamBuilderContent() {
         if (docSnap.exists()) {
           const data = docSnap.data();
           
+          // 1. 기본 텍스트 정보 복구
           setExamTitle(data.title);
           setInstructorName(data.instructorName);
           if (data.subTitle) setSubTitle(data.subTitle);
           if (data.academyName) setAcademyName(data.academyName);
           if (data.academyLogo) setAcademyLogo(data.academyLogo);
 
+          // 2. 레이아웃 및 템플릿 설정 복구
           const savedTemplate = TEMPLATES.find(t => t.id === data.templateId);
           if (savedTemplate) setCurrentTemplate(savedTemplate);
           if (data.layoutMode) setLayoutMode(data.layoutMode as LayoutMode);
-          // [수정] printOptions 상태 업데이트 로직 변경
-          // 저장된 값이 있으면 사용하고, 없으면 기본값(true)을 사용하여 기존 데이터 호환성 유지
+          
+          // 3. 출력 옵션 및 간격 복구 (하이브리드 업데이트)
           setPrintOptions((prev) => ({
             ...prev,
             questionPadding: data.questionPadding ?? 40,
@@ -583,17 +592,19 @@ function ExamBuilderContent() {
             showMaterialLevel: data.showMaterialLevel ?? true
           }));
 
+          // 4. [중요] 필터 상태 복구 (fetchedProblems 충돌 방지용)
           if (data.selectedMajorTopics) setSelectedMajorTopics(data.selectedMajorTopics);
           if (data.selectedMinorTopics) setSelectedMinorTopics(data.selectedMinorTopics);
 
+          // 5. 모드 및 반 정보 복구
           if (data.isClinic) setIsClinicMode(true);
           else setIsClinicMode(false);
 
-          // [신규] 저장된 반 정보 복구
-          if (data.classId) setSelectedClassId(data.classId);
+          if (data.classId) setSelectedClassId(data.classId); // 질문하신 반 복구 로직
 
+          // 6. 문제 리스트 복구 및 플래그 설정
           setExamProblems(data.problems || []);
-          isDbLoadedRef.current = true;
+          isDbLoadedRef.current = true; // DB에서 로드되었음을 표시하여 자동 생성을 방해함
 
           toast.success("시험지를 불러왔습니다.");
         }
@@ -602,6 +613,7 @@ function ExamBuilderContent() {
         toast.error("불러오기 실패");
       } finally {
         setIsLoaded(true);
+        setIsInitialLoading(false); // 로딩 종료 후 가드 해제
       }
     };
     loadExam();
@@ -653,15 +665,15 @@ function ExamBuilderContent() {
     }
   };
 
-  // 저장하기
   const handleSaveExam = async () => {
-    // [수정] user와 userData가 모두 있는지 확인합니다.
     if (!user || !userData) { 
       toast.error("로그인 정보가 없습니다."); 
       return; 
     }
-    if (examProblems.length === 0) { toast.error("문제가 없습니다."); return; }
-    // [신규] 반 선택 강제 (선택 사항으로 둘 수도 있지만, 데이터 구조상 필수로 권장)
+    if (examProblems.length === 0) { 
+      toast.error("문제가 없습니다."); 
+      return; 
+    }
     if (!selectedClassId) {
       toast.error("이 시험지를 사용할 반을 선택해주세요.");
       return;
@@ -680,54 +692,58 @@ function ExamBuilderContent() {
         solutionHeight: p.solutionHeight || 0,
         materialLevel: p.materialLevel || null,
         customLabel: p.customLabel || null,
-        // [추가] undefined 방지 처리
-          dataTypes: (p as any).dataTypes || null,       // undefined면 null로
-          isConvergence: (p as any).isConvergence || false // undefined면 false로
-        }));
+        dataTypes: (p as any).dataTypes || null,
+        isConvergence: (p as any).isConvergence || false
+      }));
 
-      // 선택된 반 이름 찾기
       const targetClass = availableClasses.find(c => c.id === selectedClassId);
-      // [신규] 소유주 ID 결정 (원장이면 본인, 강사면 소속 원장)
       const ownerId = userData.role === 'director' ? user.uid : (userData.ownerId || user.uid);
 
-      await addDoc(collection(db, "saved_exams"), {
+      // 공통 데이터 객체
+      const examData = {
         userId: user.uid,
         ownerId: ownerId,
         instructorName,
         title: examTitle || "제목 없음",
-        subTitle: subTitle || null,           // undefined 방지
-        academyName: academyName || null,     // undefined 방지
+        subTitle: subTitle || null,
+        academyName: academyName || null,
         problems: cleanProblems,
-        
         selectedMajorTopics, 
         selectedMinorTopics,
-        
         templateId: currentTemplate.id,
         layoutMode: layoutMode,
         questionPadding: printOptions.questionPadding,
         academyLogo: academyLogo, 
-
-        // [신규] 옵션 저장
         showMinorTopic: printOptions.showMinorTopic,
         showMaterialLevel: printOptions.showMaterialLevel,
-
-        // [신규] 반 정보 저장
         classId: selectedClassId,
         className: targetClass?.name || "미지정 반",
-
-        createdAt: serverTimestamp(),
         problemCount: examProblems.length,
-        
-        isClinic: isClinicMode 
-      }); 
+        isClinic: isClinicMode,
+        updatedAt: serverTimestamp(), // 수정/생성 시각 공통 업데이트
+      };
+
+      if (examId) {
+        // [개선] 기존 시험지 업데이트 (덮어쓰기)
+        const examRef = doc(db, "saved_exams", examId);
+        await updateDoc(examRef, examData);
+        toast.success("시험지가 성공적으로 수정되었습니다.");
+      } else {
+        // 새 시험지 생성
+        await addDoc(collection(db, "saved_exams"), {
+          ...examData,
+          createdAt: serverTimestamp(), 
+        });
+        toast.success("시험지가 보관함에 저장되었습니다!");
+      }
       
-      toast.success("시험지가 보관함에 저장되었습니다!");
       router.push("/service/storage");
     } catch (e) {
       console.error(e);
-      toast.error("저장 실패");
+      toast.error("저장 중 오류가 발생했습니다.");
+    } finally {
+      setIsSaving(false);
     }
-    setIsSaving(false);
   };
 
   // Undo (되돌리기)

@@ -304,6 +304,19 @@ const ExamPaperLayout = forwardRef<HTMLDivElement, ExamPaperLayoutProps>(
 
     const renderFooter = (pageIdx: number) => (
       <div className="h-[40px] relative flex items-center justify-center border-t border-gray-200 text-xs text-gray-400 shrink-0 mt-auto w-full">
+        {/* === 보안용 추적 식별자 (드래그 가능 버전) === */}
+    <div 
+      className="absolute left-0 bottom-1 select-all pointer-events-auto"
+      style={{
+        color: 'rgba(255, 255, 255, 0.01)', // 거의 투명한 흰색 (0이면 드래그 안 될 수 있음)
+        fontSize: '1px',                    // 아주 작게 설정
+        letterSpacing: '-1px',              // 글자 간격을 좁혀 가독성 차단
+        userSelect: 'all',                  // 전체 선택 시 포함되도록 강제
+        WebkitUserSelect: 'all'
+      }}
+    >
+      {`TRACER_ID:${id || 'NULL'}_AUTH:${instructor}_PAGE:${pageIdx + 1}_RM_SECURE`}
+    </div>
         <span className="absolute left-1/2 -translate-x-1/2 font-medium">
           - {pageIdx + 1} -
         </span>
