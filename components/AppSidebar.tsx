@@ -8,7 +8,7 @@ import {
   ShieldCheckIcon, ChevronLeftIcon, ChevronRightIcon, FolderIcon, CreditCardIcon,
   UsersIcon, MegaphoneIcon, UserGroupIcon, ChartBarIcon, IdentificationIcon,
   BuildingOffice2Icon, BanknotesIcon, ArchiveBoxIcon, ExclamationTriangleIcon,
-  AcademicCapIcon, ArrowTopRightOnSquareIcon, PresentationChartLineIcon
+  AcademicCapIcon, ArrowTopRightOnSquareIcon, PresentationChartLineIcon, EyeIcon
 } from "@heroicons/react/24/outline";
 import { useAuth } from "@/context/AuthContext";
 import { signOut } from "firebase/auth";
@@ -197,6 +197,7 @@ export default function AppSidebar({ isCollapsed, toggleSidebar }: AppSidebarPro
             <div className="px-3 space-y-1">
               {[
                 { name: "관리자 홈", href: "/admin", icon: ShieldCheckIcon, color: "rose" },
+                { name: "활동 모니터링", href: "/admin/monitoring", icon: EyeIcon, color: "indigo" },
                 { name: "비즈니스 인사이트", href: "/admin/business", icon: PresentationChartLineIcon, color: "amber" },
                 { name: "회원 관리", href: "/admin/users", icon: UsersIcon, color: "violet" },
                 { name: "문제 DB", href: "/admin/problems", icon: ArchiveBoxIcon, color: "indigo" },
