@@ -105,7 +105,7 @@ export default function MockExamPage() {
           <motion.div {...fadeInUp} className="text-center mb-16">
             <span className="text-indigo-600 font-bold tracking-widest text-xs uppercase">Key Features</span>
             <h2 className="text-3xl font-bold text-slate-900 mt-3">
-              RuleMakers 모의고사만의 5가지 특징
+              RuleMakers 모의고사만의 차별점
             </h2>
           </motion.div>
 

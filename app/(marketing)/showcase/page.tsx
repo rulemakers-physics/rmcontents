@@ -38,7 +38,7 @@ const SAMPLES = [
     category: "MOCK",
     badge: "Best Seller",
     title: "학교별 실전 모의고사",
-    subtitle: "정확한 분석과 로 완성되는 맞춤형 실전 모의고사",
+    subtitle: "정확한 분석과 세밀한 구성으로 완성되는 맞춤형 실전 모의고사",
     description: "학교별 최신 기출 경향을 100% 반영하여 실제 시험과 가장 유사한 난이도와 유형으로 제작된 프리미엄 모의고사입니다.",
     tags: ["높은 적중률", "서술형 포함", "해설지 제공"],
     image: "/images/mock-exam.png",

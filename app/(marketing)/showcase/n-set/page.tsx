@@ -112,24 +112,24 @@ export default function NSetPage() {
               desc="단순 난이도 분류가 아닙니다. '지엽', '교과 외', '단원 융합' 등 문항 상단에 상세 속성을 표기하여 학습 효율을 높입니다."
             />
             <FeatureCard 
-              icon={CpuChipIcon}
-              title="AI 중복 방지 & 다양성"
-              desc="AI 분석 모델을 통해 유사한 자료나 선지의 중복을 최소화합니다. 학생들이 지루함 없이 다양한 유형을 경험할 수 있습니다."
-            />
-            <FeatureCard 
               icon={BookOpenIcon}
               title="단계별 난이도 배치"
               desc="각 단원 내에서 쉬운 문제부터 어려운 문제 순으로 배치하여, 학생들의 학습 참여율을 높이고 성취감을 고취합니다."
             />
             <FeatureCard 
-              icon={SwatchIcon}
-              title="최신 트렌드 디자인"
-              desc="불필요한 장식을 배제한 깔끔한 서식과 가독성 높은 폰트를 사용하여, 강사님의 교재 퀄리티와 브랜드 가치를 높여드립니다."
+              icon={CpuChipIcon}
+              title="AI 중복 방지 & 다양성"
+              desc="AI 분석 모델을 통해 유사한 자료나 선지의 중복을 최소화합니다. 학생들이 지루함 없이 다양한 유형을 경험할 수 있습니다."
             />
-             <FeatureCard 
+            <FeatureCard 
               icon={ClipboardDocumentCheckIcon}
               title="철저한 교재 검수"
               desc="오류 없는 교재를 위해 철저한 검수 과정을 거칩니다. 학생이 풀이에만 집중할 수 있는 무결점 교재를 지향합니다."
+            />
+            <FeatureCard 
+              icon={SwatchIcon}
+              title="최신 트렌드 디자인"
+              desc="불필요한 장식을 배제한 깔끔한 서식과 가독성 높은 폰트를 사용하여, 강사님의 교재 퀄리티와 브랜드 가치를 높여드립니다."
             />
           </div>
         </div>
@@ -152,19 +152,19 @@ export default function NSetPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
              <LevelCard 
                 level="일반 (General)"
-                score="RM 1.0 ~ 2.0"
+                score="Lv. 1.0 ~ 2.0"
                 desc="학교 교과서 수준의 기본 문항입니다. 개념 확인 및 기초 유형 숙달에 적합합니다."
                 badgeColor="bg-slate-100 text-slate-600"
              />
              <LevelCard 
                 level="자료 강화 (Data+)"
-                score="RM 1.5 ~ 2.5"
+                score="Lv. 1.5 ~ 2.5"
                 desc="교과서 외 자료가 혼합된 형태입니다. 자료 해석 능력을 요구하는 심화 유형을 포함합니다."
                 badgeColor="bg-blue-100 text-blue-600"
              />
              <LevelCard 
                 level="고난도 (Hard)"
-                score="RM 3.0 +"
+                score="Lv. 3.0 +"
                 desc="1등급 변별을 위한 킬러 문항입니다. 복합적 사고가 필요하며 수능형 논리를 요구합니다."
                 badgeColor="bg-indigo-100 text-indigo-600"
              />

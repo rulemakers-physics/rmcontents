@@ -69,7 +69,9 @@ scripts/serviceAccountKey.json
 # --- AI 소통 효율화를 위한 제외 목록 ---
 # 1. 이미지 파일 (용량 절약)
 public/images/
-
+public/sample_high_level.pdf
+public/sample_mock_exam.pdf
+public/sample_n_set.pdf
 # 2. 패키지 잠금 파일 (토큰 절약)
 package-lock.json
 functions/package-lock.json
