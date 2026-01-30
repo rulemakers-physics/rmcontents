@@ -80,7 +80,7 @@ export default function HighDifficultyPage() {
         <div className="container mx-auto max-w-4xl px-6">
           <motion.div {...fadeInUp} className="text-center mb-8">
             <h2 className="text-2xl font-bold text-slate-900">교재 미리보기</h2>
-            <p className="text-slate-500 mt-2">RuleMakers 연구소 자체 제작 킬러 문항 샘플</p>
+            <p className="text-slate-500 mt-2">RuleMakers 연구소 자체 제작 고난이도 문항모음zip</p>
           </motion.div>
           
           <motion.div 
@@ -97,7 +97,7 @@ export default function HighDifficultyPage() {
       <section className="py-24 bg-white">
         <div className="container mx-auto max-w-6xl px-6">
           <motion.div {...fadeInUp} className="text-center mb-16">
-            <span className="text-indigo-600 font-bold tracking-widest text-xs uppercase">Why High Difficulty?</span>
+            <span className="text-indigo-600 font-bold tracking-widest text-xs uppercase">Why 고난이도 문항모음zip?</span>
             <h2 className="text-3xl font-bold text-slate-900 mt-3">
               단순히 어렵기만 한 문제는 아닙니다
             </h2>

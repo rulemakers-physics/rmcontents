@@ -76,7 +76,7 @@ export default function NSetPage() {
         <div className="container mx-auto max-w-4xl px-6">
           <motion.div {...fadeInUp} className="text-center mb-8">
             <h2 className="text-2xl font-bold text-slate-900">교재 미리보기</h2>
-            <p className="text-slate-500 mt-2">2025년 2학기 중간 대비 룰메고 Final N제 샘플</p>
+            <p className="text-slate-500 mt-2">RuleMakers 연구소 자체 제작 N제 샘플</p>
           </motion.div>
           
           <motion.div 
@@ -94,7 +94,7 @@ export default function NSetPage() {
       <section className="py-24 bg-white">
         <div className="container mx-auto max-w-6xl px-6">
           <motion.div {...fadeInUp} className="text-center mb-16">
-            <span className="text-blue-600 font-bold tracking-widest text-xs uppercase">Why RuleMakers N-Set?</span>
+            <span className="text-blue-600 font-bold tracking-widest text-xs uppercase">Why RuleMakers N제?</span>
             <h2 className="text-3xl font-bold text-slate-900 mt-3">
               강사의 불편함을 해결하는 디테일
             </h2>

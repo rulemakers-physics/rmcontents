@@ -64,13 +64,15 @@ export default function RequestPage() {
 
   // --- 모드 선택 핸들러 ---
   const handleSelectMode = (selectedMode: RequestMode) => {
-    if (!userData) return;
+    // [수정] user와 userData가 모두 존재하는지 확인 (Type Error 해결)
+    if (!user || !userData) return;
 
     if (selectedMode === 'BASIC') {
         setMode('BASIC');
         setContentKind(""); 
     } 
     else if (selectedMode === 'PREMIUM') {
+      // 위에서 user 체크를 했으므로 이제 안전하게 접근 가능
       if (userData.plan !== 'MAKERS' && !user.isAdmin) {
         toast.error("Maker's Plan 전용 서비스입니다. 플랜을 업그레이드 해주세요.");
         return;
