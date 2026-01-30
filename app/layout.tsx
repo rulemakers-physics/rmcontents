@@ -8,6 +8,9 @@ import RouteGuard from "@/components/RouteGuard";
 export const metadata: Metadata = {
   // 1. 도메인 주소 설정 (배포된 실제 주소로 꼭 변경해주세요!)
   metadataBase: new URL('https://www.pass.rulemakers.co.kr'), 
+  alternates: {
+    canonical: './', // 현재 페이지의 경로를 canonical로 자동 설정
+  },
 
   title: {
     template: '%s | RuleMakers',

@@ -561,7 +561,7 @@ export default function RequestPage() {
                {isSubmitting ? "처리 중..." : (isPremium ? "요청 제출하기" : "요청 제출하기")}
              </button>
           </div>
-          {/* [수정] 하단 강제 여백 추가: 이 코드를 추가하세요 */}
+          {/* [수정] 하단 강제 여백 추가 */}
           <div className="h-32 w-full shrink-0" aria-hidden="true" />
 
         </form>
