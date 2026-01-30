@@ -1,5 +1,3 @@
-// app/request/page.tsx
-
 "use client";
 
 import { useState, FormEvent, ChangeEvent, useEffect } from "react";
@@ -11,48 +9,51 @@ import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { v4 as uuidv4 } from "uuid";
 import { toast } from "react-hot-toast";
 import { SCIENCE_UNITS } from "@/types/scienceUnits";
+import { motion, AnimatePresence } from "framer-motion";
 
-// --- [신규] 아이콘 추가 (BookOpenIcon) ---
+// 아이콘
 import { 
   ChevronDownIcon, 
-  DocumentArrowUpIcon,
-  InformationCircleIcon, 
-  ClipboardDocumentListIcon,
-  PaperClipIcon,
-  CheckBadgeIcon,
-  ClockIcon,
-  AcademicCapIcon,
+  DocumentTextIcon, 
+  CloudArrowUpIcon,
+  XMarkIcon,
+  SparklesIcon,
   LockClosedIcon,
-  BookOpenIcon,
-  XMarkIcon // [신규] 파일 삭제용
+  CheckCircleIcon,
+  ExclamationTriangleIcon,
+  ArrowRightIcon,
+  StarIcon,
+  ShieldCheckIcon
 } from "@heroicons/react/24/outline";
 
+// --- 타입 정의 ---
+type RequestMode = 'NONE' | 'BASIC' | 'PREMIUM';
 
 export default function RequestPage() {
-  const { user, loading } = useAuth();
+  const { user, userData, loading } = useAuth();
   const router = useRouter();
 
-  // --- 폼 상태 ---
+  // --- 상태 관리 ---
+  const [mode, setMode] = useState<RequestMode>('NONE'); 
+  
+  // 폼 상태
   const [title, setTitle] = useState("");
   const [contentKind, setContentKind] = useState("");
   const [quantity, setQuantity] = useState("1");
   const [questionCount, setQuestionCount] = useState("");
   const [deadline, setDeadline] = useState("");
-  const [optionalDetails, setOptionalDetails] = useState("");
-  
-  // --- [수정] 파일 상태 (단일 -> 배열) ---
+  const [details, setDetails] = useState("");
   const [files, setFiles] = useState<File[]>([]); 
   
-  // --- 단원 선택 폼 상태 ---
+  // 단원 선택 상태
   const [openMajorTopics, setOpenMajorTopics] = useState<string[]>([]);
   type SelectedScope = Record<string, Record<string, string[]>>;
   const [selectedScope, setSelectedScope] = useState<SelectedScope>({});
   
-  // --- 기존 상태 ---
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState("");
 
-  // 로그인 보호 로직 (변경 없음)
+  // 로그인 체크
   useEffect(() => {
     if (loading) return;
     if (!user) {
@@ -61,100 +62,64 @@ export default function RequestPage() {
     }
   }, [user, loading, router]);
 
-  // --- 단원 선택 핸들러 ---
+  // --- 모드 선택 핸들러 ---
+  const handleSelectMode = (selectedMode: RequestMode) => {
+    if (!userData) return;
 
-  // 1. 대주제 아코디언을 열고 닫는 토글 핸들러
+    if (selectedMode === 'BASIC') {
+        setMode('BASIC');
+        setContentKind(""); 
+    } 
+    else if (selectedMode === 'PREMIUM') {
+      if (userData.plan !== 'MAKERS' && !user.isAdmin) {
+        toast.error("Maker's Plan 전용 서비스입니다. 플랜을 업그레이드 해주세요.");
+        return;
+      }
+      setMode('PREMIUM');
+      setContentKind(""); 
+    }
+  };
+
+  // --- 단원 선택 로직 ---
   const toggleMajorTopic = (majorTopicName: string) => {
     setOpenMajorTopics(prev =>
-      prev.includes(majorTopicName)
-        ? prev.filter(name => name !== majorTopicName)
-        : [...prev, majorTopicName]
+      prev.includes(majorTopicName) ? prev.filter(n => n !== majorTopicName) : [...prev, majorTopicName]
     );
   };
 
-  // 2. 중주제 체크박스 토글 핸들러 (데이터 구조에 맞게 수정)
-  const handleMinorTopicChange = (
-    subjectName: string,
-    majorTopicName: string,
-    minorTopicName: string,
-    isChecked: boolean
-  ) => {
-    setSelectedScope(prevScope => {
-      // 불변성 유지를 위해 깊은 복사
-      const newScope = JSON.parse(JSON.stringify(prevScope));
+  const handleMinorTopicChange = (subject: string, major: string, minor: string, checked: boolean) => {
+    setSelectedScope(prev => {
+      const next = JSON.parse(JSON.stringify(prev));
+      if (!next[subject]) next[subject] = {};
+      if (!next[subject][major]) next[subject][major] = [];
 
-      // 객체 경로 생성
-      if (!newScope[subjectName]) {
-        newScope[subjectName] = {};
-      }
-      if (!newScope[subjectName][majorTopicName]) {
-        newScope[subjectName][majorTopicName] = [];
-      }
-
-      // 체크 여부에 따라 추가 또는 제거
-      if (isChecked) {
-        newScope[subjectName][majorTopicName].push(minorTopicName);
+      if (checked) {
+        if (!next[subject][major].includes(minor)) next[subject][major].push(minor);
       } else {
-        newScope[subjectName][majorTopicName] = newScope[subjectName][majorTopicName].filter(
-          (topic: string) => topic !== minorTopicName
-        );
+        next[subject][major] = next[subject][major].filter((t: string) => t !== minor);
       }
 
-      // 데이터 정리: 빈 배열이나 객체는 삭제
-      if (newScope[subjectName][majorTopicName].length === 0) {
-        delete newScope[subjectName][majorTopicName];
-      }
-      if (Object.keys(newScope[subjectName]).length === 0) {
-        delete newScope[subjectName];
-      }
-
-      return newScope;
+      if (next[subject][major].length === 0) delete next[subject][major];
+      if (Object.keys(next[subject]).length === 0) delete next[subject];
+      return next;
     });
   };
 
-  // 3. (헬퍼 함수) 중주제가 현재 선택되었는지 확인
-  const isMinorTopicSelected = (
-    subjectName: string,
-    majorTopicName: string,
-    minorTopicName: string
-  ): boolean => {
-    return !!(
-      selectedScope[subjectName] &&
-      selectedScope[subjectName][majorTopicName] &&
-      selectedScope[subjectName][majorTopicName].includes(minorTopicName)
-    );
-  };
+  const isSelected = (subject: string, major: string, minor: string) => 
+    selectedScope[subject]?.[major]?.includes(minor);
 
-  // --- [수정] 파일 핸들러 (여러 파일 처리) ---
+  // --- 파일 핸들러 ---
   const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
-    const filesFromInput = e.target.files; // Type is FileList | null
-          
-    // [수정] null 체크 및 length > 0 체크를 명시적으로 수행
-    if (filesFromInput && filesFromInput.length > 0) {
-      // Inside this block, filesFromInput is guaranteed to be FileList
-      const newFileArray = Array.from(filesFromInput);
-      setFiles(prevFiles => [...prevFiles, ...newFileArray]);
-    }
+    if (e.target.files) setFiles(prev => [...prev, ...Array.from(e.target.files!)]);
   };
+  const removeFile = (idx: number) => setFiles(prev => prev.filter((_, i) => i !== idx));
 
-  // [신규] 특정 파일 제거 핸들러
-  const handleRemoveFile = (indexToRemove: number) => {
-    setFiles(prevFiles => prevFiles.filter((_, index) => index !== indexToRemove));
-  };
-  // --- [수정] ---
-
-  // --- [수정됨] 폼 제출 핸들러 ---
+  // --- 제출 핸들러 ---
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    if (!user) {
-      setError("로그인이 필요합니다.");
-      return;
-    }
+    if (!user) return setError("로그인이 필요합니다.");
     
-    // [수정] 단원 선택 유효성 검사 (selectedScope 객체가 비어있는지 확인)
-    if (!title || !contentKind || !quantity || !questionCount || !deadline || 
-        Object.keys(selectedScope).length === 0) 
-    {
+    if (!title || !contentKind || !quantity || !deadline || Object.keys(selectedScope).length === 0) {
       setError("필수 항목(*)을 모두 입력해주세요. (단원 범위 포함)");
       return;
     }
@@ -163,457 +128,443 @@ export default function RequestPage() {
     setError("");
 
     try {
-      // --- [수정] 여러 파일 업로드 로직 ---
       const uploadPromises = files.map(async (file) => {
-        const uniqueFileName = `${uuidv4()}-${file.name}`;
-        const storagePath = `uploads/requests/${user.uid}/${uniqueFileName}`;
-        const fileRef = ref(storage, storagePath);
+        const path = `uploads/requests/${user.uid}/${uuidv4()}-${file.name}`;
+        const fileRef = ref(storage, path);
         await uploadBytes(fileRef, file);
-        const fileUrl = await getDownloadURL(fileRef);
-        return {
-          url: fileUrl,
-          path: storagePath,
-          name: file.name, // [신규] 원본 파일명도 저장
-        };
+        return { url: await getDownloadURL(fileRef), path, name: file.name };
       });
-
       const uploadedFiles = await Promise.all(uploadPromises);
-      // --- [수정] ---
 
       const userDoc = await getDoc(doc(db, "users", user.uid));
-      const userData = userDoc.data();
+      const uData = userDoc.data();
 
-      // [수정] Firestore에 여러 파일 정보(객체 배열) 저장
+      const finalTitle = mode === 'PREMIUM' ? `[Premium] ${title}` : title;
+
       await addDoc(collection(db, "requests"), {
         instructorId: user.uid,
-        instructorName: userData?.name || "이름없음",
-        academy: userData?.academy || "학원없음",
-        
-        // 1. 기본 정보
-        title: title,
-        contentKind: contentKind,
-        
-        // 2. 단원 범위 [수정됨]
-        scope: selectedScope, // 기존 subject, majorTopic, minorTopics 대신 scope 객체 저장
-        
-        // 3. 상세 요건
-        quantity: parseInt(quantity, 10),
-        questionCount: questionCount,
-        deadline: deadline,
-        
-        // 4. 추가 사항
-        details: optionalDetails,
-        referenceFiles: uploadedFiles, // [{ url, path, name }, ...]
-
-        // 5. 메타데이터
+        instructorName: uData?.name || "이름없음",
+        academy: uData?.academy || "학원없음",
+        title: finalTitle,
+        contentKind,
+        scope: selectedScope,
+        quantity: parseInt(quantity),
+        questionCount,
+        deadline,
+        details,
+        referenceFiles: uploadedFiles,
         status: "requested",
         requestedAt: serverTimestamp(),
+        isPremium: mode === 'PREMIUM'
       });
 
-      toast.success("작업 요청이 성공적으로 제출되었습니다.");
+      toast.success("요청이 성공적으로 접수되었습니다.");
       router.push("/dashboard");
-
     } catch (err) {
-      console.error("요청 제출 중 에러:", err);
-      toast.error("제출 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.");
+      console.error(err);
+      toast.error("요청 중 오류가 발생했습니다.");
       setIsSubmitting(false);
     }
   };
-  
-  // 로딩 및 비로그인 UI (변경 없음)
-  if (loading) return <div className="flex min-h-full items-center justify-center">로딩 중...</div>;
-  if (!user) return null;
 
-  // --- [수정된 JSX] ---
-  return (
-    // [수정 1 & 2] 배경색을 Layout과 동일한 gray-50으로 변경하고, 하단 여백(pb-32) 추가
-    <div className="min-h-full w-full bg-gray-50 py-12 sm:py-16 pb-32">
-      <div className="container mx-auto max-w-6xl px-4">
-        
-        {/* [수정 3] 제목 정렬을 왼쪽(text-left)으로 변경 */}
-        <h1 className="mb-8 text-left text-3xl font-bold text-gray-900">
-          새 작업 요청하기
-        </h1>
+  if (loading || !user) return <div className="flex h-screen items-center justify-center">Loading...</div>;
 
-        <div className="grid grid-cols-1 gap-12 md:grid-cols-3">
+  // ----------------------------------------------------------------------
+  // VIEW 1: 랜딩 페이지 (Mode Selection)
+  // ----------------------------------------------------------------------
+  if (mode === 'NONE') {
+    return (
+      <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-6 animate-in fade-in duration-500">
+        <div className="max-w-6xl w-full">
+          <div className="text-center mb-12">
+            <h1 className="text-3xl md:text-4xl font-extrabold text-slate-900 mb-3">
+              어떤 컨텐츠가 필요하신가요?
+            </h1>
+            <p className="text-lg text-slate-500">
+              선생님께서 요청하실 컨텐츠의 종류를 선택해주세요
+            </p>
+          </div>
 
-          {/* === 왼쪽: 작업 요청 폼 (2/3) === */}
-          <div className="md:col-span-2">
-            <form onSubmit={handleSubmit} className="space-y-8">
+          <div className="grid md:grid-cols-2 gap-8 md:gap-12 px-4">
+            
+            {/* [Basic Card] 깔끔한 기본 스타일 */}
+            <motion.div 
+              whileHover={{ y: -6 }}
+              onClick={() => handleSelectMode('BASIC')}
+              className="bg-white rounded-3xl p-8 border border-slate-200 shadow-sm hover:shadow-xl hover:shadow-blue-100/50 hover:border-blue-400 cursor-pointer transition-all group relative overflow-hidden"
+            >
+              <div className="flex justify-between items-start mb-6">
+                <span className="px-3 py-1 bg-slate-100 text-slate-600 rounded-full text-xs font-bold uppercase tracking-wider">
+                  Basic Plan
+                </span>
+                <DocumentTextIcon className="w-8 h-8 text-slate-400 group-hover:text-blue-500 transition-colors" />
+              </div>
               
-              {/* --- 섹션 1: 기본 정보 (변경 없음) --- */}
-              <div className="rounded-lg bg-white p-6 shadow-lg sm:p-8">
-                <h2 className="flex items-center text-xl font-semibold text-gray-800">
-                  <InformationCircleIcon className="h-6 w-6 mr-2 text-indigo-600" />
-                  기본 정보
-                </h2>
-                <div className="mt-6 grid grid-cols-1 gap-6">
-                  {/* 요청 제목 */}
-                  <div>
-                    <label htmlFor="title" className="block text-sm font-medium text-gray-700">
-                      요청 제목*
-                    </label>
-                    <input
-                      id="title"
-                      type="text"
-                      value={title}
-                      onChange={(e) => setTitle(e.target.value)}
-                      required
-                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
-                      placeholder="예: OO고 2학년 1학기 중간고사 대비"
-                    />
-                  </div>
+              <h2 className="text-2xl font-bold text-slate-900 mb-2 group-hover:text-blue-600 transition-colors">
+                내신대비 실전 모의고사 & N제
+              </h2>
+              <p className="text-slate-500 text-sm mb-8 leading-relaxed h-12">
+                학교별 기출 경향과 시험 범위를 완벽 반영한<br/>높은 적중률의 내신 대비 컨텐츠 제작
+              </p>
 
-                  {/* 컨텐츠 종류 */}
-                  <div className="relative">
-                    <label htmlFor="contentKind" className="block text-sm font-medium text-gray-700">
-                      요청 컨텐츠 종류*
-                    </label>
-                    <select
-                      id="contentKind"
-                      value={contentKind}
-                      onChange={(e) => setContentKind(e.target.value)}
-                      required
-                      className="mt-1 block w-full appearance-none rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 pr-10"
-                    >
-                      <option value="" disabled>종류를 선택하세요</option>
-                      <option value="학교별 실전 모의고사">학교별 실전 모의고사</option>
-                      <option value="학교별 내신 대비 N제">학교별 내신 대비 N제</option>
-                      <option value="고난도 문항모음">고난도 문항모음</option>
-                    </select>
-                    <ChevronDownIcon className="pointer-events-none absolute right-3 top-8 h-5 w-5 text-gray-400" />
-                  </div>
-                </div>
+              <ul className="space-y-3 mb-10 text-sm text-slate-600">
+                <li className="flex items-center gap-2">
+                  <ShieldCheckIcon className="w-5 h-5 text-blue-500" /> Basic Plan 이상 이용 가능
+                </li>
+                <li className="flex items-center gap-2">
+                  <CheckCircleIcon className="w-5 h-5 text-blue-500" /> 3일 이내 제작, 기출 경향 완벽 반영
+                </li>
+                <li className="flex items-center gap-2 text-slate-400">
+                  <ExclamationTriangleIcon className="w-5 h-5" /> 맞춤형 문항 교체 및 피드백 불가능
+                </li>
+              </ul>
+
+              <div className="w-full py-4 rounded-xl border-2 border-slate-100 text-slate-600 font-bold text-center group-hover:bg-blue-50 group-hover:text-blue-600 group-hover:border-blue-200 transition-all">
+                제작 요청하기
               </div>
+            </motion.div>
 
-              {/* --- [교체] 섹션: 컨텐츠 범위 --- */}
-              <div className="rounded-lg bg-white p-6 shadow-lg sm:p-8">
-                <h2 className="flex items-center text-xl font-semibold text-gray-800">
-                  <BookOpenIcon className="h-6 w-6 mr-2 text-indigo-600" />
-                  컨텐츠 범위 설정*
-                </h2>
-                <p className="mt-2 text-sm text-gray-500">
-                  요청할 컨텐츠의 범위를 모두 선택해주세요. (1개 이상 필수)
-                </p>
+            {/* [Premium Card] White & Gold Luxury Style */}
+            <motion.div 
+              whileHover={{ y: -6 }}
+              onClick={() => handleSelectMode('PREMIUM')}
+              className="relative bg-white rounded-3xl p-8 border border-amber-200 shadow-lg shadow-amber-100/40 hover:shadow-2xl hover:shadow-amber-200/50 hover:border-amber-400 cursor-pointer transition-all group overflow-hidden"
+            >
+              {/* 은은한 배경 그라데이션 */}
+              <div className="absolute inset-0 bg-gradient-to-br from-amber-50/30 via-white to-amber-50/10 pointer-events-none"></div>
+              
+              <div className="relative z-10">
+                <div className="flex justify-between items-start mb-6">
+                  <div className="flex items-center gap-1 px-3 py-1 bg-amber-100 text-amber-800 rounded-full text-xs font-bold uppercase tracking-wider border border-amber-200">
+                    <StarIcon className="w-3 h-3" /> Maker's Plan Only
+                  </div>
+                  <SparklesIcon className="w-8 h-8 text-amber-400 group-hover:text-amber-500 transition-colors" />
+                </div>
                 
-                <div className="mt-4 space-y-4">
-                  {/* 'scienceUnits' 데이터를 순회 */}
-                  {SCIENCE_UNITS.map((subject) => (
-                    <div key={subject.name} className="rounded-md border border-gray-200">
-                      
-                      {/* 과목명 헤더 */}
-                      <h3 className="bg-gray-50 px-4 py-3 text-lg font-medium text-gray-900 rounded-t-md">
-                        {subject.name}
-                      </h3>
-                      
-                      <div className="divide-y divide-gray-200">
-                        {/* 해당 과목의 대주제들을 순회 */}
-                        {subject.majorTopics.map((majorTopic) => {
-                          const isOpen = openMajorTopics.includes(majorTopic.name);
-                          return (
-                            <div key={majorTopic.name}>
-                              
-                              {/* 대주제 (Accordion Toggle Button) */}
-                              <button
-                                type="button" // 폼 제출 방지
-                                onClick={() => toggleMajorTopic(majorTopic.name)}
-                                className="flex w-full items-center justify-between px-4 py-3 text-left text-sm font-medium text-indigo-700 hover:bg-indigo-50 focus:outline-none"
-                              >
-                                <span>{majorTopic.name}</span>
-                                <ChevronDownIcon
-                                  className={`h-5 w-5 transform transition-transform ${
-                                    isOpen ? "rotate-180" : ""
-                                  }`}
-                                />
-                              </button>
-                              
-                              {/* 중주제 목록 (Accordion Content) */}
-                              {isOpen && (
-                                <div className="border-t border-gray-200 bg-white p-4">
-                                  <div className="flex flex-col space-y-1">
-                                    {majorTopic.minorTopics.map((minorTopic) => (
-                                      <div key={minorTopic} className="flex items-center">
-                                        <input
-                                          id={`minor-${subject.name}-${majorTopic.name}-${minorTopic}`}
-                                          name="minorTopic"
-                                          type="checkbox"
-                                          value={minorTopic}
-                                          // 'isMinorTopicSelected' 헬퍼 함수로 checked 상태 관리
-                                          checked={isMinorTopicSelected(
-                                            subject.name,
-                                            majorTopic.name,
-                                            minorTopic
-                                          )}
-                                          // 핸들러에 모든 식별자 전달
-                                          onChange={(e) => handleMinorTopicChange(
-                                            subject.name,
-                                            majorTopic.name,
-                                            minorTopic,
-                                            e.target.checked
-                                          )}
-                                          className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
-                                        />
-                                        <label
-                                          htmlFor={`minor-${subject.name}-${majorTopic.name}-${minorTopic}`}
-                                          className="ml-3 text-sm text-gray-700 cursor-pointer"
-                                        >
-                                          {minorTopic}
-                                        </label>
-                                      </div>
-                                    ))}
-                                  </div>
-                                </div>
-                              )}
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  ))}
+                <h2 className="text-2xl font-bold text-slate-900 mb-2">
+                  <span className="bg-clip-text text-transparent bg-gradient-to-r from-amber-600 to-yellow-600 group-hover:from-amber-500 group-hover:to-yellow-500 transition-all">
+                    Custom 모의고사 & 킬러 문항
+                  </span>
+                </h2>
+                <p className="text-slate-500 text-sm mb-8 leading-relaxed h-12">
+                  RuleMakers의 핵심 자산을 모두 이용한 프리미엄 제작<br/>
+                  무제한 피드백, 1:1 컨시어지 서비스
+                </p>
+
+                <ul className="space-y-3 mb-10 text-sm">
+                  <li className="flex items-center gap-2 text-slate-700 font-medium">
+                    <ShieldCheckIcon className="w-5 h-5 text-amber-500" /> Maker&apos;s Plan 전용
+                  </li>
+                  <li className="flex items-center gap-2 text-slate-600">
+                    <CheckCircleIcon className="w-5 h-5 text-amber-400" /> 무제한 피드백 & 맞춤형 문항 교체 & 커스텀 컨텐츠 무제한 요청 가능
+                  </li>
+                  <li className="flex items-center gap-2 text-slate-600">
+                    <CheckCircleIcon className="w-5 h-5 text-amber-400" /> 자체 제작 킬러 N제인 "고난이도 문항모음zip" 요청 가능
+                  </li>
+                </ul>
+
+                <div className="w-full py-4 rounded-xl bg-gradient-to-r from-amber-400 to-orange-400 text-white font-bold text-center shadow-lg shadow-amber-200 group-hover:shadow-amber-300 group-hover:scale-[1.02] transition-all flex items-center justify-center gap-2">
+                  <span>제작 요청하기</span>
+                  <ArrowRightIcon className="w-4 h-4" />
                 </div>
               </div>
-              {Object.keys(selectedScope).length > 0 && (
-                <div className="mt-6 border-t border-gray-200 pt-4">
-                  <h4 className="text-sm font-medium text-gray-900">선택된 범위 요약:</h4>
-                  <div className="mt-2 space-y-2">
-                    {/* selectedScope의 subject 키('통합과학 1' 등)들을 순회 */}
-                    {Object.keys(selectedScope).map((subjectName) => {
-                      // 해당 subject의 모든 major topic에 속한 minor topic들을 하나의 배열로 합침
-                      const allMinorTopics = Object.values(selectedScope[subjectName]).flat();
-                      
+
+              {/* Lock Overlay */}
+              {userData?.plan !== 'MAKERS' && !user.isAdmin && (
+                <div className="absolute inset-0 z-20 bg-white/60 backdrop-blur-[2px] flex flex-col items-center justify-center transition-opacity hover:bg-white/50">
+                  <div className="p-4 rounded-full bg-slate-50 border border-slate-200 mb-3 shadow-md">
+                    <LockClosedIcon className="w-8 h-8 text-slate-400" />
+                  </div>
+                  <h3 className="text-slate-900 font-bold text-lg mb-1">Maker&apos;s Plan 전용</h3>
+                  <p className="text-sm text-slate-500">업그레이드 후 이용 가능합니다</p>
+                </div>
+              )}
+            </motion.div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ----------------------------------------------------------------------
+  // VIEW 2: 입력 폼 (Light Mode Base + Color Accents)
+  // ----------------------------------------------------------------------
+  
+  const isPremium = mode === 'PREMIUM';
+  
+  // 테마 설정 (배경은 항상 밝게, 포인트 컬러만 변경)
+  const theme = {
+    // 배경: 프리미엄은 아주 연한 앰버톤으로 따뜻함 추가
+    wrapper: isPremium ? "bg-amber-50/30" : "bg-slate-50", 
+    // 헤더 텍스트
+    headerTitle: isPremium ? "text-amber-900" : "text-slate-900",
+    headerSub: isPremium ? "text-amber-700/70" : "text-slate-500",
+    
+    // 카드 스타일
+    card: isPremium 
+      ? "bg-white border-amber-200 shadow-xl shadow-amber-100/50" 
+      : "bg-white border-slate-200 shadow-sm",
+    
+    // 섹션 제목 & 아이콘
+    sectionTitle: isPremium ? "text-amber-900" : "text-slate-800",
+    iconColor: isPremium ? "text-amber-500" : "text-indigo-600",
+    
+    // 입력창 (중요: 글자는 항상 진하게)
+    input: isPremium 
+      ? "bg-white border-amber-200 text-slate-900 placeholder-slate-400 focus:border-amber-500 focus:ring-amber-200" 
+      : "bg-white border-slate-200 text-slate-900 placeholder-slate-400 focus:border-indigo-500 focus:ring-indigo-100",
+    
+    // 버튼
+    buttonPrimary: isPremium
+      ? "bg-gradient-to-r from-amber-500 to-orange-500 text-white hover:shadow-lg hover:shadow-amber-200 border-0"
+      : "bg-indigo-600 text-white hover:bg-indigo-700 hover:shadow-lg hover:shadow-indigo-100",
+      
+    // 체크박스/라디오
+    checkbox: isPremium ? "text-amber-500 focus:ring-amber-500" : "text-indigo-600 focus:ring-indigo-500",
+    
+    // 토픽 리스트 헤더
+    topicHeader: isPremium ? "bg-amber-50 text-amber-900" : "bg-slate-100 text-slate-700",
+  };
+
+  return (
+    <div className={`min-h-screen pt-12 pb-32 px-4 transition-colors duration-500 ${theme.wrapper}`}>
+      <div className="max-w-4xl mx-auto">
+        
+        {/* Header */}
+        <div className="mb-8 border-b border-slate-200 pb-6 flex justify-between items-end">
+          <div>
+            <button 
+              onClick={() => setMode('NONE')}
+              className="text-sm mb-2 hover:underline flex items-center gap-1 text-slate-500 hover:text-slate-800 transition-colors"
+            >
+              ← 종류 다시 선택
+            </button>
+            <h1 className={`text-3xl font-bold flex items-center gap-2 ${theme.headerTitle}`}>
+              {isPremium ? "Maker's 제작 요청" : "Basic 제작 요청"}
+            </h1>
+            <p className={`mt-2 ${theme.headerSub}`}>
+              {isPremium 
+                ? "Maker's Plan 전담팀이 선생님의 요청사항을 정밀하게 분석하여 제작합니다."
+                : "필요한 컨텐츠의 세부 사항을 입력해주세요."
+              }
+            </p>
+          </div>
+          {isPremium && (
+            <div className="hidden md:block px-4 py-2 bg-amber-100 rounded-lg text-amber-900 text-xs font-bold uppercase tracking-wider border border-amber-300">
+              Custom Concierge Service
+            </div>
+          )}
+        </div>
+
+        <form onSubmit={handleSubmit} className="space-y-8">
+          
+          {/* 1. 기본 정보 */}
+          <section className={`p-6 md:p-8 rounded-2xl border ${theme.card}`}>
+            <h2 className={`text-xl font-semibold mb-6 flex items-center gap-2 ${theme.sectionTitle}`}>
+              <DocumentTextIcon className={`w-6 h-6 ${theme.iconColor}`} />
+              기본 정보
+            </h2>
+            
+            <div className="grid md:grid-cols-2 gap-6">
+              <div className="md:col-span-2">
+                <label className="block text-sm font-bold mb-2 text-slate-700">제목 *</label>
+                <input 
+                  type="text" 
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  placeholder="예: 2025 1학기 중간고사 대비 모의고사"
+                  className={`w-full rounded-xl px-4 py-3 border outline-none transition-all shadow-sm ${theme.input}`}
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-bold mb-2 text-slate-700">컨텐츠 종류 *</label>
+                <div className="relative">
+                  <select 
+                    value={contentKind}
+                    onChange={(e) => setContentKind(e.target.value)}
+                    className={`w-full rounded-xl px-4 py-3 border outline-none appearance-none cursor-pointer transition-all shadow-sm ${theme.input}`}
+                  >
+                    <option value="" disabled>선택해주세요</option>
+                    {isPremium ? (
+                      <>
+                        <option value="학교별 실전 모의고사 (Custom)">학교별 실전 모의고사 (Custom)</option>
+                        <option value="학교별 내신 대비 N제 (Custom)">학교별 내신 대비 N제 (Custom)</option>
+                        <option value="고난도 문항모음zip">고난도 문항모음zip (Killer)</option>
+                      </>
+                    ) : (
+                      <>
+                        <option value="학교별 실전 모의고사">학교별 실전 모의고사</option>
+                        <option value="학교별 내신 대비 N제">학교별 내신 대비 N제</option>
+                      </>
+                    )}
+                  </select>
+                  <ChevronDownIcon className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 pointer-events-none" />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-bold mb-2 text-slate-700">완료 희망일 *</label>
+                <input 
+                  type="date"
+                  value={deadline}
+                  onChange={(e) => setDeadline(e.target.value)}
+                  className={`w-full rounded-xl px-4 py-3 border outline-none transition-all shadow-sm ${theme.input}`} 
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-bold mb-2 text-slate-700">요청 수량 (Set) *</label>
+                <input 
+                  type="number" 
+                  min="1"
+                  value={quantity}
+                  onChange={(e) => setQuantity(e.target.value)}
+                  className={`w-full rounded-xl px-4 py-3 border outline-none transition-all shadow-sm ${theme.input}`}
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-bold mb-2 text-slate-700">문항 구성 (객관식/서술형)</label>
+                <input 
+                  type="text" 
+                  value={questionCount}
+                  onChange={(e) => setQuestionCount(e.target.value)}
+                  placeholder="예: 객관식 20문항 + 서술형 4문항"
+                  className={`w-full rounded-xl px-4 py-3 border outline-none transition-all shadow-sm ${theme.input}`}
+                />
+              </div>
+            </div>
+          </section>
+
+          {/* 2. 범위 설정 */}
+          <section className={`p-6 md:p-8 rounded-2xl border ${theme.card}`}>
+            <h2 className={`text-xl font-semibold mb-2 flex items-center gap-2 ${theme.sectionTitle}`}>
+              <CheckCircleIcon className={`w-6 h-6 ${theme.iconColor}`} />
+              출제 범위 설정 *
+            </h2>
+            <p className="text-sm mb-6 text-slate-500">필요한 단원을 모두 체크해주세요.</p>
+
+            <div className="space-y-4">
+              {SCIENCE_UNITS.map((subject) => (
+                <div key={subject.name} className={`rounded-xl overflow-hidden border transition-all ${isPremium ? 'border-amber-100' : 'border-slate-200'}`}>
+                  <div className={`px-4 py-3 font-bold text-sm ${theme.topicHeader}`}>
+                    {subject.name}
+                  </div>
+                  <div className="divide-y divide-slate-100 bg-white">
+                    {subject.majorTopics.map((major) => {
+                      const isOpen = openMajorTopics.includes(major.name);
                       return (
-                        <div key={subjectName}>
-                          <p className="text-sm font-semibold text-indigo-700">{subjectName}</p>
-                          <p className="text-sm text-gray-600">
-                            {allMinorTopics.join(', ')}
-                          </p>
+                        <div key={major.name}>
+                          <button
+                            type="button"
+                            onClick={() => toggleMajorTopic(major.name)}
+                            className="w-full flex justify-between items-center px-4 py-3 text-left text-sm font-medium text-slate-700 hover:bg-slate-50 transition-colors"
+                          >
+                            {major.name}
+                            <ChevronDownIcon className={`w-4 h-4 text-slate-400 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+                          </button>
+                          
+                          <AnimatePresence>
+                            {isOpen && (
+                              <motion.div 
+                                initial={{ height: 0 }} animate={{ height: 'auto' }} exit={{ height: 0 }}
+                                className="overflow-hidden"
+                              >
+                                <div className="px-4 pb-4 pt-1 grid grid-cols-1 sm:grid-cols-2 gap-2 bg-white">
+                                  {major.minorTopics.map((minor) => (
+                                    <label key={minor} className="flex items-center gap-2 cursor-pointer p-1 hover:bg-slate-50 rounded">
+                                      <input 
+                                        type="checkbox"
+                                        checked={isSelected(subject.name, major.name, minor) || false}
+                                        onChange={(e) => handleMinorTopicChange(subject.name, major.name, minor, e.target.checked)}
+                                        className={`rounded w-4 h-4 border-slate-300 ${theme.checkbox}`}
+                                      />
+                                      <span className="text-sm text-slate-600">{minor}</span>
+                                    </label>
+                                  ))}
+                                </div>
+                              </motion.div>
+                            )}
+                          </AnimatePresence>
                         </div>
                       );
                     })}
                   </div>
                 </div>
-              )}
-              {/* --- 섹션 2 (구): 상세 요건 (변경 없음) --- */}
-              <div className="rounded-lg bg-white p-6 shadow-lg sm:p-8">
-                <h2 className="flex items-center text-xl font-semibold text-gray-800">
-                  <ClipboardDocumentListIcon className="h-6 w-6 mr-2 text-indigo-600" />
-                  상세 요건
-                </h2>
-                <div className="mt-6 grid grid-cols-1 gap-6 md:grid-cols-2">
-                  {/* 요청 수량 */}
-                  <div>
-                    <label htmlFor="quantity" className="block text-sm font-medium text-gray-700">
-                      요청 수량* (ex.모의고사 2회분이면 2)
-                    </label>
-                    <input
-                      id="quantity"
-                      type="number"
-                      value={quantity}
-                      onChange={(e) => setQuantity(e.target.value)}
-                      required
-                      min="1"
-                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
-                    />
-                  </div>
-                  {/* 컨텐츠 사용 예정일 */}
-                  <div>
-                    <label htmlFor="deadline" className="block text-sm font-medium text-gray-700">
-                      컨텐츠 사용 예정일*
-                    </label>
-                    <input
-                      id="deadline"
-                      type="date"
-                      value={deadline}
-                      onChange={(e) => setDeadline(e.target.value)}
-                      required
-                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
-                      placeholder="컨텐츠가 전달되어야하는 시점"
-                    />
-                     <p className="mt-1 text-xs text-gray-500">컨텐츠가 전달되어야하는 시점을 작성해주세요.</p>
-                  </div>
-                  {/* 필요한 문항 수 (2열 모두 차지) */}
-                  <div className="md:col-span-2">
-                    <label htmlFor="questionCount" className="block text-sm font-medium text-gray-700">
-                      필요한 문항 수*
-                    </label>
-                    <input
-                      id="questionCount"
-                      type="text"
-                      value={questionCount}
-                      onChange={(e) => setQuestionCount(e.target.value)}
-                      required
-                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
-                      placeholder="예: 객관식 20문항, 서술형 5문항"
-                    />
-                    <p className="mt-1 text-xs text-gray-500">객관식, 서술형 등 원하시는 내용을 같이 작성해주셔도 좋습니다.</p>
-                  </div>
-                </div>
+              ))}
+            </div>
+          </section>
+
+          {/* 3. 상세 내용 및 파일 첨부 */}
+          <section className={`p-6 md:p-8 rounded-2xl border ${theme.card}`}>
+            <h2 className={`text-xl font-semibold mb-6 flex items-center gap-2 ${theme.sectionTitle}`}>
+              <CloudArrowUpIcon className={`w-6 h-6 ${theme.iconColor}`} />
+              추가 요청사항 및 자료
+            </h2>
+
+            <div className="space-y-6">
+              <div>
+                <label className="block text-sm font-bold mb-2 text-slate-700">상세 요청사항</label>
+                <textarea 
+                  rows={5}
+                  value={details}
+                  onChange={(e) => setDetails(e.target.value)}
+                  placeholder={isPremium 
+                    ? "킬러 문항의 난이도, 특정 유형 강화 등 요청사항을 자유롭게 작성해주세요." 
+                    : "기출 문제의 특이사항이나 참고할 내용을 적어주세요."}
+                  className={`w-full rounded-xl px-4 py-3 border outline-none resize-none transition-all shadow-sm ${theme.input}`}
+                />
               </div>
 
-              {/* --- [수정] 섹션 3: 추가 사항 (파일 업로드 UI 변경) --- */}
-              <div className="rounded-lg bg-white p-6 shadow-lg sm:p-8">
-                <h2 className="flex items-center text-xl font-semibold text-gray-800">
-                  <PaperClipIcon className="h-6 w-6 mr-2 text-indigo-600" />
-                  추가 사항
-                </h2>
-                <div className="mt-6 grid grid-cols-1 gap-6">
-                  {/* 상세 요청 내용 (선택) */}
-                  <div>
-                    <label htmlFor="optionalDetails" className="block text-sm font-medium text-gray-700">
-                      상세 요청 내용 (선택)
-                    </label>
-                    <textarea
-                      id="optionalDetails"
-                      rows={5}
-                      value={optionalDetails}
-                      onChange={(e) => setOptionalDetails(e.target.value)}
-                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
-                      placeholder="특정 유형, 스타일, 반드시 포함해야 할 개념 등 원하시는 내용을 기입해주세요."
-                    />
-                  </div>
-                  
-                  {/* [수정] 파일 업로드 */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700">
-                      참고 파일 (선택)
-                    </label>
-                    <p className="text-xs text-gray-500 mb-2">
-                      학교 기출 문제, 참고 자료 등 작업 간에 원하시는 <br/>
-                      시험지의 방향성과 관련된 자료를 업로드 해주세요 <br/>
-                      (PDF, PNG, JPG, JPEG)
-                    </p>
-                    
-                    {/* 파일 목록 */}
-                    {files.length > 0 && (
-                      <div className="mt-4 space-y-2">
-                        {files.map((file, index) => (
-                          <div key={index} className="flex items-center justify-between rounded-md bg-gray-100 p-2">
-                            <span className="text-sm text-gray-700 truncate pr-2">
-                              {file.name}
-                            </span>
-                            <button
-                              type="button"
-                              onClick={() => handleRemoveFile(index)}
-                              className="text-gray-400 hover:text-red-600"
-                            >
-                              <XMarkIcon className="h-4 w-4" />
-                            </button>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-
-                    {/* 파일 선택 버튼 */}
-                    <div className="mt-4">
-                      <label 
-                        htmlFor="file" 
-                        className="cursor-pointer rounded-md bg-white px-4 py-2 text-sm font-medium text-indigo-700 border border-indigo-600 shadow-sm hover:bg-indigo-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
-                      >
-                        <DocumentArrowUpIcon className="inline-block h-5 w-5 mr-2 -ml-1" />
-                        파일 추가하기
-                      </label>
-                      <input
-                        id="file"
-                        type="file"
-                        // [수정] multiple, accept 속성 변경
-                        multiple 
-                        accept=".pdf,.png,.jpg,.jpeg" 
-                        onChange={handleFileChange}
-                        className="sr-only"
-                      />
-                    </div>
-                  </div>
+              <div>
+                <label className="block text-sm font-bold mb-3 text-slate-700">참고 자료 업로드 (PDF, 이미지 등)</label>
+                <div className="flex items-center gap-3">
+                  <label className={`cursor-pointer px-4 py-2 rounded-lg border text-sm font-bold transition-all flex items-center gap-2 shadow-sm
+                    ${isPremium 
+                      ? "border-amber-200 bg-amber-50 text-amber-900 hover:bg-amber-100" 
+                      : "border-slate-300 bg-white text-slate-600 hover:bg-slate-50"
+                    }`}>
+                    <CloudArrowUpIcon className="w-5 h-5" />
+                    파일 선택
+                    <input type="file" multiple className="hidden" onChange={handleFileChange} />
+                  </label>
+                  <span className="text-xs text-slate-400">
+                    * 학교 기출문제나 진도표 등을 첨부해주세요.
+                  </span>
                 </div>
-              </div>
-              {/* --- [수정] --- */}
 
-
-              {/* 에러 메시지 및 제출 버튼 (변경 없음) */}
-              <div className="mt-8 mb-24">
-                {error && (
-                  <p className="text-center text-sm text-red-600 mb-4">{error}</p>
+                {files.length > 0 && (
+                  <ul className="mt-4 space-y-2">
+                    {files.map((file, idx) => (
+                      <li key={idx} className="flex items-center justify-between p-3 rounded-lg text-sm border bg-slate-50 border-slate-200 text-slate-700">
+                        <span className="truncate">{file.name}</span>
+                        <button type="button" onClick={() => removeFile(idx)} className="text-slate-400 hover:text-red-500">
+                          <XMarkIcon className="w-4 h-4" />
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
                 )}
-                <button
-                  type="submit"
-                  disabled={isSubmitting}
-                  className="w-full rounded-md border border-transparent bg-indigo-600 px-6 py-3 text-base font-medium text-white shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:opacity-50 cursor-pointer disabled:cursor-not-allowed"
-                >
-                  {isSubmitting ? "제출 중..." : "작업 요청하기"}
-                </button>
-              </div>
-            </form>
-          </div>
-
-          {/* === 오른쪽 사이드바 (변경 없음) === */}
-          <div className="md:col-span-1">
-            <div className="md:sticky md:top-24 space-y-6">
-              {/* [추가] 단원 선택 가이드 (스크롤 따라옴) */}
-              <div className="rounded-lg bg-indigo-900 p-6 shadow-lg text-white">
-                <h3 className="flex items-center text-lg font-bold">
-                  <BookOpenIcon className="h-5 w-5 mr-2 text-yellow-400" />
-                  단원 선택 가이드
-                </h3>
-                <div className="mt-4 space-y-3 text-sm text-indigo-100">
-                  <p>
-                    <span className="font-bold text-white">Tip 1.</span><br/>
-                      출판사마다 단원 구성이 다를 수 있습니다. 주제명을 기준으로 선택해주세요.
-                  </p>
-                  <p>
-                    <span className="font-bold text-white">Tip 2.</span><br/>
-                    <span className="underline decoration-yellow-400/50 underline-offset-4">시험 범위가 겹치는 경우</span>,
-                    해당되는 모든 소단원을 넉넉하게 체크해주시는 것이 좋습니다.
-                    </p>
-                    <p className="pt-2 text-xs opacity-80 border-t border-indigo-700">
-                      * 선택하신 범위 내에서 문항 선별 및 난이도 조정이 이루어집니다.
-                    </p>
-                  </div>
-                </div>
-              {/* 핵심 가치 카드 */}
-              <div className="rounded-lg bg-white p-6 shadow-lg">
-                <h3 className="text-lg font-semibold text-gray-900">
-                  RuleMakers의 약속
-                </h3>
-                <p className="mt-2 text-sm text-gray-600">
-                  최고의 컨텐츠를 만들기 위한 3가지 원칙입니다.
-                </p>
-                <ul className="mt-4 space-y-3">
-                  <li className="flex items-start">
-                    <CheckBadgeIcon className="h-5 w-5 flex-shrink-0 text-indigo-500 mt-0.5" />
-                    <span className="ml-3 text-sm text-gray-700">
-                      <span className="font-medium">100% 맞춤형 제작:</span> 요청주신 사항을 정확히 반영하며, 고객님만을 위한 컨텐츠를 제작합니다.
-                    </span>
-                  </li>
-                  <li className="flex items-start">
-                    <ClockIcon className="h-5 w-5 flex-shrink-0 text-indigo-500 mt-0.5" />
-                    <span className="ml-3 text-sm text-gray-700">
-                      <span className="font-medium">신속한 컨텐츠 제공:</span> 요청일로부터 3일 내로 전달드립니다.
-                    </span>
-                  </li>
-                  <li className="flex items-start">
-                    <AcademicCapIcon className="h-5 w-5 flex-shrink-0 text-indigo-500 mt-0.5" />
-                    <span className="ml-3 text-sm text-gray-700">
-                      <span className="font-medium">전문가 검수:</span> 전문가의 세밀한 검수로 퀄리티를 보장드립니다.
-                    </span>
-                  </li>
-                </ul>
-              </div>
-              {/* 보안 및 안내 카드 */}
-              <div className="rounded-lg bg-indigo-50 p-6 border border-indigo-200">
-                 <h3 className="text-lg font-semibold text-gray-900">
-                  궁금한 점이 있으신가요?
-                </h3>
-                <p className="mt-2 text-sm text-gray-700">
-                  요청서 작성에 어려움이 있거나 특별히 요청하실 사항이 있다면 언제든 문의 채널로 연락주세요.
-                </p>
-                <div className="mt-4 flex items-center text-sm text-gray-700">
-                  <LockClosedIcon className="h-5 w-5 flex-shrink-0 text-gray-500" />
-                  <span className="ml-2">모든 요청 내용과 자료는 기밀로 유지됩니다.</span>
-                </div>
               </div>
             </div>
-          </div>
+          </section>
 
-        </div>
+          {/* Action Buttons */}
+          <div className="flex items-center justify-end gap-4 pt-4">
+             {error && <p className="text-red-500 text-sm font-medium animate-pulse">{error}</p>}
+             <button 
+               type="submit" 
+               disabled={isSubmitting}
+               className={`px-8 py-3 rounded-xl font-bold shadow-lg transform active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed ${theme.buttonPrimary}`}
+             >
+               {isSubmitting ? "처리 중..." : (isPremium ? "요청 제출하기" : "요청 제출하기")}
+             </button>
+          </div>
+          {/* [수정] 하단 강제 여백 추가: 이 코드를 추가하세요 */}
+          <div className="h-32 w-full shrink-0" aria-hidden="true" />
+
+        </form>
       </div>
     </div>
   );

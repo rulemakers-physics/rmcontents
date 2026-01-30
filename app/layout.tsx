@@ -7,7 +7,7 @@ import RouteGuard from "@/components/RouteGuard";
 // ▼▼▼ [수정] 메타데이터 설정 시작 ▼▼▼
 export const metadata: Metadata = {
   // 1. 도메인 주소 설정 (배포된 실제 주소로 꼭 변경해주세요!)
-  metadataBase: new URL('https://www.rulemakers.co.kr'), 
+  metadataBase: new URL('https://www.pass.rulemakers.co.kr'), 
 
   title: {
     template: '%s | RuleMakers',
