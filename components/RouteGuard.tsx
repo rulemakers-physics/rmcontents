@@ -41,6 +41,11 @@ export default function RouteGuard({ children }: { children: React.ReactNode }) 
   
   const [isAuthorized, setIsAuthorized] = useState(false);
 
+  // ✅ [수정 1] 현재 경로가 공개 페이지인지 즉시 확인
+  const isPublic = 
+    PUBLIC_PATHS.includes(pathname) || 
+    PUBLIC_PREFIXES.some(prefix => pathname.startsWith(prefix));
+
   useEffect(() => {
     setIsAuthorized(false);
   }, [pathname]);
@@ -49,11 +54,7 @@ export default function RouteGuard({ children }: { children: React.ReactNode }) 
     // 1. 로딩 중 대기
     if (loading) return;
 
-    // 2. 공개 페이지 통과
-    const isPublic = 
-      PUBLIC_PATHS.includes(pathname) || 
-      PUBLIC_PREFIXES.some(prefix => pathname.startsWith(prefix));
-
+    // 2. 공개 페이지 통과 (이미 렌더링 되었겠지만 로직상 유지)
     if (isPublic) {
       setIsAuthorized(true);
       return;
@@ -177,6 +178,12 @@ export default function RouteGuard({ children }: { children: React.ReactNode }) 
 
   }, [user, userData, loading, isFirstLogin, isUserDataLoaded, pathname, router]);
 
+  // ✅ [수정 2] 공개 페이지라면 로딩 상태와 무관하게 즉시 children 렌더링 (SEO 핵심)
+  if (isPublic) {
+    return <>{children}</>;
+  }
+
+  // 비공개 페이지는 기존처럼 로딩/권한 체크 대기
   if (loading || !isUserDataLoaded || !isAuthorized) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-slate-50">
