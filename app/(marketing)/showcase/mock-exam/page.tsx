@@ -354,38 +354,7 @@ function HitMatchCard({ data }: { data: typeof HIT_CASES[0] }) {
         {/* 높이 조절: md:h-[600px] (약 600픽셀) */}
         <div className="flex flex-col md:flex-row gap-8 md:h-[600px]">
           
-          {/* 1. 실제 기출 문제 */}
-          <div className="flex-1 flex flex-col h-full">
-            <span className="text-sm font-bold text-slate-600 mb-3 block text-center bg-slate-100 py-2 rounded-lg border border-slate-200">
-              실제 기출 문제
-            </span>
-            {/* [변경] bg-slate-50 -> bg-white 로 변경 */}
-            <div className="flex-1 bg-white rounded-2xl flex items-center justify-center relative overflow-hidden border-2 border-slate-200 shadow-inner group">
-               {data.realImg ? (
-                 <Image 
-                   src={data.realImg} 
-                   alt="Real Question" 
-                   fill 
-                   className="object-contain p-4 transition-transform duration-500 group-hover:scale-105" 
-                 />
-               ) : (
-                 <>
-                   <div className="absolute inset-0 bg-slate-50" />
-                   <span className="relative text-sm text-slate-400 font-medium">Actual Exam Q.{data.realQNum}</span>
-                 </>
-               )}
-            </div>
-          </div>
-          
-          {/* 화살표 아이콘 */}
-          <div className="flex items-center justify-center text-slate-300 py-2 md:py-0">
-             <ArrowRightIcon className="hidden md:block w-8 h-8 text-indigo-300" />
-             <div className="md:hidden rotate-90">
-               <ArrowRightIcon className="w-6 h-6 text-indigo-300" />
-             </div>
-          </div>
-
-          {/* 2. RuleMakers 모의고사 */}
+          {/* 1. RuleMakers 모의고사 */}
           <div className="flex-1 flex flex-col h-full">
             <span className="text-sm font-bold text-indigo-600 mb-3 block text-center bg-indigo-50 py-2 rounded-lg border border-indigo-100">
               RuleMakers 모의고사
@@ -403,6 +372,37 @@ function HitMatchCard({ data }: { data: typeof HIT_CASES[0] }) {
                  <>
                     <div className="absolute inset-0 bg-indigo-50/10" /> 
                     <span className="relative text-sm text-indigo-400 font-medium">Mock Exam Q.{data.qNum}</span>
+                 </>
+               )}
+            </div>
+          </div>
+          
+          {/* 화살표 아이콘 */}
+          <div className="flex items-center justify-center text-slate-300 py-2 md:py-0">
+             <ArrowRightIcon className="hidden md:block w-8 h-8 text-indigo-300" />
+             <div className="md:hidden rotate-90">
+               <ArrowRightIcon className="w-6 h-6 text-indigo-300" />
+             </div>
+          </div>
+
+          {/* 2. 실제 기출 문제 */}
+          <div className="flex-1 flex flex-col h-full">
+            <span className="text-sm font-bold text-slate-600 mb-3 block text-center bg-slate-100 py-2 rounded-lg border border-slate-200">
+              실제 기출 문제
+            </span>
+            {/* [변경] bg-slate-50 -> bg-white 로 변경 */}
+            <div className="flex-1 bg-white rounded-2xl flex items-center justify-center relative overflow-hidden border-2 border-slate-200 shadow-inner group">
+               {data.realImg ? (
+                 <Image 
+                   src={data.realImg} 
+                   alt="Real Question" 
+                   fill 
+                   className="object-contain p-4 transition-transform duration-500 group-hover:scale-105" 
+                 />
+               ) : (
+                 <>
+                   <div className="absolute inset-0 bg-slate-50" />
+                   <span className="relative text-sm text-slate-400 font-medium">Actual Exam Q.{data.realQNum}</span>
                  </>
                )}
             </div>

@@ -60,6 +60,7 @@ export default function Footer() {
             <h4 className="font-bold text-slate-900 mb-6 text-xs uppercase tracking-wider">Company</h4>
             <ul className="space-y-3 text-sm text-slate-500">
               <li><Link href="/company" className="hover:text-blue-600 transition-colors">회사 소개</Link></li>
+              <li><Link href="/technology" className="text-sm leading-6 text-gray-600 hover:text-blue-600 font-medium">Core Technology</Link></li>
               <li><Link href="/contact" className="hover:text-blue-600 transition-colors">도입 문의</Link></li>
               <li><Link href="/terms" className="hover:text-blue-600 transition-colors">이용약관</Link></li>
               <li><Link href="/privacy" className="hover:text-blue-600 transition-colors">개인정보처리방침</Link></li>

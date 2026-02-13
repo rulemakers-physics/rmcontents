@@ -29,6 +29,7 @@ import NotificationBell from "./NotificationBell";
 // 네비게이션 메뉴 구조 정의
 const NAV_ITEMS = [
   { name: "About Us", href: "/company" },
+  { name: 'Our Technology', href: '/technology' },
   { name: "PASS 문제은행", href: "/maker-guide" },
   { name: "전국 모의고사", href: "/mock-exam" },
   {
